@@ -1,10 +1,9 @@
 import networkx as nx
 import numpy as np
-import random
 import math
 
 import torch
-from torch_geometric.utils import from_networkx, to_undirected
+from torch_geometric.utils import from_networkx
 from sklearn.model_selection import train_test_split
 
 
@@ -108,13 +107,13 @@ def preprocess_input_graph(G, labels, normalize_adj=False):
     return {"adj": adj, "feat": f, "labels": labels}
 
 def process_input_data(input_graph, labels):
-    data = from_networkx(input_graph, all).to_undirected()
+    data = from_networkx(input_graph.to_undirected(), all)
     data.num_classes = len(np.unique(labels))
     data.y = torch.LongTensor(labels)
     data.train_mask, data.val_mask, data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8), \
                                                      torch.zeros(data.num_nodes, dtype=torch.uint8), \
                                                      torch.zeros(data.num_nodes, dtype=torch.uint8)
-    train_ids, test_ids = train_test_split(range(n), test_size=0.2, random_state=42, shuffle=True)
+    train_ids, test_ids = train_test_split(range(data.num_nodes), test_size=0.2, random_state=42, shuffle=True)
     train_ids, val_ids = train_test_split(train_ids, test_size=0.15, random_state=42, shuffle=True)
 
     data.train_mask[train_ids] = 1

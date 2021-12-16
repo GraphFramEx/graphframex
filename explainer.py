@@ -98,27 +98,7 @@ def explain_gnnexplainer(model, node_idx, x, edge_index, target, include_edges=N
     if node_idx is not None:
         node_feat_mask, edge_mask = explainer.explain_node(node_idx, x=x, edge_index=edge_index)
     node_feat_mask, edge_mask = node_feat_mask.detach().numpy(), edge_mask.detach().numpy()
+    return edge_mask
 
 
-
-
-if __name__ == '__main__':
-    #model = torch.load()
-    list_node_idx = range(n_basis,n_basis+5*n_shapes)
-    F1_scores = []
-    GED = []
-    Recall = []
-    Precision = []
-
-    explainer = GNNExplainer(model)
-    for node_idx in list_node_idx:
-        node_feat_mask, edge_mask = explainer.explain_node(node_idx, x = data.x, edge_index = data.edge_index)
-        node_feat_mask, edge_mask = node_feat_mask.detach().numpy(), edge_mask.detach().numpy()
-        recall, precision, f1_score, ged = evaluate(node_idx, data, edge_mask, num_top_edges = 6)
-        Recall.append(recall)
-        Precision.append(precision)
-        F1_scores.append(f1_score)
-        GED.append(ged)
-        print("f1_score, ged", f1_score, ged)
-
-    print(np.mean(F1_scores), np.mean(GED), np.mean(Recall), np.mean(Precision))
+def explain_subgraphx(model, node_idx, x, edge_index, target, include_edges=None):

@@ -1,8 +1,9 @@
 import networkx as nx
 import numpy as np
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
-import random
-import math
+from dataset import house
 
 
 def get_explanation(data, edge_mask, num_top_edges):
