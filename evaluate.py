@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import matplotlib
-matplotlib.use('agg')
+matplotlib.use('macosx')
 import matplotlib.pyplot as plt
 from dataset import house
 
