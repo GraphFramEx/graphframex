@@ -1,4 +1,5 @@
 import os
+import json
 from dataset import *
 from gnn import GCN, train, test
 from explainer import *
@@ -25,19 +26,20 @@ def main():
     G, labels, plugins = build_function(n_basis, n_shapes)
     data = process_input_data(G, labels)
 
+    data_filename = os.path.join(data_save_dir, data_name) + '.pt'
+
     if not os.path.exists(data_save_dir):
         os.makedirs(data_save_dir)
-    data_filename = os.path.join(data_save_dir, data_name) + '.pt'
-    torch.save(data, data_filename)
-
-    ### Load data
-    data = torch.load(data_filename)
+        torch.save(data, data_filename)
+    else:
+        ### Load data
+        data = torch.load(data_filename)
 
     ### Init GNN model and train on data + save model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     num_node_features, num_classes, num_layers = data.num_node_features, data.num_classes, num_layers
 
-    filename = os.path.join(model_save_dir, data_name) + "/gcn.pth.tar"
+    model_filename = os.path.join(model_save_dir, data_name) + "/gcn.pth.tar"
 
     if not os.path.exists(os.path.join(model_save_dir, data_name)):
         os.makedirs(os.path.join(model_save_dir, data_name))
@@ -45,12 +47,12 @@ def main():
 
         train(model, data, device, n_epochs = num_epochs)
         test(model, data)
-        torch.save(model.state_dict(), filename)
+        torch.save(model.state_dict(), model_filename)
 
     else:
         ### Load model
         model = GCN(num_node_features, num_classes, num_layers)
-        model.load_state_dict(torch.load(filename))
+        model.load_state_dict(torch.load(model_filename))
 
     ### Create GNNExplainer
     list_node_idx = range(n_basis, n_basis + 5 * n_shapes)
@@ -71,10 +73,24 @@ def main():
     print(np.mean(F1_scores), np.mean(GED), np.mean(Recall), np.mean(Precision))
     # extract summary at results path and add a line in to the dict
     res_save_dir = 'result/ba_shapes'
-    file_path = os.path.join(res_save_dir, 'summary.json')
-    #read in file path
-    accuracies_summary[explain_name] = {'f1_score': np.mean(F1_scores), 'ged':np.mean(GED), 'recall':np.mean(Recall), 'precision':np.mean(Precision)}
-    #json.dump(summary, open(file_path, 'w'), indent=2)
+    res_filename = os.path.join(res_save_dir, 'summary.json')
+
+    stats = []
+    entry = {'explainer':explain_name, 'f1_score': np.mean(F1_scores), 'ged': np.mean(GED), 'recall': np.mean(Recall),
+                                        'precision': np.mean(Precision)}
+
+    if not os.path.isfile(res_filename):
+        stats.append(entry)
+        with open(res_filename, mode='w') as f:
+            f.write(json.dumps(stats, indent=2))
+    else:
+        with open(res_filename) as summary:
+            feeds = json.load(summary)
+
+        feeds.append(entry)
+        with open(res_filename, mode='w') as f:
+            f.write(json.dumps(feeds, indent=2))
+
 
 if __name__ == '__main__':
     main()
