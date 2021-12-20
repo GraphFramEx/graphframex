@@ -1,6 +1,8 @@
 
 import numpy as np
 from pgmexplainer import Node_Explainer
+from subgraphx import SubgraphX
+import networkx as nx
 import torch
 from torch_geometric.nn import GNNExplainer
 from torch_geometric.data import Data
@@ -114,6 +116,12 @@ def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include
         node_attr[node] = 1 - p_value
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     edge_mask = mask_to_directed(edge_mask, edge_index)
+    return edge_mask
+
+
+def explain_subgraphx(model, node_idx, x, edge_index, target, device, include_edges=None):
+    subgraphx = SubgraphX(model, model.num_classes, device, explain_graph=False)
+    edge_mask = subgraphx.explain(x, edge_index, max_nodes=6, label=target, node_idx=node_idx)
     return edge_mask
 
 

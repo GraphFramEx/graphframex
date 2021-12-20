@@ -1,15 +1,18 @@
 import networkx as nx
 import numpy as np
 import matplotlib
-matplotlib.use('macosx')
+matplotlib.use('PS')
 import matplotlib.pyplot as plt
 from dataset import house
 
 
-def get_explanation(data, edge_mask, num_top_edges):
-    # values,indices = edge_mask.topk(num_top_edges)
-    indices = (-edge_mask).argsort()[:num_top_edges]
-    explanation = data.edge_index[:, indices]
+
+def get_explanation(data, edge_mask, num_top_edges=6, is_hard_mask=False):
+    if is_hard_mask:
+        explanation = data.edge_index[:, np.where(edge_mask == 1)[0]]
+    else:
+        indices = (-edge_mask).argsort()[:num_top_edges]
+        explanation = data.edge_index[:, indices]
 
     G_expl = nx.Graph()
     G_expl.add_nodes_from(np.unique(explanation))
@@ -21,7 +24,6 @@ def get_explanation(data, edge_mask, num_top_edges):
 
 def get_ground_truth_ba_shapes(node):
     base = [0, 1, 2, 3, 4]
-    ground_truth = []
     offset = node % 5
     ground_truth = [node - offset + val for val in base]
     start = ground_truth[0]
@@ -49,10 +51,10 @@ def scores(G1, G2):
     return recall, precision, f1_score, ged
 
 
-def evaluate(node_idx, data, edge_mask, num_top_edges):
+def evaluate(node_idx, data, edge_mask, num_top_edges, is_hard_mask=False):
     G_true, role = get_ground_truth_ba_shapes(node_idx)
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
-    G_expl = get_explanation(data, edge_mask, num_top_edges)
+    G_expl = get_explanation(data, edge_mask, num_top_edges, is_hard_mask=is_hard_mask)
     plt.figure()
     nx.draw(G_expl,  with_labels=True, font_weight='bold')
     plt.show()

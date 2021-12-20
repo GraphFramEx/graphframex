@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR, StepLR
 import matplotlib
-matplotlib.use('pdf')
+matplotlib.use('PS')
 import matplotlib.pyplot as plt
 import os
 

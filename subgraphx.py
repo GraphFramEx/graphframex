@@ -170,6 +170,7 @@ class MCTS(object):
             self.ori_graph = copy.copy(self.graph)
             x, edge_index, subset, edge_mask, kwargs = \
                 self.__subgraph__(node_idx, self.X, self.edge_index, self.num_hops)
+            self.ori_data = copy.copy(self.data)
             self.data = Batch.from_data_list([Data(x=x, edge_index=edge_index)])
             self.graph = self.ori_graph.subgraph(subset.tolist())
             mapping = {int(v): k for k, v in enumerate(subset)}
@@ -192,8 +193,8 @@ class MCTS(object):
     @staticmethod
     def __subgraph__(node_idx, x, edge_index, num_hops, **kwargs):
         num_nodes, num_edges = x.size(0), edge_index.size(1)
-        subset, edge_index, _, edge_mask = k_hop_subgraph(edge_index, node_idx, num_hops,
-                                                          relabel_nodes=True, num_nodes=num_nodes)
+        subset, edge_index, _, edge_mask = k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=True,
+                   num_nodes=num_nodes, flow='source_to_target')
 
         x = x[subset]
         for key, item in kwargs.items():
@@ -448,12 +449,13 @@ class SubgraphX(object):
                 results = self.mcts_state_map.mcts(verbose=self.verbose)
 
             self.mapping_inv = self.mcts_state_map.mapping_inv
+            self.ori_data = self.mcts_state_map.ori_data
             tree_node_x = find_closest_node_result(results, max_nodes=max_nodes)
-        print("tree_node_x coalition", tree_node_x.coalition)
         # keep the important structure
         masked_node_list = [node for node in range(tree_node_x.data.x.shape[0])
                             if node in tree_node_x.coalition]
 
+        """
         # remove the important structure, for node_classification,
         # remain the node_idx when remove the important structure
         maskout_node_list = [node for node in range(tree_node_x.data.x.shape[0])
@@ -461,18 +463,7 @@ class SubgraphX(object):
         if not self.explain_graph:
             maskout_node_list += [self.new_node_idx]
 
-        num_nodes = tree_node_x.data.num_nodes
-        subgraph_build_func = get_graph_build_func(self.subgraph_building_method)
-        mask = torch.zeros(num_nodes).type(torch.float32).to(tree_node_x.data.x.device)
-        mask[masked_node_list] = 1.0
-        print("tree_node_x.data.edge_index", tree_node_x.data.edge_index)
-        ret_x, ret_edge_index = subgraph_build_func(tree_node_x.data.x, tree_node_x.data.edge_index, mask)
-        print("ret_edge_index", ret_edge_index)
-        mask_data = Data(x=ret_x, edge_index=ret_edge_index)
-        mask_data = Batch.from_data_list([mask_data])
-        # plt.figure()
-        print("hi")
-        nx.draw(to_networkx(mask_data))
+        
 
         masked_score = gnn_score(masked_node_list,
                                  tree_node_x.data,
@@ -492,8 +483,18 @@ class SubgraphX(object):
                         'maskout': maskout_score,
                         'origin': probs[node_idx, label].item(),
                         'sparsity': sparsity_score}
-
-        return results, masked_node_list
+                        
+        """
+        print("len(masked_node_list)",len(masked_node_list))
+        ori_masked_node_list = list(map(self.mapping_inv.get, masked_node_list))
+        print("len(ori_masked_node_list)", len(ori_masked_node_list))
+        row, col = self.ori_data.edge_index
+        node_mask = torch.zeros(self.ori_data.x.shape[0])
+        print("size node mask", node_mask.size())
+        node_mask[ori_masked_node_list] = 1.0
+        edge_mask = (node_mask[row] == 1) & (node_mask[col] == 1)
+        edge_mask = edge_mask.detach().numpy()
+        return edge_mask.astype(int)
 
     def __call__(self, x: Tensor, edge_index: Tensor, **kwargs) \
             -> Tuple[None, List, List[Dict]]:
