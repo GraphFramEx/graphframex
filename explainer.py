@@ -6,6 +6,7 @@ import networkx as nx
 import torch
 from torch_geometric.nn import GNNExplainer
 from torch_geometric.data import Data
+from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
 from subgraphx import SubgraphX
 from captum._utils.common import (
@@ -43,6 +44,59 @@ def node_attr_to_edge(edge_index, node_mask):
     edge_mask += node_mask[edge_index[1].cpu().numpy()]
     return edge_mask
 
+def get_all_convolution_layers(model):
+    layers = []
+    for module in model.modules():
+        if isinstance(module, MessagePassing):
+            layers.append(module)
+    return layers
+
+
+#### Baselines ####
+def explain_random(model, node_idx, x, edge_index, target, device, include_edges=None):
+    return np.random.uniform(size=edge_index.shape[1])
+
+
+def explain_distance(model, node_idx, x, edge_index, target, device, include_edges=None):
+    data = Data(x=x, edge_index=edge_index)
+    g = to_networkx(data)
+    length = nx.shortest_path_length(g, target=node_idx)
+
+    def get_attr(node):
+        if node in length:
+            return 1 / (length[node] + 1)
+        return 0
+
+    edge_sources = edge_index[1].cpu().numpy()
+    return np.array([get_attr(node) for node in edge_sources])
+
+def explain_pagerank(model, node_idx, x, edge_index, target, device, include_edges=None):
+    data = Data(x=x, edge_index=edge_index)
+    g = to_networkx(data)
+    pagerank = nx.pagerank(g, personalization={node_idx: 1})
+
+    node_attr = np.zeros(x.shape[0])
+    for node, value in pagerank.items():
+        node_attr[node] = value
+    edge_mask = node_attr_to_edge(edge_index, node_attr)
+    return edge_mask
+
+#### Methods ####
+
+def explain_gradcam(model, node_idx, x, edge_index, target, device, include_edges=None):
+    # Captum default implementation of LayerGradCam does not average over nodes for different channels because of
+    # different assumptions on tensor shapes
+    input_mask = x.clone().requires_grad_(True).to(device)
+    layers = get_all_convolution_layers(model)
+    node_attrs = []
+    for layer in layers:
+        layer_gc = LayerGradCam(model_forward_node, layer)
+        node_attr = layer_gc.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx))
+        node_attr = node_attr.cpu().detach().numpy().ravel()
+        node_attrs.append(node_attr)
+    node_attr = np.array(node_attrs).mean(axis=0)
+    edge_mask = node_attr_to_edge(edge_index, node_attr)
+    return edge_mask
 
 def explain_sa(model, node_idx, x, edge_index, target, device, include_edges=None):
     saliency = Saliency(model_forward)
@@ -125,5 +179,3 @@ def explain_subgraphx(model, node_idx, x, edge_index, target, device, include_ed
     return edge_mask
 
 
-
-#def explain_subgraphx(model, node_idx, x, edge_index, target, include_edges=None):

@@ -9,18 +9,22 @@ import os
 
 #### GNN Model #####
 class GCN(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes, num_layers):
+    def __init__(self, num_node_features, num_classes, num_layers, hidden_dim):
         super().__init__()
-        self.num_node_features, self.num_classes, self.num_layers = num_node_features, num_classes, num_layers
-        self.conv1 = GCNConv(self.num_node_features, 16)
-        self.conv2 = GCNConv(16, self.num_classes)
+        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim = num_node_features, num_classes, num_layers, hidden_dim
+        self.layers = torch.nn.ModuleList()
+        current_dim = self.num_node_features
+        for l in range(self.num_layers - 1):
+            self.layers.append(GCNConv(current_dim, hidden_dim))
+            current_dim = hidden_dim
+        self.layers.append(GCNConv(current_dim, self.num_classes))
 
     def forward(self, x, edge_index):
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, training=self.training)
+        x = self.layers[-1](x, edge_index)
         return F.log_softmax(x, dim=1)
 
 

@@ -17,10 +17,11 @@ def main():
     data_name = 'ba_shapes'
     build_function = eval('build_' + data_name)
     num_layers = 2
+    hidden_dim = 16
     num_epochs = 200
     model_save_dir = 'model'
 
-    EXPLAIN_LIST = ['gnnexplainer','pgmexplainer', 'occlusion', 'subgraphx', 'ig_node', 'sa_node']
+    EXPLAIN_LIST = ['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
 
     ### Create data + save data
     n_basis, n_shapes = 2000, 200
@@ -38,13 +39,13 @@ def main():
 
     ### Init GNN model and train on data + save model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    num_node_features, num_classes, num_layers = data.num_node_features, data.num_classes, num_layers
+    num_node_features, num_classes = data.num_node_features, data.num_classes
 
     model_filename = os.path.join(model_save_dir, data_name) + "/gcn.pth.tar"
 
     if not os.path.exists(os.path.join(model_save_dir, data_name)):
         os.makedirs(os.path.join(model_save_dir, data_name))
-        model = GCN(num_node_features, num_classes, num_layers).to(device)
+        model = GCN(num_node_features, num_classes, num_layers, hidden_dim).to(device)
 
         train(model, data, device, n_epochs=num_epochs)
         test(model, data)
@@ -52,7 +53,7 @@ def main():
 
     else:
         ### Load model
-        model = GCN(num_node_features, num_classes, num_layers)
+        model = GCN(num_node_features, num_classes, num_layers, hidden_dim)
         model.load_state_dict(torch.load(model_filename))
 
     ### Create GNNExplainer

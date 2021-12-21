@@ -485,12 +485,9 @@ class SubgraphX(object):
                         'sparsity': sparsity_score}
                         
         """
-        print("len(masked_node_list)",len(masked_node_list))
         ori_masked_node_list = list(map(self.mapping_inv.get, masked_node_list))
-        print("len(ori_masked_node_list)", len(ori_masked_node_list))
         row, col = self.ori_data.edge_index
         node_mask = torch.zeros(self.ori_data.x.shape[0])
-        print("size node mask", node_mask.size())
         node_mask[ori_masked_node_list] = 1.0
         edge_mask = (node_mask[row] == 1) & (node_mask[col] == 1)
         edge_mask = edge_mask.detach().numpy()
