@@ -1,20 +1,14 @@
 import os
 import re
-
-import networkx as nx
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import pandas as pd
-import time
+import sys,os
+sys.path.append(os.getcwd())
 
 import torch
-
-from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import download_url
 
+
 from utils import check_dir
-from exp1_mutag.dataset import extract_zip, extract_gz, process_mutag, collate_data
+from dataset import extract_zip, extract_gz, process_mutag, collate_data
 
 
 data_name = 'mutag'

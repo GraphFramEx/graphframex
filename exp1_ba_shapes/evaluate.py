@@ -3,8 +3,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
-from exp1_ba_shapes.dataset import house
-from exp1_ba_shapes.explainer import node_attr_to_edge
+from dataset import house
+from explainer import node_attr_to_edge
 from sklearn import metrics
 
 

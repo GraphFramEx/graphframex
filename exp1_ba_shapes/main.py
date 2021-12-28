@@ -1,15 +1,19 @@
-import os
+import sys, os
+sys.path.append(os.getcwd())
+
 import json
+import os
 import time
 from datetime import datetime
-from exp1_ba_shapes.dataset import *
-from exp1_ba_shapes.gnn import GCN, train, test
-from exp1_ba_shapes.explainer import *
-from exp1_ba_shapes.evaluate import evaluate
+
+from dataset import *
+from evaluate import evaluate
+from explainer import *
+from gnn import GCN, train, test
 from utils import check_dir
 
-def main():
 
+def main():
     # args: data_save_dir, data_name
     # args: n_basis, n_shapes
     # args_model: num_layers
@@ -23,7 +27,8 @@ def main():
     num_epochs = 200
     model_save_dir = 'model'
 
-    EXPLAIN_LIST = ['subgraphx']#['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
+    EXPLAIN_LIST = [
+        'subgraphx']  # ['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
 
     ### Create data + save data
     n_basis, n_shapes = 2000, 200
@@ -38,7 +43,6 @@ def main():
         G, true_labels, plugins = build_function(n_basis, n_shapes)
         data = process_input_data(G, true_labels)
         torch.save(data, data_filename)
-
 
     ### Init GNN model and train on data + save model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -63,11 +67,10 @@ def main():
             },
             str(model_filename),
         )
-        #torch.save(model.state_dict(), model_filename)
-
+        # torch.save(model.state_dict(), model_filename)
 
     ### Create GNNExplainer
-    list_node_idx = range(n_basis, n_basis + 50) #* n_shapes)
+    list_node_idx = range(n_basis, n_basis + 50)  # * n_shapes)
 
     ### Store results in summary.json
 
@@ -102,7 +105,8 @@ def main():
                     hard = True
                 else:
                     hard = False
-                recall, precision, f1_score, ged, auc = evaluate(node_idx, data, edge_mask, num_top_edges=6, is_hard_mask=hard)
+                recall, precision, f1_score, ged, auc = evaluate(node_idx, data, edge_mask, num_top_edges=6,
+                                                                 is_hard_mask=hard)
 
                 Recall.append(recall)
                 Precision.append(precision)
@@ -114,8 +118,10 @@ def main():
             ### get results + save them
             print(np.mean(F1_scores), np.mean(GED), np.mean(Recall), np.mean(Precision), np.mean(AUC))
             # extract summary at results path and add a line in to the dict
-            entry = {'explainer':explain_name, 'groundtruth target': groundtruth_target, 'auc':float(format(np.mean(AUC), '.4f')), 'f1_score': float(format(np.mean(F1_scores), '.4f')), 'ged': float(format(np.mean(GED), '.2f')), 'recall': float(format(np.mean(Recall), '.2f')),
-                                                'precision': float(format(np.mean(Precision), '.2f')), 'time': float(format(np.mean(Time), '.2f'))}
+            entry = {'explainer': explain_name, 'groundtruth target': groundtruth_target,
+                     'auc': float(format(np.mean(AUC), '.4f')), 'f1_score': float(format(np.mean(F1_scores), '.4f')),
+                     'ged': float(format(np.mean(GED), '.2f')), 'recall': float(format(np.mean(Recall), '.2f')),
+                     'precision': float(format(np.mean(Precision), '.2f')), 'time': float(format(np.mean(Time), '.2f'))}
 
             if not os.path.isfile(res_filename):
                 stats.append(entry)

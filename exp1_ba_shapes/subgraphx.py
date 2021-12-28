@@ -12,7 +12,7 @@ from torch_geometric.utils import to_networkx, k_hop_subgraph
 from typing import Callable, Optional
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import remove_self_loops
-from exp1_ba_shapes.shapley import GnnNetsGC2valueFunc, GnnNetsNC2valueFunc, \
+from shapley import GnnNetsGC2valueFunc, GnnNetsNC2valueFunc, \
     gnn_score, mc_shapley, l_shapley, mc_l_shapley, NC_mc_l_shapley, sparsity
 
 
