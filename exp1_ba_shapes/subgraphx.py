@@ -12,7 +12,7 @@ from torch_geometric.utils import to_networkx, k_hop_subgraph
 from typing import Callable, Optional
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import remove_self_loops
-from shapley import GnnNetsGC2valueFunc, GnnNetsNC2valueFunc, \
+from exp1_ba_shapes.shapley import GnnNetsGC2valueFunc, GnnNetsNC2valueFunc, \
     gnn_score, mc_shapley, l_shapley, mc_l_shapley, NC_mc_l_shapley, sparsity
 
 
@@ -418,6 +418,7 @@ class SubgraphX(object):
                 node_idx: Optional[int] = None,
                 saved_MCTSInfo_list: Optional[List[List]] = None):
         probs = self.model(x, edge_index)  # .squeeze().softmax(dim=-1)
+
         if self.explain_graph:
             if saved_MCTSInfo_list:
                 results = self.read_from_MCTSInfo_list(saved_MCTSInfo_list)
@@ -514,24 +515,22 @@ class SubgraphX(object):
         labels = tuple(label for label in range(self.num_classes))
         ex_labels = tuple(torch.tensor([label]).to(self.device) for label in labels)
 
-        related_preds = []
-        explanation_results = []
+        edge_masks = []
         saved_results = None
         if self.save:
             if os.path.isfile(os.path.join(self.save_dir, f"{self.filename}.pt")):
                 saved_results = torch.load(os.path.join(self.save_dir, f"{self.filename}.pt"))
 
         for label_idx, label in enumerate(ex_labels):
-            results, related_pred = self.explain(x, edge_index,
+            edge_mask = self.explain(x, edge_index,
                                                  label=label,
                                                  max_nodes=max_nodes,
                                                  node_idx=node_idx,
                                                  saved_MCTSInfo_list=saved_results)
-            related_preds.append(related_pred)
-            explanation_results.append(results)
+            edge_masks.append(edge_mask)
 
         if self.save:
-            torch.save(explanation_results,
+            torch.save(edge_masks,
                        os.path.join(self.save_dir, f"{self.filename}.pt"))
 
-        return None, explanation_results, related_preds
+        return edge_masks

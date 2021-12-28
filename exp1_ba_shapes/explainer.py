@@ -1,14 +1,13 @@
-
 import numpy as np
-from pgmexplainer import Node_Explainer
-from subgraphx import SubgraphX
 import networkx as nx
 import torch
-from torch_geometric.nn import GNNExplainer
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
 from subgraphx import SubgraphX
+from gnnexplainer import TargetedGNNExplainer
+from pgmexplainer import Node_Explainer
+
 from captum._utils.common import (
     _format_additional_forward_args,
     _format_input,
@@ -130,9 +129,13 @@ def explain_ig_node(model, node_idx, x, edge_index, target, device, include_edge
     return edge_mask
 
 def explain_occlusion(model, node_idx, x, edge_index, target, device, include_edges=None):
-    depth_limit = 2 + 1
+    depth_limit = model.num_layers + 1
     data = Data(x=x, edge_index=edge_index)
-    pred_prob = model(data.x, data.edge_index)[node_idx][target].item()
+    if target is None:
+        pred_probs = model(x, edge_index)[node_idx].detach().numpy()
+        pred_prob = pred_probs[target]
+    else:
+        pred_prob = 1
     g = to_networkx(data)
     subgraph_nodes = []
     for k, v in nx.shortest_path_length(g, target=node_idx).items():
@@ -156,15 +159,15 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, include_ed
 
 
 def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):
-    explainer = GNNExplainer(model)
+    explainer = TargetedGNNExplainer(model)
     if node_idx is not None:
-        node_feat_mask, edge_mask = explainer.explain_node(node_idx, x=x, edge_index=edge_index)
+        node_feat_mask, edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
     node_feat_mask, edge_mask = node_feat_mask.detach().numpy(), edge_mask.detach().numpy()
     return edge_mask
 
 def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):
     explainer = Node_Explainer(model, edge_index, x, model.num_layers, print_result=0)
-    explanation = explainer.explain(node_idx,target, device)
+    explanation = explainer.explain(node_idx, target, device)
     node_attr = np.zeros(x.shape[0])
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value

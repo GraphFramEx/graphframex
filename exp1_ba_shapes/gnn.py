@@ -68,6 +68,7 @@ def test(model, data):
     correct = (pred[data.test_mask] == data.y[data.test_mask]).sum()
     acc = int(correct) / int(data.test_mask.sum())
     print(f'Accuracy: {acc:.4f}')
+    return(acc)
 
 
 def save_model(model, args):

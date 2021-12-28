@@ -79,6 +79,11 @@ def build_ba_shapes(n_basis, n_shapes, rdm_basis_plugins=True, rdm_shape_plugins
 
     return basis, role_id, plugins
 
+def get_true_mask(role_id):
+    true_mask = np.where(role_id>0, 1, 0)
+    return(true_mask)
+
+
 
 def preprocess_input_graph(G, labels, normalize_adj=False):
     """ Load an existing graph to be converted for the experiments.

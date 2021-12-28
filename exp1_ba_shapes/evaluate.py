@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
-from dataset import house
+from exp1_ba_shapes.dataset import house
+from exp1_ba_shapes.explainer import node_attr_to_edge
+from sklearn import metrics
 
 
 
@@ -22,13 +24,18 @@ def get_explanation(data, edge_mask, num_top_edges=6, is_hard_mask=False):
 
     return (G_expl)
 
-def get_ground_truth_ba_shapes(node):
+def get_ground_truth_ba_shapes(node, data):
     base = [0, 1, 2, 3, 4]
     offset = node % 5
     ground_truth = [node - offset + val for val in base]
     start = ground_truth[0]
     graph, role = house(start, role_start=1)
-    return graph, role
+
+    true_node_mask = np.zeros(data.edge_index.shape[1])
+    true_node_mask[ground_truth] = 1
+    true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
+
+    return graph, role, true_edge_mask
 
 
 def scores(G1, G2):
@@ -52,20 +59,15 @@ def scores(G1, G2):
 
 
 def evaluate(node_idx, data, edge_mask, num_top_edges, is_hard_mask=False):
-    G_true, role = get_ground_truth_ba_shapes(node_idx)
+    G_true, role, true_edge_mask = get_ground_truth_ba_shapes(node_idx, data)
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
     G_expl = get_explanation(data, edge_mask, num_top_edges, is_hard_mask=is_hard_mask)
     plt.figure()
     nx.draw(G_expl,  with_labels=True, font_weight='bold')
     plt.show()
     plt.clf()
-    return scores(G_expl, G_true)
+    recall, precision, f1_score, ged = scores(G_expl, G_true)
+    fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=2)
+    auc = metrics.auc(fpr, tpr)
+    return recall, precision, f1_score, ged, auc
 
-def evaluate_subgraph(node_idx, G_expl):
-    G_true, role = get_ground_truth_ba_shapes(node_idx)
-    nx.draw(G_true,  with_labels=True, font_weight='bold')
-    plt.figure()
-    nx.draw(G_expl,  with_labels=True, font_weight='bold')
-    plt.show()
-    plt.clf()
-    return scores(G_expl, G_true)
