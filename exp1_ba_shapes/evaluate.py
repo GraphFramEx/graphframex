@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from dataset import house
 from explainer import node_attr_to_edge
 from sklearn import metrics
+from scipy.special import softmax
+import torch
 
 
 
@@ -70,4 +72,50 @@ def evaluate(node_idx, data, edge_mask, num_top_edges, is_hard_mask=False):
     fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=2)
     auc = metrics.auc(fpr, tpr)
     return recall, precision, f1_score, ged, auc
+
+
+def add_related_pred(model, data, related_preds, edge_mask, node_idx, true_label=True):
+    edge_mask = torch.Tensor(edge_mask)
+    zero_mask = torch.zeros(edge_mask.size())
+
+    ori_pred = model(data.x, data.edge_index)
+    masked_pred = model(x=data.x, edge_index=data.edge_index, edge_weight=edge_mask)
+    maskout_pred = model(x=data.x, edge_index=data.edge_index, edge_weight=1 - edge_mask)
+    zero_mask_pred = model(x=data.x, edge_index=data.edge_index, edge_weight=zero_mask)
+
+    ori_prob = softmax(ori_pred[node_idx].detach().numpy())
+    masked_prob = softmax(masked_pred[node_idx].detach().numpy())
+    maskout_prob = softmax(maskout_pred[node_idx].detach().numpy())
+    zero_mask_prob = softmax(zero_mask_pred[node_idx].detach().numpy())
+
+    if true_label:
+        label = data.y[node_idx].detach().numpy()
+    else:
+        label = np.argmax(ori_prob)
+
+    related_preds.append({'zero': zero_mask_prob[label],
+                          'masked': masked_prob[label],
+                          'maskout': maskout_prob[label],
+                          'origin': ori_prob[label]})
+    return related_preds
+
+
+# Fidelity+  metric  studies  the  prediction  change  by
+# removing  important  nodes/edges/node  features.
+# Higher fidelity+ value indicates good explanations
+def fidelity(related_preds):
+    ori_probs = related_preds['origin']
+    unimportant_probs = related_preds['maskout']
+    drop_probability = ori_probs - unimportant_probs
+    return drop_probability.mean().item()
+
+
+# Fidelity-  metric  studies  the  prediction  change  by
+# removing  unimportant  nodes/edges/node  features.
+# Lower fidelity- value indicates good explanations
+def fidelity_inv(related_preds):
+    ori_probs = related_preds['origin']
+    important_probs = related_preds['masked']
+    drop_probability = ori_probs - important_probs
+    return drop_probability.mean().item()
 

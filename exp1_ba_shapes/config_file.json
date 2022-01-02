@@ -1,0 +1,7 @@
+{
+  "name": "exp1_ba_shapes",
+  "version": "1.0.0",
+  "num_layers": 10,
+  "data_save_dir": "data",
+  "explainer": ['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
+}
