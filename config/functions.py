@@ -120,7 +120,7 @@ def cmdPreOld(config, params, name, log_stdout, log_stderr, run_filename):
     if "preload" in config:
         s += config["preload"] + " "
 
-    s += "srun %s \\\n" % config["cmd"]
+    s += "%s \\\n" % config["cmd"]
 
     for k, v in params.items():
         if len(k) == 1:
@@ -241,7 +241,7 @@ def cmdPreNew(config, params, name, log_stdout, log_stderr, run_filename, poolin
     if "preload" in config:
         s += config["preload"] + " "
 
-    s += "srun %s \\\n" % config["cmd"]
+    s += "%s \\\n" % config["cmd"]
 
     if params is None:
         s += "$PARAMS"

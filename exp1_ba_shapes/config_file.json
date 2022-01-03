@@ -1,11 +1,8 @@
 {
   "cmd": "python3 exp1_ba_shapes/main.py",
-  "name": "exp1_ba_shapes",
   "preload": "MKL_THREADING_LAYER=GNU",
   "ckpt_root": ".",
   "version": "1.0.0",
-  "pooling": 1,
-  "trash_dir": "trash",
   "meta": {
     "group": "checkpoints/ba_shapes",
     "name": "test_expe",

@@ -19,77 +19,17 @@ from functions import cmdPre, loadlist, savelist
 from functions import run_command, getuser, replaceMacros, bool_flag, linearize_params
 from params import enumerateParams, generateExt
 
+# Python 2
+try:
+    input = raw_input
+except NameError:
+    pass
 
 basename = os.path.basename
 
 IS_FAIR_CLUSTER = os.path.exists("checkpoint")
 IS_AWS_CLUSTER = os.path.exists("checkpoints")
 IS_NEW_CLUSTER = IS_FAIR_CLUSTER or IS_AWS_CLUSTER
-
-if IS_NEW_CLUSTER:
-    blacklist = []
-    sbatch = "sbatch "
-    if len(blacklist) >= 1:
-        sbatch += "--exclude "
-        sbatch += ",".join(blacklist)
-        sbatch += " "
-
-def get_params():
-    ''' Get parameters from command line '''
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--config_file', help='Configuration JSON file', default='exp1_ba_shapes/config_file.json')
-    # saving data
-    parser.add_argument('--data_save_dir', help='File list by write RTL command', default='data')
-    parser.add_argument('--data_name', default='ba_shapes')
-
-    # build ba-shape graphs
-    parser.add_argument('--n_basis', help='number of nodes in graph', default=2000)
-    parser.add_argument('--n_shapes', help='number of houses', default=200)
-
-    # gnn achitecture parameters
-    parser.add_argument('--num_layers', help='number of GCN layers', default=2)
-    parser.add_argument('--hidden_dim', help='number of neurons in hidden layers', default=16)
-
-    # training parameters
-    parser.add_argument("--optimizer", type=str, default='adam')
-    parser.add_argument("--lr_decay", type=float, default=0.5)
-    parser.add_argument("--weight_decay", type=float, default=0.0005)
-    parser.add_argument("--lr", type=float, default=0.1)
-    parser.add_argument("--bs", type=int, default=256)
-    parser.add_argument("--num_epochs", type=int, default=200)
-
-    # saving model
-    parser.add_argument('--model_save_dir', help='saving directory for gnn model', default='model')
-
-    # explainer params
-    parser.add_argument('--true_label', help='do you take target as true label or predicted label', default=True)
-    parser.add_argument('--explainer_name', help='explainer', default='random')
-
-
-    # Parse argument defined so far (in order to process JSON load
-    # All arguments not yet defined and passed in command -line are stored in left_argv
-    # and processed AFTER JSON load file
-    args, unknown = parser.parse_known_args()
-
-
-    if args.config_file is not None:
-        if '.json' in args.config_file:
-            # The escaping of "\t" in the config file is necesarry as
-            # otherwise Python will try to treat is as the string escape
-            # sequence for ASCII Horizontal Tab when it encounters it
-            # during json.load
-            config = json.load(open(args.config_file))
-            parser.set_defaults(**config)
-
-            [
-                parser.add_argument(arg)
-                for arg in [arg for arg in unknown if arg.startswith('--')]
-                if arg.split('--')[-1] in config
-            ]
-
-        args = parser.parse_args()
-        return args
 
 def ckpt_default():
     return os.getcwd()
@@ -104,7 +44,7 @@ def trash_expe(expe, trash_dir):
 
     assert os.path.exists(expe), "Experiment does not exist"
     assert expe.startswith(ckpt_default()), "Directory should start with default checkpoint"
-    assert len(dirs) - base_level == 2, "Experiment should be 2 levels below main checkpoint directory"
+    assert len(dirs) - base_level == 3, "Experiment should be 2 levels below main checkpoint directory"
 
     dirs.append(datetime.datetime.now(tz=GMT1()).strftime('%Y%m%d_%H%M%S'))
     dst = join(trash_dir, "_".join(dirs[base_level:]))
@@ -112,9 +52,52 @@ def trash_expe(expe, trash_dir):
     shutil.move(expe, dst)
 
 
-def run_jobs(args):
+if IS_NEW_CLUSTER:
+    blacklist = []
+    sbatch = "bash "
+    if len(blacklist) >= 1:
+        sbatch += "--exclude "
+        sbatch += ",".join(blacklist)
+        sbatch += " "
 
-    config = json.load(open(args.config_file))
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--ckpt-root", type=str, default=ckpt_default())
+parser.add_argument("--trash-dir", type=str, default=join(ckpt_default(), "trash"))
+subparsers = parser.add_subparsers(dest='command')
+
+parser_count = subparsers.add_parser("count")
+parser_count.add_argument("grid", type=str)
+
+parser_list = subparsers.add_parser("list")
+parser_list.add_argument("group", type=str)
+
+parser_remove = subparsers.add_parser("remove")
+parser_remove.add_argument("expe", type=str)
+
+parser_sweep = subparsers.add_parser('sweep')
+parser_sweep.add_argument('grid', type=str)
+parser_sweep.add_argument("--no-launch", action='store_false', dest='launch')
+parser_sweep.add_argument("--sample", type=int, default=-1)
+parser_sweep.add_argument("--numeric", action='store_true', dest='numeric')
+parser_sweep.add_argument("--array", type=bool_flag, default=True)
+parser_sweep.add_argument("--pooling", type=int, default=1)
+parser_sweep.set_defaults(launch=True, numeric=False)
+
+parser_status = subparsers.add_parser("status")
+
+parser_stress = subparsers.add_parser('stress')
+parser_stress.add_argument("--partition", type=str, default="")
+
+parser_nb = subparsers.add_parser('notebook')
+parser_nb.add_argument("json_path", type=str)
+parser_nb.add_argument("nb_path", type=str)
+
+args = parser.parse_args()
+
+if args.command == 'sweep':
+    assert os.path.exists(args.grid), "Config file %s does not exist. Are you in the right repository ?" % args.grid
+    config = json.load(open(args.grid))
     if "pwd" not in config:
         config["pwd"] = "."#os.getcwd()
 
@@ -166,6 +149,7 @@ def run_jobs(args):
         log_stdout = join(log_dir, ext + ".stdout")
         log_stderr = join(log_dir, ext + ".stderr")
 
+        """
         if args.dest_arg:
             if os.path.exists(join(expdir, ext)):
                 print(
@@ -177,6 +161,8 @@ def run_jobs(args):
             dest_name = [dest_name] if type(dest_name) is str else dest_name
             for dname in dest_name:
                 params[dname] = join(expdir, ext)
+                
+        """
 
         filename = join(expdir, 'run%s.sh' % ext)
         with open(filename, 'w') as f:
@@ -192,9 +178,4 @@ def run_jobs(args):
         # print(r)
         print("Took %.2f" % (time.time() - start))
         print(log_stdout)
-    return
 
-
-if __name__ == '__main__':
-    args = get_params()
-    run_jobs(args)
