@@ -1,8 +1,7 @@
 import sys, os
 sys.path.append(os.getcwd())
-
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import json
-import os
 import time
 from datetime import datetime
 
@@ -11,7 +10,6 @@ from evaluate import evaluate
 from explainer import *
 from gnn import GCN, train, test
 from utils import check_dir
-from config import get_params
 
 
 def main(args):
@@ -58,7 +56,7 @@ def main(args):
         #torch.save(model.state_dict(), model_filename)
 
     ### Create GNNExplainer
-    list_node_idx = range(n_basis, n_basis + 50)  # * n_shapes)
+    list_node_idx = range(n_basis, n_basis + 10)  # * n_shapes)
 
     ### Store results in summary.json
 
@@ -70,60 +68,60 @@ def main(args):
 
     stats = []
 
-    for args.true_label in [True, False]:
-        if args.explainer_name in EXPLAIN_LIST:
-            Time = []
-            F1_scores, GED, Recall, Precision, AUC = [], [], [], [], []
+    Time = []
+    F1_scores, GED, Recall, Precision, AUC = [], [], [], [], []
 
-            explain_function = eval('explain_' + args.explainer_name)
-            for node_idx in list_node_idx:
+    explain_function = eval('explain_' + args.explainer_name)
+    for node_idx in list_node_idx:
 
-                if args.true_label:
-                    target = true_labels[node_idx]
-                else:
-                    target = torch.argmax(model(data.x, data.edge_index)[node_idx])
+        if args.true_label:
+            target = true_labels[node_idx]
+        else:
+            target = torch.argmax(model(data.x, data.edge_index)[node_idx])
 
-                start_time = time.time()
-                edge_mask = explain_function(model, node_idx, data.x, data.edge_index, target, device)
-                end_time = time.time()
-                duration_seconds = end_time - start_time
-                Time.append(duration_seconds)
+        start_time = time.time()
+        edge_mask = explain_function(model, node_idx, data.x, data.edge_index, target, device)
+        end_time = time.time()
+        duration_seconds = end_time - start_time
+        Time.append(duration_seconds)
 
-                if args.explainer_name == 'subgraphx':
-                    hard = True
-                else:
-                    hard = False
-                recall, precision, f1_score, ged, auc = evaluate(node_idx, data, edge_mask, num_top_edges=6,
-                                                                 is_hard_mask=hard)
+        if args.explainer_name == 'subgraphx':
+            hard = True
+        else:
+            hard = False
+        recall, precision, f1_score, ged, auc = evaluate(node_idx, data, edge_mask, num_top_edges=6,
+                                                         is_hard_mask=hard)
 
-                Recall.append(recall)
-                Precision.append(precision)
-                F1_scores.append(f1_score)
-                GED.append(ged)
-                AUC.append(auc)
-                print("f1_score, ged, auc", f1_score, ged, auc)
+        Recall.append(recall)
+        Precision.append(precision)
+        F1_scores.append(f1_score)
+        GED.append(ged)
+        AUC.append(auc)
+        print("f1_score, ged, auc", f1_score, ged, auc)
 
-            ### get results + save them
-            print(np.mean(F1_scores), np.mean(GED), np.mean(Recall), np.mean(Precision), np.mean(AUC))
-            # extract summary at results path and add a line in to the dict
-            entry = {'explainer': args.explainer_name, 'groundtruth target': args.true_label,
-                     'auc': float(format(np.mean(AUC), '.4f')), 'f1_score': float(format(np.mean(F1_scores), '.4f')),
-                     'ged': float(format(np.mean(GED), '.2f')), 'recall': float(format(np.mean(Recall), '.2f')),
-                     'precision': float(format(np.mean(Precision), '.2f')), 'time': float(format(np.mean(Time), '.2f'))}
+    ### get results + save them
+    print(np.mean(F1_scores), np.mean(GED), np.mean(Recall), np.mean(Precision), np.mean(AUC))
+    print("__score:" + json.dumps({
+        "explainer": args.explainer_name, "groundtruth target": args.true_label,
+             "auc": float(format(np.mean(AUC), '.4f')), "f1_score": float(format(np.mean(F1_scores), '.4f')),
+             "ged": float(format(np.mean(GED), '.2f')), "recall": float(format(np.mean(Recall), '.2f')),
+             "precision": float(format(np.mean(Precision), '.2f')), "time": float(format(np.mean(Time), '.2f'))
+    }))
+    # extract summary at results path and add a line in to the dict
+    entry = {'explainer': args.explainer_name, 'groundtruth target': args.true_label,
+             'auc': float(format(np.mean(AUC), '.4f')), 'f1_score': float(format(np.mean(F1_scores), '.4f')),
+             'ged': float(format(np.mean(GED), '.2f')), 'recall': float(format(np.mean(Recall), '.2f')),
+             'precision': float(format(np.mean(Precision), '.2f')), 'time': float(format(np.mean(Time), '.2f'))}
 
-            if not os.path.isfile(res_filename):
-                stats.append(entry)
-                with open(res_filename, mode='w') as f:
-                    f.write(json.dumps(stats, indent=2))
-            else:
-                with open(res_filename) as summary:
-                    feeds = json.load(summary)
+    if not os.path.isfile(res_filename):
+        stats.append(entry)
+        with open(res_filename, mode='w') as f:
+            f.write(json.dumps(stats, indent=2))
+    else:
+        with open(res_filename) as summary:
+            feeds = json.load(summary)
 
-                feeds.append(entry)
-                with open(res_filename, mode='w') as f:
-                    f.write(json.dumps(feeds, indent=2))
+        feeds.append(entry)
+        with open(res_filename, mode='w') as f:
+            f.write(json.dumps(feeds, indent=2))
 
-
-if __name__ == '__main__':
-    args = get_params()
-    main(args)

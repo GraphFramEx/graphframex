@@ -1,7 +1,32 @@
 {
+  "cmd": "python3 exp1_ba_shapes/main.py",
   "name": "exp1_ba_shapes",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
   "version": "1.0.0",
-  "num_layers": 10,
-  "data_save_dir": "data",
-  "explainer": ['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
+  "pooling": 1,
+  "trash_dir": "trash",
+  "meta": {
+    "group": "checkpoints/ba_shapes",
+    "name": "test_expe",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "num_layers": 2,
+    "data_save_dir": "data",
+    "true_label": ["True", "False"],
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "gradcam",
+      "sa_node",
+      "ig_node",
+      "occlusion",
+      "gnnexplainer",
+      "pgmexplainer",
+      "subgraphx"
+    ]
+  }
 }
