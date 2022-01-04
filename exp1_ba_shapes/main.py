@@ -5,16 +5,20 @@ import json
 import time
 from datetime import datetime
 import argparse
+import random
 
 from dataset import *
-from evaluate import evaluate
+from evaluate import *
 from explainer import *
 from gnn import GCN, train, test
 from utils import check_dir
+from config.params import dictmerge
 
 
 def main(args):
 
+    np.random.seed(args.seed)
+    random.seed(args.seed)
     build_function = eval('build_' + args.data_name)
     is_true_label = eval(args.true_label)
 
@@ -45,6 +49,7 @@ def main(args):
         model = GCN(num_node_features, num_classes, args.num_layers, args.hidden_dim)
         ckpt = torch.load(model_filename)
         model.load_state_dict(ckpt['model_state'])
+        model.eval()
     else:
         model = GCN(num_node_features, num_classes, args.num_layers, args.hidden_dim).to(device)
         train(model, data, device, n_epochs=args.num_epochs)
@@ -60,7 +65,6 @@ def main(args):
         #torch.save(model.state_dict(), model_filename)
 
     ### Create GNNExplainer
-    list_node_idx = np.random.randint(args.n_basis, args.n_basis + 5*args.n_shapes, args.num_test_nodes)
 
     ### Store results in summary.json
 
@@ -73,49 +77,51 @@ def main(args):
     stats = []
 
     Time = []
-    F1_scores, GED, Recall, Precision, AUC = [], [], [], [], []
+    edge_masks = []
 
     explain_function = eval('explain_' + args.explainer_name)
-    for node_idx in list_node_idx:
 
-        if is_true_label:
-            target = true_labels[node_idx]
-        else:
-            target = torch.argmax(model(data.x, data.edge_index)[node_idx])
+    # explain only nodes for each the GCN made accurate predictions
+    pred_labels = model(data.x, data.edge_index).argmax(dim=1)
+    list_node_idx = np.where(pred_labels == data.y)[0]
+    list_node_idx_house = list_node_idx[list_node_idx > args.n_basis]
+    list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
 
+    if is_true_label:
+        targets = true_labels
+    else:
+        targets = pred_labels
+
+    for node_idx in list_test_nodes:
         start_time = time.time()
-        edge_mask = explain_function(model, node_idx, data.x, data.edge_index, target, device)
+        edge_mask = explain_function(model, node_idx, data.x, data.edge_index, targets[node_idx], device)
         end_time = time.time()
         duration_seconds = end_time - start_time
         Time.append(duration_seconds)
+        edge_masks.append(edge_mask)
 
-        if args.explainer_name == 'subgraphx':
-            hard = True
-        else:
-            hard = False
-        recall, precision, f1_score, ged, auc = evaluate(node_idx, data, edge_mask, num_top_edges=6,
-                                                         is_hard_mask=hard)
+    if args.explainer_name == 'subgraphx':
+        hard = True
+    else:
+        hard = False
 
-        Recall.append(recall)
-        Precision.append(precision)
-        F1_scores.append(f1_score)
-        GED.append(ged)
-        AUC.append(auc)
-        print(f"f1_score={f1_score}, ged={ged}, auc={auc}")
+    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges, is_hard_mask=hard)
+    soft_related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, hard_mask=False)
+    hard_related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, hard_mask=True, num_top_edges=args.num_top_edges)
+    fidelity_soft = {k+'_soft':v for k,v in eval_fidelity(soft_related_preds).items()}
+    fidelity_hard = {k+'_hard':v for k,v in eval_fidelity(hard_related_preds).items()}
+    infos = {"explainer": args.explainer_name, "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
 
     ### get results + save them
-    print("__scores:" + json.dumps({
-        "explainer": args.explainer_name, "groundtruth target": is_true_label,
-             "auc": float(format(np.mean(AUC), '.4f')), "f1_score": float(format(np.mean(F1_scores), '.4f')),
-             "ged": float(format(np.mean(GED), '.2f')), "recall": float(format(np.mean(Recall), '.2f')),
-             "precision": float(format(np.mean(Precision), '.2f')), "time": float(format(np.mean(Time), '.4f'))
-    }))
-    # extract summary at results path and add a line in to the dict
-    entry = {'explainer': args.explainer_name, 'groundtruth target': is_true_label,
-             'auc': float(format(np.mean(AUC), '.4f')), 'f1_score': float(format(np.mean(F1_scores), '.4f')),
-             'ged': float(format(np.mean(GED), '.2f')), 'recall': float(format(np.mean(Recall), '.2f')),
-             'precision': float(format(np.mean(Precision), '.2f')), 'time': float(format(np.mean(Time), '.4f'))}
+    print("__infos:" + json.dumps(infos))
+    print("__accuracy:" + json.dumps(accuracy))
+    print("__fidelity_soft:" + json.dumps(fidelity_soft))
+    print("__fidelity_hard:" + json.dumps(fidelity_hard))
 
+
+    # extract summary at results path and add a line in to the dict
+
+    entry = dict(list(infos.items()) + list(accuracy.items()) + list(fidelity_soft.items()) + list(fidelity_hard.items()))
     if not os.path.isfile(res_filename):
         stats.append(entry)
         with open(res_filename, mode='w') as f:
@@ -133,6 +139,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--dest', type=str, default='/Users/kenzaamara/PycharmProjects/Explain')
+
+    parser.add_argument('--seed', help='random seed', type=int, default=41)
     # saving data
     parser.add_argument('--data_save_dir', help='File list by write RTL command', type=str, default='data')
     parser.add_argument('--data_name', type=str, default='ba_shapes')
@@ -157,10 +165,11 @@ if __name__ == '__main__':
     parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
 
     # explainer params
-    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=200)
+    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=20)
+    parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
-    parser.add_argument('--explainer_name', help='explainer', type=str, default='random')
+    parser.add_argument('--explainer_name', help='explainer', type=str, default='ig_node')
 
     args = parser.parse_args()
 

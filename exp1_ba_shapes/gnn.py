@@ -6,6 +6,7 @@ import matplotlib
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 
 #### GNN Model #####
 class GCN(torch.nn.Module):
@@ -19,13 +20,14 @@ class GCN(torch.nn.Module):
             current_dim = hidden_dim
         self.layers.append(GCNConv(current_dim, self.num_classes))
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, edge_weight=None):
         for layer in self.layers[:-1]:
-            x = layer(x, edge_index)
+            x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
             x = F.dropout(x, training=self.training)
-        x = self.layers[-1](x, edge_index)
+        x = self.layers[-1](x, edge_index, edge_weight)
         return F.log_softmax(x, dim=1)
+
 
 
 ####### GNN Training #######
