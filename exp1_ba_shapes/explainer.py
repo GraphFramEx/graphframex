@@ -21,6 +21,16 @@ from captum._utils.gradient import (
 from captum._utils.typing import TargetType
 from captum.attr import Saliency, IntegratedGradients, LayerGradCam
 
+def balance_mask_undirected(edge_mask, edge_index):
+    balanced_edge_mask = np.zeros(len(edge_mask))
+    num_edges = edge_index.shape[1]
+    list_edges = edge_index.t().tolist()
+    for i, (u, v) in enumerate(list_edges):
+        if u > v:
+            indices = [idx for idx in range(num_edges) if all(ele in list_edges[idx] for ele in [u, v])]
+            if len(indices) == 2:
+                balanced_edge_mask[indices] = np.max([edge_mask[indices[0]], edge_mask[indices[1]]])
+    return balanced_edge_mask
 
 def mask_to_directed(edge_mask, edge_index):
     directed_edge_mask = edge_mask.copy()
@@ -114,7 +124,6 @@ def explain_sa_node(model, node_idx, x, edge_index, target, device, include_edge
 
     node_attr = saliency_mask.cpu().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    edge_mask = mask_to_directed(edge_mask, edge_index)
     return edge_mask
 
 def explain_ig_node(model, node_idx, x, edge_index, target, device, include_edges=None):
@@ -125,7 +134,6 @@ def explain_ig_node(model, node_idx, x, edge_index, target, device, include_edge
 
     node_attr = ig_mask.cpu().detach().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    edge_mask = mask_to_directed(edge_mask, edge_index)
     return edge_mask
 
 def explain_occlusion(model, node_idx, x, edge_index, target, device, include_edges=None):
@@ -154,7 +162,6 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, include_ed
             prob = model(data.x, data.edge_index[:, edge_occlusion_mask])[node_idx][target].item()
             edge_mask[i] = pred_prob - prob
             edge_occlusion_mask[i] = True
-    edge_mask = mask_to_directed(edge_mask, edge_index)
     return edge_mask
 
 
@@ -172,7 +179,6 @@ def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    edge_mask = mask_to_directed(edge_mask, edge_index)
     return edge_mask
 
 

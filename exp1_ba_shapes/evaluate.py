@@ -10,22 +10,67 @@ from scipy.special import softmax
 import torch
 from utils import list_to_dict
 
+import torch_geometric.data
+from torch_geometric.data import Data
+from torch_geometric.utils import to_networkx, from_networkx, to_undirected
+
+def topk_edges_directed(edge_mask, edge_index, num_top_edges):
+    indices = (-edge_mask).argsort()
+    top = np.array([], dtype='int')
+    i = 0
+    list_edges = np.sort(edge_index.T, axis=1)
+    while len(top)<num_top_edges:
+        subset = indices[num_top_edges*i:num_top_edges*(i+1)]
+        topk_edges = list_edges[subset]
+        u, idx = np.unique(topk_edges, return_index=True, axis=0)
+        top = np.concatenate([top, subset[idx]], dtype=np.int32)
+        i+=1
+    return top[:num_top_edges]
+
+#transform edge_mask:
+# normalisation
+# sparsity
+# hard or soft
+def transform_mask(mask, sparsity=0.7, normalize=True, hard_mask=False):
+    if sparsity is not None:
+        mask = control_sparsity(mask, sparsity)
+    if normalize:
+        mask = normalize(mask)
+    if hard_mask:
+        mask = np.where(mask>0, 1, 0)
+    return(mask)
+
+def mask_to_shape(mask, data, num_top_edges):
+    indices = topk_edges_directed(mask, data.edge_index, num_top_edges)
+    new_mask = np.zeros(len(mask))
+    new_mask[indices] = 1
+    return mask
+
+def control_sparsity(mask, sparsity):
+    r"""
+        :param edge_mask: mask that need to transform
+        :param sparsity: sparsity we need to control i.e. 0.7, 0.5
+        :return: transformed mask where top 1 - sparsity values are set to inf.
+    """
+    mask_len = len(mask)
+    split_point = int((1 - sparsity) * mask_len)
+    unimportant_indices = (-mask).argsort()[split_point:]
+    mask[unimportant_indices] = 0
+    return mask
+
+def normalize(x):
+    return (x - min(x)) / (max(x) - min(x))
 
 ##### Accuracy #####
-def get_explanation(data, edge_mask, num_top_edges=6, is_hard_mask=False):
-    if is_hard_mask:
-        explanation = data.edge_index[:, np.where(edge_mask == 1)[0]]
-    else:
-        indices = (-edge_mask).argsort()[:num_top_edges]
-        explanation = data.edge_index[:, indices]
-
-    G_expl = nx.Graph()
-    G_expl.add_nodes_from(np.unique(explanation))
-
-    for i, (u, v) in enumerate(explanation.t().tolist()):
-        G_expl.add_edge(u, v)
-
-    return (G_expl)
+def get_explanation(data, edge_mask, num_top_edges):
+    edge_mask = mask_to_shape(edge_mask, data, num_top_edges)
+    indices = np.where(edge_mask>0)[0]
+    explanation = data.edge_index[:, indices]
+    edge_weights = edge_mask[indices]
+    subx = np.unique(explanation)
+    data_expl = Data(x=subx, edge_index=explanation)
+    G_expl = to_networkx(data_expl)
+    return G_expl.to_undirected()
 
 def get_ground_truth_ba_shapes(node, data):
     base = [0, 1, 2, 3, 4]
@@ -63,7 +108,7 @@ def get_scores(G1, G2):
 def get_accuracy(data, edge_mask, node_idx, num_top_edges, is_hard_mask=False):
     G_true, role, true_edge_mask = get_ground_truth_ba_shapes(node_idx, data)
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
-    G_expl = get_explanation(data, edge_mask, num_top_edges, is_hard_mask=is_hard_mask)
+    G_expl = get_explanation(data, edge_mask, num_top_edges, hard_explanation=True, sparsity=None)
     # plt.figure()
     # nx.draw(G_expl, with_labels=True, font_weight='bold')
     # plt.show()
@@ -92,7 +137,7 @@ def eval_accuracy(data, edge_masks, list_node_idx, num_top_edges, is_hard_mask=F
 
 
 ##### Fidelity #####
-def eval_related_pred(model, data, edge_masks, list_node_idx, hard_mask=False, **kwargs):
+def eval_related_pred(model, data, edge_masks, list_node_idx, args):
     zero_mask = torch.zeros(data.edge_index.shape[1])
 
     ori_preds = model(data.x, data.edge_index)
@@ -106,20 +151,26 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, hard_mask=False, *
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
 
-        if hard_mask:
-            # masked_edge_index = data.edge_index[:,edge_mask>kwargs['threshold']]
-            # maskout_edge_index = data.edge_index[:,1-edge_mask>kwargs['threshold']]
+        edge_mask = transform_mask(edge_mask, args.sparsity, args.normalize, args.hard_mask)
 
-            indices = (-edge_mask).argsort()[:kwargs['num_top_edges']]
-            indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
-            masked_edge_index = data.edge_index[:, indices]
-            maskout_edge_index = data.edge_index[:, indices_inv]
+        indices = np.where(edge_mask>0)[0]
+        indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
 
-            masked_preds = model(data.x, masked_edge_index)
-            maskout_preds = model(data.x, maskout_edge_index)
-        else:
-            masked_preds = model(x=data.x, edge_index=data.edge_index, edge_weight=edge_mask)
-            maskout_preds = model(x=data.x, edge_index=data.edge_index, edge_weight=1 - edge_mask)
+        masked_edge_index = data.edge_index[:, indices]
+        maskout_edge_index = data.edge_index[:, indices_inv]
+
+
+        ### reduce data.x to subx
+        masked_x = np.unique(masked_edge_index)
+        maskout_x = np.unique(maskout_edge_index)
+
+        masked_preds = model(masked_x, masked_edge_index)
+        maskout_preds = model(maskout_x, maskout_edge_index)
+
+        # if hard mask is False, we can take edge_weights
+        # masked_preds = model(x=masked_x, edge_index=data.edge_index, edge_weight=edge_mask)
+        # maskout_preds = model(x=maskout_x, edge_index=data.edge_index, edge_weight=1 - edge_mask)
+
 
         ori_probs = softmax(ori_preds[node_idx].detach().numpy())
         masked_probs = softmax(masked_preds[node_idx].detach().numpy())
@@ -164,18 +215,19 @@ def fidelity_acc_inv(related_preds):
 # removing  important  nodes/edges/node  features.
 # Higher fidelity+ value indicates good explanations -->1
 def fidelity_prob(related_preds):
-    ori_probs = np.max(related_preds['origin'], axis=1)
-    unimportant_probs = np.max(related_preds['maskout'], axis=1)
-    drop_probability = np.abs(ori_probs - unimportant_probs)
+    labels = related_preds['true_label']
+    ori_probs = np.choose(labels, related_preds['origin'].T)
+    unimportant_probs = np.choose(labels, related_preds['maskout'].T)
+    drop_probability = ori_probs - unimportant_probs
     return drop_probability.mean().item()
-
 
 # Fidelity-  metric  studies  the  prediction  change  by
 # removing  unimportant  nodes/edges/node  features.
 # Lower fidelity- value indicates good explanations -->0
 def fidelity_prob_inv(related_preds):
-    ori_probs = np.max(related_preds['origin'], axis=1)
-    important_probs = np.max(related_preds['masked'], axis=1)
+    labels = related_preds['true_label']
+    ori_probs = np.choose(labels, related_preds['origin'].T)
+    important_probs = np.choose(labels, related_preds['masked'].T)
     drop_probability = ori_probs - important_probs
     return drop_probability.mean().item()
 

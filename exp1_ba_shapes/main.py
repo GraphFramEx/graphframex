@@ -2,6 +2,7 @@ import sys, os
 sys.path.append(os.getcwd())
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import json
+import pickle
 import time
 from datetime import datetime
 import argparse
@@ -11,8 +12,9 @@ from dataset import *
 from evaluate import *
 from explainer import *
 from gnn import GCN, train, test
-from utils import check_dir
+from utils import check_dir, normalize_masks
 from config.params import dictmerge
+
 
 
 def main(args):
@@ -21,9 +23,6 @@ def main(args):
     random.seed(args.seed)
     build_function = eval('build_' + args.data_name)
     is_true_label = eval(args.true_label)
-
-    EXPLAIN_LIST = [
-        'subgraphx']  # ['random', 'distance', 'pagerank', 'gradcam', 'sa_node', 'ig_node', 'occlusion', 'gnnexplainer', 'pgmexplainer', 'subgraphx']
 
     check_dir(args.data_save_dir)
     subdir = os.path.join(args.data_save_dir, args.data_name)
@@ -71,46 +70,63 @@ def main(args):
     date = datetime.now().strftime("%Y_%m_%d")
     res_save_dir = os.path.join('result', args.data_name)
     res_filename = os.path.join(res_save_dir, f'summary_{date}.json')
-
     check_dir(res_save_dir)
 
-    stats = []
-
-    Time = []
-    edge_masks = []
-
-    explain_function = eval('explain_' + args.explainer_name)
 
     # explain only nodes for each the GCN made accurate predictions
     pred_labels = model(data.x, data.edge_index).argmax(dim=1)
     list_node_idx = np.where(pred_labels == data.y)[0]
     list_node_idx_house = list_node_idx[list_node_idx > args.n_basis]
     list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
+    targets = pred_labels # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
 
-    if is_true_label:
-        targets = true_labels
-    else:
-        targets = pred_labels
-
-    for node_idx in list_test_nodes:
-        start_time = time.time()
-        edge_mask = explain_function(model, node_idx, data.x, data.edge_index, targets[node_idx], device)
-        end_time = time.time()
-        duration_seconds = end_time - start_time
-        Time.append(duration_seconds)
-        edge_masks.append(edge_mask)
+    def compute_edge_masks(explainer_name, list_test_nodes, model, data, targets, device):
+        explain_function = eval('explain_' + explainer_name)
+        Time = []
+        edge_masks = []
+        for node_idx in list_test_nodes:
+            x = torch.FloatTensor(data.x.detach().numpy().copy())
+            edge_index = torch.LongTensor(data.edge_index.detach().numpy().copy())
+            start_time = time.time()
+            edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device)
+            end_time = time.time()
+            duration_seconds = end_time - start_time
+            Time.append(duration_seconds)
+            edge_masks.append(edge_mask)
+        return edge_masks, Time
 
     if args.explainer_name == 'subgraphx':
         hard = True
     else:
         hard = False
 
+
+    #### Save edge_masks
+    # save
+    mask_save_dir = os.path.join(res_save_dir, f'masks_{date}')
+    check_dir(mask_save_dir)
+
+    mask_filename = os.path.join(mask_save_dir, f'masks_{args.explainer_name}.pickle')
+
+    if os.path.isfile(mask_filename):
+        # open
+        with open(mask_filename, 'rb') as handle:
+            edge_masks, Time = tuple(pickle.load(handle))
+    else:
+        edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
+        with open(mask_filename, 'wb') as handle:
+            pickle.dump((edge_masks, Time), handle)
+
+    print('edge_masks', edge_masks)
+    print('Time', Time)
+    edge_masks_norm = normalize_masks(edge_masks)
+
     accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges, is_hard_mask=hard)
-    soft_related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, hard_mask=False)
-    hard_related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, hard_mask=True, num_top_edges=args.num_top_edges)
+    soft_related_preds = eval_related_pred(model, data, edge_masks_norm, list_test_nodes, hard_mask=False)
+    hard_related_preds = eval_related_pred(model, data, edge_masks_norm, list_test_nodes, hard_mask=True, num_top_edges=args.num_top_edges)
     fidelity_soft = {k+'_soft':v for k,v in eval_fidelity(soft_related_preds).items()}
     fidelity_hard = {k+'_hard':v for k,v in eval_fidelity(hard_related_preds).items()}
-    infos = {"explainer": args.explainer_name, "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
+    infos = {"explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes, "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
 
     ### get results + save them
     print("__infos:" + json.dumps(infos))
@@ -120,7 +136,7 @@ def main(args):
 
 
     # extract summary at results path and add a line in to the dict
-
+    stats = []
     entry = dict(list(infos.items()) + list(accuracy.items()) + list(fidelity_soft.items()) + list(fidelity_hard.items()))
     if not os.path.isfile(res_filename):
         stats.append(entry)
@@ -165,11 +181,11 @@ if __name__ == '__main__':
     parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
 
     # explainer params
-    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=20)
+    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=3)
     parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
-    parser.add_argument('--explainer_name', help='explainer', type=str, default='ig_node')
+    parser.add_argument('--explainer_name', help='explainer', type=str, default='gnnexplainer')
 
     args = parser.parse_args()
 

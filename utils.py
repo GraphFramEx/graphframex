@@ -14,3 +14,12 @@ def list_to_dict(preds):
     for key in preds_dict.keys():
         preds_dict[key] = np.array(preds_dict[key])
     return(preds_dict)
+
+def normalize(x):
+    return (x-min(x))/(max(x)-min(x))
+
+def normalize_masks(edge_masks):
+    new_list = []
+    for mask in edge_masks:
+        new_list.append(normalize(mask))
+    return new_list

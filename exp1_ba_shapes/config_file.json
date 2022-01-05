@@ -14,16 +14,16 @@
     "data_save_dir": "data",
     "true_label": ["True", "False"],
     "explainer_name": [
-      "random",
-      "distance",
-      "pagerank",
-      "gradcam",
-      "sa_node",
-      "ig_node",
-      "occlusion",
-      "gnnexplainer",
-      "pgmexplainer",
-      "subgraphx"
+            "random",
+            "distance",
+            "pagerank",
+            "gradcam",
+            "sa_node",
+            "ig_node",
+            "occlusion",
+            "gnnexplainer",
+            "pgmexplainer",
+            "subgraphx"
     ]
   }
 }
