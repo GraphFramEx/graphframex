@@ -7,19 +7,19 @@ import time
 from datetime import datetime
 import argparse
 import random
+import itertools
 
 from dataset import *
 from evaluate import *
 from explainer import *
 from gnn import GCN, train, test
-from utils import check_dir, normalize_masks
-from config.params import dictmerge
+from utils import check_dir, get_subgraph
+
 
 
 
 def main(args):
 
-    np.random.seed(args.seed)
     random.seed(args.seed)
     build_function = eval('build_' + args.data_name)
     is_true_label = eval(args.true_label)
@@ -52,6 +52,7 @@ def main(args):
     else:
         model = GCN(num_node_features, num_classes, args.num_layers, args.hidden_dim).to(device)
         train(model, data, device, n_epochs=args.num_epochs)
+        model.eval()
         acc = test(model, data)
         torch.save(
             {
@@ -77,9 +78,13 @@ def main(args):
     pred_labels = model(data.x, data.edge_index).argmax(dim=1)
     list_node_idx = np.where(pred_labels == data.y)[0]
     list_node_idx_house = list_node_idx[list_node_idx > args.n_basis]
-    list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
-    targets = pred_labels # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
+    list_test_nodes = list_node_idx_house[:args.num_test_nodes]
+    #list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
+    targets = true_labels # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
 
+    #list_test_nodes = range(args.n_basis,args.n_basis+args.num_test_nodes)
+    print('lenght test nodes', len(list_test_nodes))
+    print(list_test_nodes[3])
     def compute_edge_masks(explainer_name, list_test_nodes, model, data, targets, device):
         explain_function = eval('explain_' + explainer_name)
         Time = []
@@ -88,17 +93,12 @@ def main(args):
             x = torch.FloatTensor(data.x.detach().numpy().copy())
             edge_index = torch.LongTensor(data.edge_index.detach().numpy().copy())
             start_time = time.time()
-            edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device)
+            edge_mask = explain_function(model, node_idx, x, edge_index, None, device)#targets[node_idx], device)
             end_time = time.time()
             duration_seconds = end_time - start_time
             Time.append(duration_seconds)
             edge_masks.append(edge_mask)
         return edge_masks, Time
-
-    if args.explainer_name == 'subgraphx':
-        hard = True
-    else:
-        hard = False
 
 
     #### Save edge_masks
@@ -117,27 +117,49 @@ def main(args):
         with open(mask_filename, 'wb') as handle:
             pickle.dump((edge_masks, Time), handle)
 
-    print('edge_masks', edge_masks)
-    print('Time', Time)
-    edge_masks_norm = normalize_masks(edge_masks)
-
-    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges, is_hard_mask=hard)
-    soft_related_preds = eval_related_pred(model, data, edge_masks_norm, list_test_nodes, hard_mask=False)
-    hard_related_preds = eval_related_pred(model, data, edge_masks_norm, list_test_nodes, hard_mask=True, num_top_edges=args.num_top_edges)
-    fidelity_soft = {k+'_soft':v for k,v in eval_fidelity(soft_related_preds).items()}
-    fidelity_hard = {k+'_hard':v for k,v in eval_fidelity(hard_related_preds).items()}
-    infos = {"explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes, "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
-
-    ### get results + save them
+    infos = {"explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes,
+             "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
-    print("__accuracy:" + json.dumps(accuracy))
-    print("__fidelity_soft:" + json.dumps(fidelity_soft))
-    print("__fidelity_hard:" + json.dumps(fidelity_hard))
+    #accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges)
+    #print("__accuracy:" + json.dumps(accuracy))
+
+    FIDELITY_SCORES = {}
+    list_params = {'sparsity':[0.7], 'normalize': [True], 'hard_mask': [True, False]}
+    keys, values = zip(*list_params.items())
+    permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    for i, params in enumerate(permutations_dicts):
+        related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, params)
+
+        node_idx = related_preds['node_idx'][3]
+        print(node_idx)
+        true_label = related_preds['true_label'][3]
+        pred_label = related_preds['pred_label'][3]
+        print('target', data.y[node_idx])
+
+        ori_probs = related_preds['origin'][3]
+        sub_x, sub_edge_index, mapping, hard_edge_mask, subset, _ = get_subgraph(torch.LongTensor([node_idx]), data.x, data.edge_index, 2)
+        print('edge_index', sub_edge_index)
+        print('edge_index', sub_edge_index.size())
+        print('subset', subset)
+        ori_probs_2 = model(sub_x, sub_edge_index)[mapping].detach().numpy()
+
+        print(f'node_idx: {node_idx}, true_label: {true_label}, pred_label: {pred_label}, ori_probs: {ori_probs}')
+        print(f'oti_probs_2: {ori_probs_2}')
+        labels = related_preds['true_label']
+        ori_probs = np.choose(labels, related_preds['origin'].T)
+        important_probs = np.choose(labels, related_preds['masked'].T)
+        unimportant_probs = np.choose(labels, related_preds['maskout'].T)
+        probs_summary = {'ori_probs': ori_probs.mean().item(), 'unimportant_probs': unimportant_probs.mean().item(), 'important_probs': important_probs.mean().item()}
+        print("__pred:" + json.dumps(probs_summary))
+
+        fidelity = eval_fidelity(related_preds, params)
+        print("__fidelity:" + json.dumps(fidelity))
+        FIDELITY_SCORES[i] = fidelity
 
 
     # extract summary at results path and add a line in to the dict
     stats = []
-    entry = dict(list(infos.items()) + list(accuracy.items()) + list(fidelity_soft.items()) + list(fidelity_hard.items()))
+    entry = dict(list(infos.items()) + list(accuracy.items()) + list(FIDELITY_SCORES.items()))
     if not os.path.isfile(res_filename):
         stats.append(entry)
         with open(res_filename, mode='w') as f:
@@ -181,7 +203,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
 
     # explainer params
-    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=3)
+    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int, default=30)
     parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')

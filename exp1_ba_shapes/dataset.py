@@ -114,6 +114,7 @@ def preprocess_input_graph(G, labels, normalize_adj=False):
 def process_input_data(input_graph, labels):
     data = from_networkx(input_graph.to_undirected(), all)
     data.num_classes = len(np.unique(labels))
+    data.num_nodes = len(labels)
     data.y = torch.LongTensor(labels)
     data.train_mask, data.val_mask, data.test_mask = torch.zeros(data.num_nodes, dtype=torch.uint8), \
                                                      torch.zeros(data.num_nodes, dtype=torch.uint8), \

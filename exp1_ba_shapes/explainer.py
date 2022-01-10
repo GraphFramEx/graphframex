@@ -168,8 +168,8 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, include_ed
 def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):
     explainer = TargetedGNNExplainer(model)
     if node_idx is not None:
-        node_feat_mask, edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-    node_feat_mask, edge_mask = node_feat_mask.detach().numpy(), edge_mask.detach().numpy()
+        edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
+    edge_mask = edge_mask.detach().numpy()
     return edge_mask
 
 def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):

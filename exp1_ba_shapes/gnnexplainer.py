@@ -1,6 +1,7 @@
 import torch
 from torch_geometric.nn import GNNExplainer
 from tqdm import tqdm
+from scipy.special import softmax
 
 EPS = 1e-15
 
@@ -14,10 +15,12 @@ class TargetedGNNExplainer(GNNExplainer):
         ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
         loss = loss + self.coeffs['edge_ent'] * ent.mean()
 
+        """
         m = self.node_feat_mask.sigmoid()
         loss = loss + self.coeffs['node_feat_size'] * m.sum()
         ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
         loss = loss + self.coeffs['node_feat_ent'] * ent.mean()
+        """
 
         return loss
 
@@ -65,7 +68,7 @@ class TargetedGNNExplainer(GNNExplainer):
         self.to(x.device)
 
         if self.allow_edge_mask:
-            parameters = [self.node_feat_mask, self.edge_mask]
+            parameters = [self.edge_mask]
         else:
             parameters = [self.node_feat_mask]
         optimizer = torch.optim.Adam(parameters, lr=self.lr)
@@ -74,9 +77,9 @@ class TargetedGNNExplainer(GNNExplainer):
             pbar = tqdm(total=self.epochs)
             pbar.set_description(f'Explain node {node_idx}')
 
-        for epoch in range(1, self.epochs + 1):
+        for epoch in range(1, 800):#self.epochs + 1):
             optimizer.zero_grad()
-            h = x * self.node_feat_mask.sigmoid()
+            h = x #* self.node_feat_mask.sigmoid()
             out = self.model(x=h, edge_index=edge_index, **kwargs)
             if self.return_type == 'regression':
                 loss = self.__loss__(mapping, out, prediction)
@@ -89,9 +92,25 @@ class TargetedGNNExplainer(GNNExplainer):
             if self.log:  # pragma: no cover
                 pbar.update(1)
 
+        if node_idx==2003:
+            print('node_idx', node_idx)
+            print('target', target)
+            print('edge_index', edge_index)
+            print('edge_index', edge_index.size())
+            print('subset', subset)
+            out = self.model(x=x, edge_index=edge_index, **kwargs)
+            print('predictions', out[mapping])
+            print('log_prob', log_logits[mapping])
+            print('true_label', pred_label)
+            print('proba of predicting true label', log_logits[mapping, pred_label])
+            print('pred_label', log_logits[mapping].argmax())
+        stop = (pred_label.item() == log_logits[mapping].argmax().item())
+        print(stop)
+
         if self.log:  # pragma: no cover
             pbar.close()
 
+        """
         node_feat_mask = self.node_feat_mask.detach().sigmoid()
         if self.feat_mask_type == 'individual_feature':
             new_mask = x.new_zeros(num_nodes, x.size(-1))
@@ -102,11 +121,13 @@ class TargetedGNNExplainer(GNNExplainer):
             new_mask[subset] = node_feat_mask
             node_feat_mask = new_mask
         node_feat_mask = node_feat_mask.squeeze()
+        """
 
         edge_mask = self.edge_mask.new_zeros(num_edges)
         edge_mask[hard_edge_mask] = self.edge_mask.detach().sigmoid()
 
         self.__clear_masks__()
 
-        return node_feat_mask, edge_mask
+        #return node_feat_mask, edge_mask
+        return edge_mask
 
