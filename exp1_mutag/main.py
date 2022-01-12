@@ -7,7 +7,7 @@ import torch
 from torch_geometric.data import download_url
 
 
-from utils import check_dir
+from gen_utils import check_dir
 from dataset import extract_zip, extract_gz, process_mutag, collate_data
 
 

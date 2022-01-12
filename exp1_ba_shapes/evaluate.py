@@ -8,7 +8,7 @@ from explainer import node_attr_to_edge
 from sklearn import metrics
 from scipy.special import softmax
 import torch
-from utils import list_to_dict, get_subgraph
+from gen_utils import list_to_dict, get_subgraph
 
 import torch_geometric.data
 from torch_geometric.data import Data
@@ -48,7 +48,7 @@ def mask_to_shape(mask, edge_index, num_top_edges):
     indices = topk_edges_directed(mask, edge_index, num_top_edges)
     new_mask = np.zeros(len(mask))
     new_mask[indices] = 1
-    return mask
+    return new_mask
 
 def control_sparsity(mask, sparsity):
     r"""

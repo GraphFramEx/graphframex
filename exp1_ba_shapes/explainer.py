@@ -45,6 +45,8 @@ def model_forward(edge_mask, model, node_idx, x, edge_index):
 
 def model_forward_node(x, model, edge_index, node_idx):
     out = model(x, edge_index)
+    print('out', out)
+    print('out[[node_idx]]', out[[node_idx]])
     return out[[node_idx]]
 
 def node_attr_to_edge(edge_index, node_mask):

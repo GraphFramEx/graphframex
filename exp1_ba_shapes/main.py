@@ -13,9 +13,7 @@ from dataset import *
 from evaluate import *
 from explainer import *
 from gnn import GCN, train, test
-from utils import check_dir, get_subgraph
-
-
+from gen_utils import check_dir, get_subgraph
 
 
 def main(args):
@@ -41,6 +39,7 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     num_node_features, num_classes = data.num_node_features, data.num_classes
 
+
     check_dir(os.path.join(args.model_save_dir, args.data_name))
     model_filename = os.path.join(args.model_save_dir, args.data_name) + f"/gcn_{args.num_layers}.pth.tar"
 
@@ -64,8 +63,6 @@ def main(args):
         )
         #torch.save(model.state_dict(), model_filename)
 
-    ### Create GNNExplainer
-
     ### Store results in summary.json
 
     date = datetime.now().strftime("%Y_%m_%d")
@@ -78,13 +75,12 @@ def main(args):
     pred_labels = model(data.x, data.edge_index).argmax(dim=1)
     list_node_idx = np.where(pred_labels == data.y)[0]
     list_node_idx_house = list_node_idx[list_node_idx > args.n_basis]
-    list_test_nodes = list_node_idx_house[:args.num_test_nodes]
+    list_test_nodes = list_node_idx_house[:args.num_test_nodes].tolist()
     #list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
     targets = true_labels # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
 
     #list_test_nodes = range(args.n_basis,args.n_basis+args.num_test_nodes)
-    print('lenght test nodes', len(list_test_nodes))
-    print(list_test_nodes[3])
+    print('length test nodes', len(list_test_nodes))
     def compute_edge_masks(explainer_name, list_test_nodes, model, data, targets, device):
         explain_function = eval('explain_' + explainer_name)
         Time = []
@@ -93,7 +89,7 @@ def main(args):
             x = torch.FloatTensor(data.x.detach().numpy().copy())
             edge_index = torch.LongTensor(data.edge_index.detach().numpy().copy())
             start_time = time.time()
-            edge_mask = explain_function(model, node_idx, x, edge_index, None, device)#targets[node_idx], device)
+            edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device)
             end_time = time.time()
             duration_seconds = end_time - start_time
             Time.append(duration_seconds)
@@ -120,8 +116,8 @@ def main(args):
     infos = {"explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
-    #accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges)
-    #print("__accuracy:" + json.dumps(accuracy))
+    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, num_top_edges=args.num_top_edges)
+    print("__accuracy:" + json.dumps(accuracy))
 
     FIDELITY_SCORES = {}
     list_params = {'sparsity':[0.7], 'normalize': [True], 'hard_mask': [True, False]}
@@ -130,21 +126,6 @@ def main(args):
     for i, params in enumerate(permutations_dicts):
         related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, params)
 
-        node_idx = related_preds['node_idx'][3]
-        print(node_idx)
-        true_label = related_preds['true_label'][3]
-        pred_label = related_preds['pred_label'][3]
-        print('target', data.y[node_idx])
-
-        ori_probs = related_preds['origin'][3]
-        sub_x, sub_edge_index, mapping, hard_edge_mask, subset, _ = get_subgraph(torch.LongTensor([node_idx]), data.x, data.edge_index, 2)
-        print('edge_index', sub_edge_index)
-        print('edge_index', sub_edge_index.size())
-        print('subset', subset)
-        ori_probs_2 = model(sub_x, sub_edge_index)[mapping].detach().numpy()
-
-        print(f'node_idx: {node_idx}, true_label: {true_label}, pred_label: {pred_label}, ori_probs: {ori_probs}')
-        print(f'oti_probs_2: {ori_probs_2}')
         labels = related_preds['true_label']
         ori_probs = np.choose(labels, related_preds['origin'].T)
         important_probs = np.choose(labels, related_preds['masked'].T)
@@ -185,11 +166,11 @@ if __name__ == '__main__':
 
     # build ba-shape graphs
     parser.add_argument('--n_basis', help='number of nodes in graph', type=int, default=2000)
-    parser.add_argument('--n_shapes', help='number of houses', type=int, default=200)
+    parser.add_argument('--n_shapes', help='number of houses', type=int, default=1000)
 
     # gnn achitecture parameters
     parser.add_argument('--num_layers', help='number of GCN layers', type=int, default=2)
-    parser.add_argument('--hidden_dim', help='number of neurons in hidden layers', type=int, default=16)
+    parser.add_argument('--hidden_dim', help='number of neurons in hidden layers', type=int, default=20)
 
     # training parameters
     parser.add_argument("--optimizer", type=str, default='adam')
@@ -197,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument("--weight_decay", type=float, default=0.0005)
     parser.add_argument("--lr", type=float, default=0.1)
     parser.add_argument("--bs", type=int, default=256)
-    parser.add_argument("--num_epochs", type=int, default=200)
+    parser.add_argument("--num_epochs", type=int, default=500)
 
     # saving model
     parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
@@ -207,7 +188,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
-    parser.add_argument('--explainer_name', help='explainer', type=str, default='gnnexplainer')
+    parser.add_argument('--explainer_name', help='explainer', type=str, default='sa_node')
 
     args = parser.parse_args()
 

@@ -129,6 +129,6 @@ def process_input_data(input_graph, labels):
 
 
 if __name__ == '__main__':
-    n_basis, n_shapes = 2000, 200
+    n_basis, n_shapes = 300, 20
     G, labels, plugins = build_ba_shapes(n_basis, n_shapes)
     data = process_input_data(G, labels)
