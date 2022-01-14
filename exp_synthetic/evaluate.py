@@ -3,16 +3,13 @@ import numpy as np
 import matplotlib
 matplotlib.use('PS')
 import matplotlib.pyplot as plt
-from dataset import house
+from synthetic_structsim import house
 from explainer import node_attr_to_edge
+from gengroundtruth import get_ground_truth
 from sklearn import metrics
-from scipy.special import softmax
 import torch
 from gen_utils import list_to_dict, get_subgraph
-
-import torch_geometric.data
-from torch_geometric.data import Data
-from torch_geometric.utils import to_networkx, from_networkx, to_undirected, subgraph
+from gnn import get_proba
 
 def topk_edges_directed(edge_mask, edge_index, num_top_edges):
     indices = (-edge_mask).argsort()
@@ -75,18 +72,7 @@ def get_explanation(data, edge_mask, num_top_edges):
         G_expl.add_edge(u, v)
     return (G_expl)
 
-def get_ground_truth_ba_shapes(node, data):
-    base = [0, 1, 2, 3, 4]
-    offset = node % 5
-    ground_truth = [node - offset + val for val in base]
-    start = ground_truth[0]
-    graph, role = house(start, role_start=1)
 
-    true_node_mask = np.zeros(data.edge_index.shape[1])
-    true_node_mask[ground_truth] = 1
-    true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
-
-    return graph, role, true_edge_mask
 
 
 def get_scores(G1, G2):
@@ -109,10 +95,10 @@ def get_scores(G1, G2):
 
     return recall, precision, f1_score, ged
 
-def get_accuracy(data, edge_mask, node_idx, num_top_edges):
-    G_true, role, true_edge_mask = get_ground_truth_ba_shapes(node_idx, data)
+def get_accuracy(data, edge_mask, node_idx, args):
+    G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
-    G_expl = get_explanation(data, edge_mask, num_top_edges)
+    G_expl = get_explanation(data, edge_mask, args.num_top_edges)
     # plt.figure()
     # nx.draw(G_expl, with_labels=True, font_weight='bold')
     # plt.show()
@@ -123,14 +109,14 @@ def get_accuracy(data, edge_mask, node_idx, num_top_edges):
     return {'recall': recall, 'precision': precision, 'f1_score': f1_score, 'ged': ged, 'auc': auc}
 
 
-def eval_accuracy(data, edge_masks, list_node_idx, num_top_edges):
+def eval_accuracy(data, edge_masks, list_node_idx, args):
     n_test = len(list_node_idx)
     scores = []
 
     for i in range(n_test):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
-        entry = get_accuracy(data, edge_mask, node_idx, num_top_edges)
+        entry = get_accuracy(data, edge_mask, node_idx, args)
         scores.append(entry)
 
     scores = list_to_dict(scores)
@@ -138,14 +124,10 @@ def eval_accuracy(data, edge_masks, list_node_idx, num_top_edges):
     return (accuracy_scores)
 
 
-
-
 ##### Fidelity #####
-def eval_related_pred(model, data, edge_masks, list_node_idx, params):
+def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
     related_preds = []
-    masks_sparsity = []
 
-    #ori_preds = model(data.x, data.edge_index)
     n_test = len(list_node_idx)
 
     for i in range(n_test):
@@ -157,12 +139,15 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, params):
                                    normalize=params['normalize'], hard_mask=params['hard_mask'])
 
         sub_x, sub_edge_index, mapping, hard_edge_mask, subset, _ = get_subgraph(node_idx, data.x, data.edge_index, 2)
-        ori_preds = model(sub_x, sub_edge_index)
+
+        ori_ypred = model(sub_x, sub_edge_index)
+        ori_yprob = get_proba(ori_ypred)
+
         sub_masked_x, sub_maskout_x = sub_x, sub_x
 
         sub_edge_mask = edge_mask[hard_edge_mask]
 
-        indices = np.where(sub_edge_mask>0)[0]
+        indices = np.where(sub_edge_mask > 0)[0]
         indices_inv = [i for i in range(len(sub_edge_mask)) if i not in indices]
 
         sub_masked_edge_index = sub_edge_index[:, indices]
@@ -173,9 +158,11 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, params):
             masked_nodes = torch.LongTensor(np.unique(masked_edge_index))
             if node_idx not in masked_nodes:
                 masked_nodes = torch.cat([torch.LongTensor([node_idx]), masked_nodes])
+
             # Function to be vectorized
             def map_func(val, dictionary):
                 return dictionary[val] if val in dictionary else val
+
             vfunc = np.vectorize(map_func)
             d = {v.item(): k for k, v in enumerate(masked_nodes)}
             sub_masked_edge_index = torch.LongTensor(vfunc(masked_edge_index, d))
@@ -183,47 +170,84 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, params):
             sub_masked_x = torch.FloatTensor([[1]] * len(masked_nodes))
             return sub_masked_x, sub_masked_edge_index, masked_node_idx
 
-        #sub_masked_x, sub_masked_edge_index, masked_node_idx = masking(indices)
-        #sub_maskout_x, sub_maskout_edge_index, maskout_node_idx = masking(indices_inv)
-
+        # sub_masked_x, sub_masked_edge_index, masked_node_idx = masking(indices)
+        # sub_maskout_x, sub_maskout_edge_index, maskout_node_idx = masking(indices_inv)
 
         if params['hard_mask']:
-            masked_preds = model(sub_masked_x, sub_masked_edge_index)
-            maskout_preds = model(sub_maskout_x, sub_maskout_edge_index)
+            masked_ypred = model(sub_masked_x, sub_masked_edge_index)
+            masked_yprob = get_proba(masked_ypred)
 
-            #masked_preds = model(data.x, data.edge_index[:, indices])
-            #maskout_preds = model(data.x, data.edge_index[:, indices_inv])
+            maskout_ypred = model(sub_maskout_x, sub_maskout_edge_index)
+            maskout_yprob = get_proba(maskout_ypred)
 
         else:
-            masked_preds = model(sub_masked_x, sub_masked_edge_index, edge_weight=edge_mask[indices])
-            maskout_preds = model(sub_maskout_x, sub_maskout_edge_index, edge_weight=(1-edge_mask)[indices_inv])
+            masked_ypred = model(sub_masked_x, sub_masked_edge_index, edge_weight=edge_mask[indices])
+            masked_yprob = get_proba(masked_ypred)
 
-            #masked_preds = model(data.x, data.edge_index[:, indices], edge_weight=edge_mask[indices])
-            #maskout_preds = model(data.x, data.edge_index[:, indices_inv], edge_weight=(1-edge_mask)[indices_inv])
+            maskout_ypred = model(sub_maskout_x, sub_maskout_edge_index, edge_weight=(1 - edge_mask)[indices_inv])
+            maskout_yprob = get_proba(maskout_ypred)
 
-        #ori_probs = softmax(ori_preds[node_idx].detach().numpy())
-        #ori_probs = softmax(ori_preds[mapping].detach().numpy())
-        #masked_probs = softmax(masked_preds[mapping].detach().numpy())
-        #maskout_probs = softmax(maskout_preds[mapping].detach().numpy())
-
-        ori_probs = ori_preds[mapping].detach().numpy()
-        masked_probs = masked_preds[mapping].detach().numpy()
-        maskout_probs = maskout_preds[mapping].detach().numpy()
-
-        #print('masked label', masked_probs.argmax())
+        ori_probs = ori_yprob[mapping.item()].detach().numpy()
+        masked_probs = masked_yprob[mapping.item()].detach().numpy()
+        maskout_probs = maskout_yprob[mapping.item()].detach().numpy()
 
         true_label = data.y[node_idx].detach().numpy()
         pred_label = np.argmax(ori_probs)
-        print('true_label', true_label)
-        print('pred_label', pred_label)
-        #assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
+        # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
 
         related_preds.append({'node_idx': node_idx,
-                                  'masked': masked_probs,
-                                  'maskout': maskout_probs,
-                                  'origin': ori_probs,
-                                  'sparsity': mask_sparsity,
-                                  'true_label': true_label,
+                              'masked': masked_probs,
+                              'maskout': maskout_probs,
+                              'origin': ori_probs,
+                              'sparsity': mask_sparsity,
+                              'true_label': true_label,
+                              'pred_label': pred_label})
+
+    related_preds = list_to_dict(related_preds)
+    return related_preds
+
+
+def eval_related_pred(model, data, edge_masks, list_node_idx, params):
+    related_preds = []
+
+    ori_ypred = model(data.x, data.edge_index)
+    ori_yprob = get_proba(ori_ypred)
+
+    n_test = len(list_node_idx)
+
+    for i in range(n_test):
+        edge_mask = torch.Tensor(edge_masks[i])
+        node_idx = list_node_idx[i]
+        mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
+        edge_mask = transform_mask(edge_mask, sparsity=params['sparsity'],
+                                   normalize=params['normalize'], hard_mask=params['hard_mask'])
+
+        indices = np.where(edge_mask > 0)[0]
+        indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
+
+        masked_edge_index = data.edge_index[:, indices]
+        maskout_edge_index = data.edge_index[:, indices_inv]
+
+        masked_ypred = model(data.x, masked_edge_index)
+        masked_yprob = get_proba(masked_ypred)
+
+        maskout_ypred = model(data.x, maskout_edge_index)
+        maskout_yprob = get_proba(maskout_ypred)
+
+        ori_probs = ori_yprob[node_idx].detach().numpy()
+        masked_probs = masked_yprob[node_idx].detach().numpy()
+        maskout_probs = maskout_yprob[node_idx].detach().numpy()
+
+        true_label = data.y[node_idx].detach().numpy()
+        pred_label = np.argmax(ori_probs)
+        # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
+
+        related_preds.append({'node_idx': node_idx,
+                              'masked': masked_probs,
+                              'maskout': maskout_probs,
+                              'origin': ori_probs,
+                              'sparsity': mask_sparsity,
+                              'true_label': true_label,
                               'pred_label': pred_label})
 
     related_preds = list_to_dict(related_preds)
@@ -260,6 +284,7 @@ def fidelity_prob(related_preds):
     drop_probability = ori_probs - unimportant_probs
     return drop_probability.mean().item()
 
+
 # Fidelity-  metric  studies  the  prediction  change  by
 # removing  unimportant  nodes/edges/node  features.
 # Lower fidelity- value indicates good explanations -->0
@@ -270,6 +295,7 @@ def fidelity_prob_inv(related_preds):
     drop_probability = ori_probs - important_probs
     return drop_probability.mean().item()
 
+
 def eval_fidelity(related_preds, params):
     fidelity_scores = {
         "fidelity_acc+": fidelity_acc(related_preds),
@@ -278,3 +304,4 @@ def eval_fidelity(related_preds, params):
         "fidelity_prob-": fidelity_prob_inv(related_preds),
     }
     return dict(list(params.items()) + list(fidelity_scores.items()))
+

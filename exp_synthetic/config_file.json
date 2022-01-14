@@ -10,14 +10,12 @@
     "dest-name": "dest"
   },
   "params": {
-    "num_layers": 2,
     "data_save_dir": "data",
-    "true_label": ["True", "False"],
+    "num_test_nodes": 50,
     "explainer_name": [
             "random",
             "distance",
             "pagerank",
-            "gradcam",
             "sa_node",
             "ig_node",
             "occlusion",

@@ -45,8 +45,6 @@ def model_forward(edge_mask, model, node_idx, x, edge_index):
 
 def model_forward_node(x, model, edge_index, node_idx):
     out = model(x, edge_index)
-    print('out', out)
-    print('out[[node_idx]]', out[[node_idx]])
     return out[[node_idx]]
 
 def node_attr_to_edge(edge_index, node_mask):
@@ -64,11 +62,11 @@ def get_all_convolution_layers(model):
 
 
 #### Baselines ####
-def explain_random(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_random(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     return np.random.uniform(size=edge_index.shape[1])
 
 
-def explain_distance(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_distance(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     data = Data(x=x, edge_index=edge_index)
     g = to_networkx(data)
     length = nx.shortest_path_length(g, target=node_idx)
@@ -81,7 +79,7 @@ def explain_distance(model, node_idx, x, edge_index, target, device, include_edg
     edge_sources = edge_index[1].cpu().numpy()
     return np.array([get_attr(node) for node in edge_sources])
 
-def explain_pagerank(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_pagerank(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     data = Data(x=x, edge_index=edge_index)
     g = to_networkx(data)
     pagerank = nx.pagerank(g, personalization={node_idx: 1})
@@ -94,7 +92,7 @@ def explain_pagerank(model, node_idx, x, edge_index, target, device, include_edg
 
 #### Methods ####
 
-def explain_gradcam(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_gradcam(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     # Captum default implementation of LayerGradCam does not average over nodes for different channels because of
     # different assumptions on tensor shapes
     input_mask = x.clone().requires_grad_(True).to(device)
@@ -109,7 +107,7 @@ def explain_gradcam(model, node_idx, x, edge_index, target, device, include_edge
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
-def explain_sa(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_sa(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     saliency = Saliency(model_forward)
     input_mask = torch.ones(edge_index.shape[1]).requires_grad_(True).to(device)
     saliency_mask = saliency.attribute(input_mask, target=target,
@@ -118,7 +116,7 @@ def explain_sa(model, node_idx, x, edge_index, target, device, include_edges=Non
     edge_mask = saliency_mask.cpu().numpy()
     return edge_mask
 
-def explain_sa_node(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_sa_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     saliency = Saliency(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
     saliency_mask = saliency.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx),
@@ -128,7 +126,7 @@ def explain_sa_node(model, node_idx, x, edge_index, target, device, include_edge
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
-def explain_ig_node(model, node_idx, x, edge_index, target, device, include_edges=None):
+def explain_ig_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     ig = IntegratedGradients(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
     ig_mask = ig.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx),
@@ -138,8 +136,8 @@ def explain_ig_node(model, node_idx, x, edge_index, target, device, include_edge
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
-def explain_occlusion(model, node_idx, x, edge_index, target, device, include_edges=None):
-    depth_limit = model.num_layers + 1
+def explain_occlusion(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+    depth_limit = args.num_gc_layers + 1
     data = Data(x=x, edge_index=edge_index)
     if target is None:
         pred_probs = model(x, edge_index)[node_idx].detach().numpy()
@@ -167,15 +165,15 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, include_ed
     return edge_mask
 
 
-def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):
-    explainer = TargetedGNNExplainer(model)
+def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+    explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
     if node_idx is not None:
         edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
     edge_mask = edge_mask.detach().numpy()
     return edge_mask
 
-def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include_edges=None):
-    explainer = Node_Explainer(model, edge_index, x, model.num_layers, print_result=0)
+def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+    explainer = Node_Explainer(model, edge_index, x, args.num_gc_layers, print_result=0)
     explanation = explainer.explain(node_idx, target, device)
     node_attr = np.zeros(x.shape[0])
     for node, p_value in explanation.items():
@@ -184,8 +182,8 @@ def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, include
     return edge_mask
 
 
-def explain_subgraphx(model, node_idx, x, edge_index, target, device, include_edges=None):
-    subgraphx = SubgraphX(model, model.num_classes, device, explain_graph=False)
+def explain_subgraphx(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=args.num_gc_layers, explain_graph=False)
     edge_mask = subgraphx.explain(x, edge_index, max_nodes=6, label=target, node_idx=node_idx)
     return edge_mask
 

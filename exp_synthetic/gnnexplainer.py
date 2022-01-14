@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 from torch_geometric.nn import GNNExplainer
 from tqdm import tqdm
@@ -7,6 +9,7 @@ EPS = 1e-15
 
 
 class TargetedGNNExplainer(GNNExplainer):
+
     def __loss__(self, node_idx, log_logits, target_class):
         loss = -log_logits[node_idx, target_class]
 
@@ -52,7 +55,7 @@ class TargetedGNNExplainer(GNNExplainer):
         # Get the initial prediction.
         if target is None:
             with torch.no_grad():
-                out = self.model(x=x, edge_index=edge_index, **kwargs)
+                out = self.model(x, edge_index)
                 if self.return_type == 'regression':
                     prediction = out
                 else:
@@ -77,10 +80,10 @@ class TargetedGNNExplainer(GNNExplainer):
             pbar = tqdm(total=self.epochs)
             pbar.set_description(f'Explain node {node_idx}')
 
-        for epoch in range(1, 800):#self.epochs + 1):
+        for epoch in range(1, self.epochs + 1):
             optimizer.zero_grad()
             h = x #* self.node_feat_mask.sigmoid()
-            out = self.model(x=h, edge_index=edge_index, **kwargs)
+            out = self.model(h, edge_index)
             if self.return_type == 'regression':
                 loss = self.__loss__(mapping, out, prediction)
             else:
@@ -92,20 +95,6 @@ class TargetedGNNExplainer(GNNExplainer):
             if self.log:  # pragma: no cover
                 pbar.update(1)
 
-        if node_idx==2003:
-            print('node_idx', node_idx)
-            print('target', target)
-            print('edge_index', edge_index)
-            print('edge_index', edge_index.size())
-            print('subset', subset)
-            out = self.model(x=x, edge_index=edge_index, **kwargs)
-            print('predictions', out[mapping])
-            print('log_prob', log_logits[mapping])
-            print('true_label', pred_label)
-            print('proba of predicting true label', log_logits[mapping, pred_label])
-            print('pred_label', log_logits[mapping].argmax())
-        stop = (pred_label.item() == log_logits[mapping].argmax().item())
-        print(stop)
 
         if self.log:  # pragma: no cover
             pbar.close()

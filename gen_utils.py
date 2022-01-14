@@ -4,6 +4,9 @@ import numpy as np
 
 import torch
 from torch_geometric.utils import k_hop_subgraph
+from torch_geometric.utils import from_scipy_sparse_matrix, to_scipy_sparse_matrix
+from scipy.sparse import csr_matrix
+
 
 def check_dir(save_dirs):
     if save_dirs:
@@ -43,3 +46,16 @@ def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
         kwargs[key] = item
 
     return x, edge_index, mapping, edge_mask, subset, kwargs
+
+
+def from_edge_index_to_adj(edge_index, max_n):
+    adj = to_scipy_sparse_matrix(edge_index).toarray()
+    assert len(adj)<=max_n, "The adjacency matrix contains more nodes than the graph!"
+    if len(adj)<max_n :
+        adj = np.pad(adj, (0, max_n-len(adj)), mode='constant')
+    return torch.FloatTensor(adj)
+
+def from_adj_to_edge_index(adj):
+    A = csr_matrix(adj)
+    edges, _ = from_scipy_sparse_matrix(A)
+    return torch.LongTensor(edges)
