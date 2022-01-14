@@ -1,0 +1,18 @@
+{
+  "cmd": "python exp_synthetic/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
+  "version": "1.0.0",
+  "meta": {
+    "group": "checkpoints",
+    "name": "syn3",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "num_test_nodes": 3,
+    "dataset": "syn3",
+    "explainer_name": "gnnexplainer"
+  }
+}

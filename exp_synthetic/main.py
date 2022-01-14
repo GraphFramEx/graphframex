@@ -1,6 +1,7 @@
 import sys, os
 sys.path.append(os.getcwd())
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 import json
 import pickle
 import time
@@ -195,5 +196,4 @@ def main(args):
 
 if __name__ == '__main__':
     args = arg_parse()
-    print(args.explainer_name)
     main(args)

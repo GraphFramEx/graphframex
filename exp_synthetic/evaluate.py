@@ -20,7 +20,7 @@ def topk_edges_directed(edge_mask, edge_index, num_top_edges):
         subset = indices[num_top_edges*i:num_top_edges*(i+1)]
         topk_edges = list_edges[subset]
         u, idx = np.unique(topk_edges, return_index=True, axis=0)
-        top = np.concatenate([top, subset[idx]], dtype=np.int32)
+        top = np.concatenate([top, subset[idx]])
         i+=1
     return top[:num_top_edges]
 
@@ -77,6 +77,10 @@ def get_explanation(data, edge_mask, num_top_edges):
 
 def get_scores(G1, G2):
     G1, G2 = G1.to_undirected(), G2.to_undirected()
+    print('G1', G1.nodes())
+    print('G2', G2.nodes())
+    nx.draw_networkx(G1, with_labels=True, font_weight='bold')
+    nx.draw_networkx(G2, with_labels=True, font_weight='bold')
     g_int = nx.intersection(G1, G2)
     g_int.remove_nodes_from(list(nx.isolates(g_int)))
 
@@ -100,7 +104,7 @@ def get_accuracy(data, edge_mask, node_idx, args):
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
     G_expl = get_explanation(data, edge_mask, args.num_top_edges)
     # plt.figure()
-    # nx.draw(G_expl, with_labels=True, font_weight='bold')
+    # nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
     # plt.show()
     # plt.clf()
     recall, precision, f1_score, ged = get_scores(G_expl, G_true)
