@@ -132,7 +132,7 @@ parser_sweep.add_argument('grid', type=str)
 parser_sweep.add_argument("--no-launch", action='store_false', dest='launch')
 parser_sweep.add_argument("--sample", type=int, default=-1)
 parser_sweep.add_argument("--numeric", action='store_true', dest='numeric')
-parser_sweep.add_argument("--array", type=bool_flag, default=False)
+parser_sweep.add_argument("--array", type=bool_flag, default=True)
 parser_sweep.add_argument("--pooling", type=int, default=1)
 parser_sweep.set_defaults(launch=True, numeric=False)
 

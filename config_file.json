@@ -3,16 +3,30 @@
   "preload": "MKL_THREADING_LAYER=GNU",
   "ckpt_root": ".",
   "version": "1.0.0",
+  "machine":{
+    "cpus": 60,
+    "gpus-per-task":4
+  },
   "meta": {
     "group": "checkpoints",
-    "name": "syn3",
+    "name": "syn1",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
     "data_save_dir": "data",
-    "num_test_nodes": 3,
-    "dataset": "syn3",
-    "explainer_name": "gnnexplainer"
+    "num_test_nodes": 100,
+    "dataset": "syn1",
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa_node",
+      "ig_node",
+      "occlusion",
+      "gnnexplainer",
+      "pgmexplainer",
+      "subgraphx"
+    ]
   }
 }

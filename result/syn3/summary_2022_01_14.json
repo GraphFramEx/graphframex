@@ -1,0 +1,23 @@
+[
+  {
+    "dataset": "syn3",
+    "explainer": "pagerank",
+    "num_test_nodes": 3,
+    "groundtruth target": true,
+    "time": 0.0337,
+    "recall": 0.9444444444444443,
+    "precision": 0.9444444444444443,
+    "f1_score": 0.9444444444444443,
+    "ged": 2.0,
+    "auc": 0.9998791315049228,
+    "0": {
+      "sparsity": 0.7,
+      "normalize": true,
+      "hard_mask": true,
+      "fidelity_acc+": 0.0,
+      "fidelity_acc-": 0.0,
+      "fidelity_prob+": 0.05585261061787605,
+      "fidelity_prob-": 0.0
+    }
+  }
+]
