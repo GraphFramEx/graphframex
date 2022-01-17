@@ -36,7 +36,8 @@ def main(args):
 
     ### Init GNN model and train on data + save model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    args.gpu = True if torch.cuda.is_available() else False
+    
     check_dir(os.path.join(args.model_save_dir, args.dataset))
     model_filename = os.path.join(args.model_save_dir, args.dataset) + f"/gcn_{args.num_gc_layers}.pth.tar"
 
@@ -59,7 +60,6 @@ def main(args):
 
 
     args = get_data_args(data, args)
-    print('args.num_classes', args.num_classes)
 
     if os.path.isfile(model_filename):
         model = GcnEncoderNode(args.input_dim,
@@ -94,7 +94,12 @@ def main(args):
     print("__gnn_test_scores: ", ckpt['results_test'])
     #print("__gnn_train_scores:" + json.dumps(ckpt['results_train']))
     #print("__gnn_test_scores:" + json.dumps(ckpt['results_test']))
+    
+    # Put on device
+    data = data.to(device)
+    model = model.to(device)
     model.eval()
+    
 
 
     ### Store results in summary.json
@@ -106,22 +111,22 @@ def main(args):
 
 
     # explain only nodes for each the GCN made accurate predictions
-    pred_labels = get_labels(model(data.x, data.edge_index))
-    list_node_idx = np.where(pred_labels == data.y)[0]
+    ypreds = model(data.x, data.edge_index)
+    pred_labels = get_labels(ypreds)
+    list_node_idx = np.where(pred_labels.cpu().numpy() == data.y.cpu().numpy())[0]
     list_node_idx_house = list_node_idx[list_node_idx > args.num_basis]
     #list_test_nodes = list_node_idx_house[:args.num_test_nodes].tolist()
     list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
     targets = data.y # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
-
     #list_test_nodes = range(args.num_basis,args.num_basis+args.num_test_nodes)
-    print('length test nodes', len(list_test_nodes))
+    
     def compute_edge_masks(explainer_name, list_test_nodes, model, data, targets, device):
         explain_function = eval('explain_' + explainer_name)
         Time = []
         edge_masks = []
         for node_idx in list_test_nodes:
-            x = torch.FloatTensor(data.x.detach().numpy().copy())
-            edge_index = torch.LongTensor(data.edge_index.detach().numpy().copy())
+            x = torch.FloatTensor(data.x.cpu().numpy().copy())
+            edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy())
             start_time = time.time()
             edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
             end_time = time.time()
@@ -138,15 +143,25 @@ def main(args):
 
     mask_filename = os.path.join(mask_save_dir, f'masks_{args.explainer_name}.pickle')
 
-    if os.path.isfile(mask_filename):
-        # open
-        with open(mask_filename, 'rb') as handle:
-            edge_masks, Time = tuple(pickle.load(handle))
-    else:
-        edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
-        with open(mask_filename, 'wb') as handle:
-            pickle.dump((edge_masks, Time), handle)
+    """if os.path.isfile(mask_filename):
+        print(f"Mask for explainer {args.dataset}/{args.explainer_name} already exists. You can: ")
+        print(f"- Run it anyway. Trash existing experiment folder and create a fresh one.")
+        print(f"- (default) Abort. Experiment folder will be kpet untouched and new experiments will not be run.")
+        print(f"What do you choose ? [run|abort]")
+        answer = input().lower()
+        if answer == "run":
+            os.remove(mask_filename)
+            edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
+            with open(mask_filename, 'wb') as handle:
+                pickle.dump((edge_masks, Time), handle)
+        else:
+            with open(mask_filename, 'rb') as handle:
+                edge_masks, Time = tuple(pickle.load(handle))"""
 
+    edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
+    #with open(mask_filename, 'wb') as handle:
+        #pickle.dump((edge_masks, Time), handle)
+    
     infos = {"dataset": args.dataset, "explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
@@ -155,7 +170,7 @@ def main(args):
 
     FIDELITY_SCORES = {}
     FIDELITY_SUB_SCORES = {}
-    list_params = {'sparsity':[0.7], 'normalize': [True], 'hard_mask': [True]}
+    list_params = {"sparsity":[0.7], "normalize": [True], "hard_mask": [True]}
     keys, values = zip(*list_params.items())
     permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
     for i, params in enumerate(permutations_dicts):

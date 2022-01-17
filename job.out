@@ -1,0 +1,250 @@
+Sender: LSF System <lsfadmin@eu-g2-18>
+Subject: Job 200772762: <python exp_synthetic/main.py> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 20:53:33 2022
+Job was executed on host(s) <eu-g2-18>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 20:54:01 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 20:54:01 2022
+Terminated at Mon Jan 17 20:54:13 2022
+Results reported at Mon Jan 17 20:54:13 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   7.20 sec.
+    Max Memory :                                 2518 MB
+    Average Memory :                             137.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               3482.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                6
+    Run time :                                   12 sec.
+    Turnaround time :                            40 sec.
+
+The output (if any) follows:
+
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+
+Sender: LSF System <lsfadmin@eu-g2-16>
+Subject: Job 200772838: <python exp_synthetic/main.py> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 20:58:33 2022
+Job was executed on host(s) <eu-g2-16>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 20:59:01 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 20:59:01 2022
+Terminated at Mon Jan 17 20:59:12 2022
+Results reported at Mon Jan 17 20:59:12 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   7.26 sec.
+    Max Memory :                                 2524 MB
+    Average Memory :                             128.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               3476.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                5
+    Run time :                                   11 sec.
+    Turnaround time :                            39 sec.
+
+The output (if any) follows:
+
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+
+Sender: LSF System <lsfadmin@eu-g2-18>
+Subject: Job 200772964: <python exp_synthetic/main.py> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 21:03:02 2022
+Job was executed on host(s) <eu-g2-18>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 21:03:30 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 21:03:30 2022
+Terminated at Mon Jan 17 21:03:45 2022
+Results reported at Mon Jan 17 21:03:45 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   11.36 sec.
+    Max Memory :                                 2521 MB
+    Average Memory :                             144.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               3479.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                6
+    Run time :                                   15 sec.
+    Turnaround time :                            43 sec.
+
+The output (if any) follows:
+
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+
+Sender: LSF System <lsfadmin@eu-g2-16>
+Subject: Job 200773024: <python exp_synthetic/main.py> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 21:07:22 2022
+Job was executed on host(s) <eu-g2-16>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 21:07:32 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 21:07:32 2022
+Terminated at Mon Jan 17 21:07:57 2022
+Results reported at Mon Jan 17 21:07:57 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   11.81 sec.
+    Max Memory :                                 3635 MB
+    Average Memory :                             244.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               2365.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                4
+    Run time :                                   25 sec.
+    Turnaround time :                            35 sec.
+
+The output (if any) follows:
+
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+
+Sender: LSF System <lsfadmin@eu-g2-18>
+Subject: Job 200773115: <python exp_synthetic/main.py --explainer_name gnnexplainer> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py --explainer_name gnnexplainer> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 21:14:04 2022
+Job was executed on host(s) <eu-g2-18>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 21:14:30 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 21:14:30 2022
+Terminated at Mon Jan 17 21:14:41 2022
+Results reported at Mon Jan 17 21:14:41 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py --explainer_name gnnexplainer
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   7.23 sec.
+    Max Memory :                                 2518 MB
+    Average Memory :                             128.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               3482.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                5
+    Run time :                                   11 sec.
+    Turnaround time :                            37 sec.
+
+The output (if any) follows:
+
+__gnn_train_scores:  {'prec': 0.975210879806468, 'recall': 0.9784965034965035, 'acc': 0.9831932773109243}
+__gnn_test_scores:  {'prec': 0.963063063063063, 'recall': 0.9782608695652174, 'acc': 0.9714285714285714}
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+
+Sender: LSF System <lsfadmin@eu-g2-12>
+Subject: Job 200773161: <python exp_synthetic/main.py --explainer_name gnnexplainer> in cluster <euler> Exited
+
+Job <python exp_synthetic/main.py --explainer_name gnnexplainer> was submitted from host <eu-login-22> by user <kamara> in cluster <euler> at Mon Jan 17 21:16:37 2022
+Job was executed on host(s) <eu-g2-12>, in queue <gpu.4h>, as user <kamara> in cluster <euler> at Mon Jan 17 21:17:00 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Mon Jan 17 21:17:00 2022
+Terminated at Mon Jan 17 21:17:21 2022
+Results reported at Mon Jan 17 21:17:21 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+python exp_synthetic/main.py --explainer_name gnnexplainer
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   7.67 sec.
+    Max Memory :                                 3619 MB
+    Average Memory :                             283.00 MB
+    Total Requested Memory :                     6000.00 MB
+    Delta Memory :                               2381.00 MB
+    Max Swap :                                   -
+    Max Processes :                              3
+    Max Threads :                                4
+    Run time :                                   21 sec.
+    Turnaround time :                            44 sec.
+
+The output (if any) follows:
+
+__gnn_train_scores:  {'prec': 0.975210879806468, 'recall': 0.9784965034965035, 'acc': 0.9831932773109243}
+__gnn_test_scores:  {'prec': 0.963063063063063, 'recall': 0.9782608695652174, 'acc': 0.9714285714285714}
+
+
+PS:
+
+Read file <job.err> for stderr output of this job.
+

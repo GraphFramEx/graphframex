@@ -417,7 +417,9 @@ class SubgraphX(object):
                 max_nodes: int = 6,
                 node_idx: Optional[int] = None,
                 saved_MCTSInfo_list: Optional[List[List]] = None):
-        probs = self.model(x, edge_index)  # .squeeze().softmax(dim=-1)
+        x = x.to(self.device)
+        edge_index = edge_index.to(self.device)
+        probs = self.model(x, edge_index).to(self.device)  # .squeeze().softmax(dim=-1)
 
         if self.explain_graph:
             if saved_MCTSInfo_list:

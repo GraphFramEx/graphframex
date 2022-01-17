@@ -15,7 +15,7 @@ def topk_edges_directed(edge_mask, edge_index, num_top_edges):
     indices = (-edge_mask).argsort()
     top = np.array([], dtype='int')
     i = 0
-    list_edges = np.sort(edge_index.T, axis=1)
+    list_edges = np.sort(edge_index.cpu().T, axis=1)
     while len(top)<num_top_edges:
         subset = indices[num_top_edges*i:num_top_edges*(i+1)]
         topk_edges = list_edges[subset]
@@ -67,7 +67,7 @@ def get_explanation(data, edge_mask, num_top_edges):
     #indices = (-edge_mask).argsort()[:num_top_edges]
     explanation = data.edge_index[:, indices]
     G_expl = nx.Graph()
-    G_expl.add_nodes_from(np.unique(explanation))
+    G_expl.add_nodes_from(np.unique(explanation.cpu()))
     for i, (u, v) in enumerate(explanation.t().tolist()):
         G_expl.add_edge(u, v)
     return (G_expl)
@@ -77,10 +77,6 @@ def get_explanation(data, edge_mask, num_top_edges):
 
 def get_scores(G1, G2):
     G1, G2 = G1.to_undirected(), G2.to_undirected()
-    print('G1', G1.nodes())
-    print('G2', G2.nodes())
-    nx.draw_networkx(G1, with_labels=True, font_weight='bold')
-    nx.draw_networkx(G2, with_labels=True, font_weight='bold')
     g_int = nx.intersection(G1, G2)
     g_int.remove_nodes_from(list(nx.isolates(g_int)))
 
@@ -149,7 +145,7 @@ def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
 
         sub_masked_x, sub_maskout_x = sub_x, sub_x
 
-        sub_edge_mask = edge_mask[hard_edge_mask]
+        sub_edge_mask = edge_mask[hard_edge_mask.cpu()]
 
         indices = np.where(sub_edge_mask > 0)[0]
         indices_inv = [i for i in range(len(sub_edge_mask)) if i not in indices]
@@ -191,11 +187,11 @@ def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
             maskout_ypred = model(sub_maskout_x, sub_maskout_edge_index, edge_weight=(1 - edge_mask)[indices_inv])
             maskout_yprob = get_proba(maskout_ypred)
 
-        ori_probs = ori_yprob[mapping.item()].detach().numpy()
-        masked_probs = masked_yprob[mapping.item()].detach().numpy()
-        maskout_probs = maskout_yprob[mapping.item()].detach().numpy()
+        ori_probs = ori_yprob[mapping.item()].detach().cpu().numpy()
+        masked_probs = masked_yprob[mapping.item()].detach().cpu().numpy()
+        maskout_probs = maskout_yprob[mapping.item()].detach().cpu().numpy()
 
-        true_label = data.y[node_idx].detach().numpy()
+        true_label = data.y[node_idx].cpu().numpy()
         pred_label = np.argmax(ori_probs)
         # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
 
@@ -238,11 +234,11 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, params):
         maskout_ypred = model(data.x, maskout_edge_index)
         maskout_yprob = get_proba(maskout_ypred)
 
-        ori_probs = ori_yprob[node_idx].detach().numpy()
-        masked_probs = masked_yprob[node_idx].detach().numpy()
-        maskout_probs = maskout_yprob[node_idx].detach().numpy()
+        ori_probs = ori_yprob[node_idx].detach().cpu().numpy()
+        masked_probs = masked_yprob[node_idx].detach().cpu().numpy()
+        maskout_probs = maskout_yprob[node_idx].detach().cpu().numpy()
 
-        true_label = data.y[node_idx].detach().numpy()
+        true_label = data.y[node_idx].cpu().numpy()
         pred_label = np.argmax(ori_probs)
         # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
 

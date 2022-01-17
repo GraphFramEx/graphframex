@@ -52,6 +52,7 @@ class GraphConv(nn.Module):
             att=False,
     ):
         super(GraphConv, self).__init__()
+        self.gpu = gpu
         self.att = att
         self.add_self = add_self
         self.dropout = dropout
@@ -99,7 +100,13 @@ class GraphConv(nn.Module):
             att = x_att @ x_att.permute(0, 2, 1)
             # att = self.softmax(att)
             adj = adj * att
-
+            
+        if self.gpu:
+            adj = adj.cuda()
+            
+        print('adj.device', adj.device)
+        print('x.device', x.device)
+        
         y = torch.matmul(adj, x)
         y = torch.matmul(y, self.weight)
         if self.add_self:
@@ -391,6 +398,7 @@ class GcnEncoderNode(GcnEncoderGraph):
         # self.celoss = nn.CrossEntropyLoss(weight=args.loss_weight)
         # else:
         self.celoss = nn.CrossEntropyLoss()
+        self.gpu = args.gpu
 
     def forward_batch(self, x, adj, batch_num_nodes=None, **kwargs):
         # mask
@@ -399,11 +407,13 @@ class GcnEncoderNode(GcnEncoderGraph):
             embedding_mask = self.construct_mask(max_num_nodes, batch_num_nodes)
         else:
             embedding_mask = None
-
         self.adj_atts = []
         self.embedding_tensor, adj_att = self.gcn_forward(
             x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
         )
+        if self.gpu:
+            self.embedding_tensor = self.embedding_tensor.cuda()
+            self.pred_model = self.pred_model.cuda()
         pred = self.pred_model(self.embedding_tensor)
         return pred, adj_att
 
@@ -411,6 +421,8 @@ class GcnEncoderNode(GcnEncoderGraph):
         # Encoder Node receives no batch - only one graph
         max_n = x.size(0)
         adj = from_edge_index_to_adj(edge_index, max_n)
+        if self.gpu:
+            adj = adj.cuda()
         pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
         ypred = torch.squeeze(pred, 0)
         return ypred
@@ -434,7 +446,11 @@ def get_labels(ypred):
 
 def gnn_scores(model, data):
     ypred = model(data.x, data.edge_index)
-    ylabels = get_labels(ypred)
+    ylabels = get_labels(ypred).cpu()
+    
+    print('ylabels.device', ylabels.device)
+    print('data.y.device', data.y.device)
+    data.y = data.y.cpu()
 
     result_train = {
         "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
@@ -482,9 +498,9 @@ def train(model, data, device, args):
         # scheduler.step()
         # scheduler.step(val_loss)
 
-    plt.figure()
-    plt.plot(range(args.num_epochs // 10), val_err)
-    plt.plot(range(args.num_epochs // 10), train_err)
+    #plt.figure()
+    #plt.plot(range(args.num_epochs // 10), val_err)
+    #plt.plot(range(args.num_epochs // 10), train_err)
 
 
 

@@ -132,7 +132,7 @@ parser_sweep.add_argument('grid', type=str)
 parser_sweep.add_argument("--no-launch", action='store_false', dest='launch')
 parser_sweep.add_argument("--sample", type=int, default=-1)
 parser_sweep.add_argument("--numeric", action='store_true', dest='numeric')
-parser_sweep.add_argument("--array", type=bool_flag, default=True)
+parser_sweep.add_argument("--array", type=bool_flag, default=False)
 parser_sweep.add_argument("--pooling", type=int, default=1)
 parser_sweep.set_defaults(launch=True, numeric=False)
 
@@ -194,6 +194,7 @@ if args.command == 'sweep':
         
     expdir = join(group_root, name)
     log_dir = join(expdir, "logs")
+    continuing = False
     if os.path.exists(log_dir):
         print(f"Experiment {group_root}/{name} already exists. You can: ")
         print(
@@ -213,6 +214,11 @@ if args.command == 'sweep':
             sys.exit(0)
     else:
         os.makedirs(log_dir)
+        
+    expdir = join(group_root, name)
+    if not continuing:
+        if args.grid != expdir + ".json":
+            shutil.copyfile(args.grid, join(expdir, "sweep.json"))
 
     # List config of parameters
     paramset = enumerateParams(config["params"])

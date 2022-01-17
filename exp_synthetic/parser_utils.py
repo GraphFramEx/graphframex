@@ -6,7 +6,7 @@ def arg_parse():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dest', type=str, default='/Users/kenzaamara/PycharmProjects/Explain')
+    parser.add_argument('--dest', type=str, default='/Users/kenzaamara/GithubProjects/Explain')
 
     parser.add_argument('--seed', help='random seed', type=int, default=41)
 
@@ -17,7 +17,7 @@ def arg_parse():
         dest="gpu",
         action="store_const",
         const=True,
-        default=False,
+        default=True,
         help="whether to use GPU.",
     )
 
@@ -121,9 +121,10 @@ def arg_parse():
     parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
-    parser.add_argument('--explainer_name', help='explainer', type=str, default='sa_node')
+    parser.add_argument('--explainer_name', help='explainer', type=str)
 
     parser.set_defaults(
+        gpu = True,
         datadir="data",  # io_parser
         logdir="log",
         ckptdir="ckpt",
@@ -151,5 +152,6 @@ def arg_parse():
         weight_decay=0.005,
         method="base",
         name_suffix="",
+        explainer_name="subgraphx"
     )
     return parser.parse_args()

@@ -183,6 +183,7 @@ def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, args, i
 
 
 def explain_subgraphx(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+    print('device for subgraphx', device)
     subgraphx = SubgraphX(model, args.num_classes, device, num_hops=args.num_gc_layers, explain_graph=False)
     edge_mask = subgraphx.explain(x, edge_index, max_nodes=6, label=target, node_idx=node_idx)
     return edge_mask
