@@ -5,29 +5,25 @@
   "version": "1.0.0",
   "machine":{
     "gpus-per-task":8,
-    "mem": 6000,
+    "mem": 4000,
     "gpu_model0": "GeForceGTX1080Ti"
   },
   "meta": {
     "group": "checkpoints",
-    "name": "syn5",
+    "name": "top_edges",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
+    "gpu": true, 
     "data_save_dir": "data",
     "num_test_nodes": 100,
-    "dataset": "syn5",
+    "dataset": "syn1",
+    "num_top_edges":[4, 6, 8, 10, 14, 20],
     "explainer_name": [
-      "random",
       "distance",
       "pagerank",
-      "sa_node",
-      "ig_node",
-      "occlusion",
-      "gnnexplainer",
-      "pgmexplainer",
-      "subgraphx"
+      "gnnexplainer"
     ]
   }
 }

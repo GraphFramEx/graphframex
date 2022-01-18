@@ -64,7 +64,7 @@ def get_ground_truth(node, data, args):
     true_node_mask = np.zeros(data.edge_index.shape[1])
     true_node_mask[gt] = 1
     true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
-
+    true_edge_mask = np.where(true_edge_mask==2, 1, 0)
     return graph, role, true_edge_mask
 
 

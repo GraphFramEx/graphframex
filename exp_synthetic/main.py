@@ -9,6 +9,7 @@ from datetime import datetime
 import argparse
 import random
 import itertools
+import pandas.util.testing as tm
 
 from dataset import *
 from evaluate import *
@@ -16,6 +17,7 @@ from explainer import *
 from gnn import GcnEncoderNode, train, gnn_scores, get_labels
 from gen_utils import check_dir, get_subgraph
 from parser_utils import arg_parse
+
 
 
 def main(args):
@@ -44,19 +46,24 @@ def main(args):
     def get_data_args(data, args):
         args.num_classes = data.num_classes
         args.input_dim = data.x.size(1)
-        if args.dataset == 'syn1':
-            args.num_top_edges = 6
-        elif args.dataset == 'syn2':
-            args.num_top_edges = 6
-        elif args.dataset == 'syn3':
-            args.num_top_edges = 12
-        elif args.dataset == 'syn4':
-            args.num_top_edges = 6
-        elif args.dataset == 'syn5':
-            args.num_top_edges = 12
-        elif args.dataset == 'syn6':
-            args.num_top_edges = 5
+        if args.num_top_edges==-1:
+            if args.dataset == 'syn1':
+                args.num_top_edges = 6
+            elif args.dataset == 'syn2':
+                args.num_top_edges = 6
+            elif args.dataset == 'syn3':
+                args.num_top_edges = 12
+            elif args.dataset == 'syn4':
+                args.num_top_edges = 6
+            elif args.dataset == 'syn5':
+                args.num_top_edges = 12
+            elif args.dataset == 'syn6':
+                args.num_top_edges = 5
         return args
+    
+    
+    # Put on device
+    data = data.to(device)
 
 
     args = get_data_args(data, args)
@@ -88,16 +95,13 @@ def main(args):
         )
         #torch.save(model.state_dict(), model_filename)
 
-    ckpt = torch.load(model_filename)
+    ckpt = torch.load(model_filename, map_location=device)
     model.load_state_dict(ckpt['model_state'])
     print("__gnn_train_scores: ", ckpt['results_train'])
     print("__gnn_test_scores: ", ckpt['results_test'])
     #print("__gnn_train_scores:" + json.dumps(ckpt['results_train']))
     #print("__gnn_test_scores:" + json.dumps(ckpt['results_test']))
     
-    # Put on device
-    data = data.to(device)
-    model = model.to(device)
     model.eval()
     
 
@@ -125,8 +129,8 @@ def main(args):
         Time = []
         edge_masks = []
         for node_idx in list_test_nodes:
-            x = torch.FloatTensor(data.x.cpu().numpy().copy())
-            edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy())
+            x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
+            edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)
             start_time = time.time()
             edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
             end_time = time.time()
@@ -161,21 +165,28 @@ def main(args):
     edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
     #with open(mask_filename, 'wb') as handle:
         #pickle.dump((edge_masks, Time), handle)
-    
+
+        
     infos = {"dataset": args.dataset, "explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
-    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args)
-    print("__accuracy:" + json.dumps(accuracy))
-
+    
+    ACCURACY = {}
     FIDELITY_SCORES = {}
-    FIDELITY_SUB_SCORES = {}
-    list_params = {"sparsity":[0.7], "normalize": [True], "hard_mask": [True]}
+    #FIDELITY_SUB_SCORES = {}
+    list_params = {"sparsity":[0, 0.7], "normalize": [True, False], "hard_mask": [True]}
     keys, values = zip(*list_params.items())
     permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
     for i, params in enumerate(permutations_dicts):
-        related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, params)
-        related_preds_sub = eval_related_pred_subgraph(model, data, edge_masks, list_test_nodes, params)
+
+        edge_masks = transform_mask(edge_masks, sparsity=params['sparsity'],
+                                   normalize=params['normalize'], hard_mask=params['hard_mask'])
+
+        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, params)
+        print("__accuracy:" + json.dumps(accuracy))
+        
+        related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, device)
+        #related_preds_sub = eval_related_pred_subgraph(model, data, edge_masks, list_test_nodes, device)
 
         labels = related_preds['true_label']
         ori_probs = np.choose(labels, related_preds['origin'].T)
@@ -187,16 +198,17 @@ def main(args):
         fidelity = eval_fidelity(related_preds, params)
         print("__fidelity:" + json.dumps(fidelity))
 
-        fidelity_sub = eval_fidelity(related_preds_sub, params)
-        print("__fidelity_sub:" + json.dumps(fidelity_sub))
+        #fidelity_sub = eval_fidelity(related_preds_sub, params)
+        #print("__fidelity_sub:" + json.dumps(fidelity_sub))
 
+        ACCURACY[i] = accuracy
         FIDELITY_SCORES[i] = fidelity
-        FIDELITY_SUB_SCORES[i] = fidelity_sub
+        #FIDELITY_SUB_SCORES[i] = fidelity_sub
 
 
     # extract summary at results path and add a line in to the dict
     stats = []
-    entry = dict(list(infos.items()) + list(accuracy.items()) + list(FIDELITY_SCORES.items()) + list(FIDELITY_SUB_SCORES.items()))
+    entry = dict(list(infos.items()) + list(ACCURACY.items()) + list(FIDELITY_SCORES.items())) # + list(FIDELITY_SUB_SCORES.items()))
     if not os.path.isfile(res_filename):
         stats.append(entry)
         with open(res_filename, mode='w') as f:

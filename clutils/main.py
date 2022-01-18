@@ -170,27 +170,27 @@ if args.command == 'sweep':
         if "cpus" in config["machine"]:
             sbatch += "-n %s " % config["machine"]["cpus"]
         
-        elif "options" in config["machine"]:
-            sbatch += "-R "
-            
-            if "cpus-per-task" in config["machine"]["options"]:
-                sbatch += "'span[ptile=%s]' " % config["machine"]["cpus-per-task"]
-            
+        if ("mem" in config["machine"]) & ("gpus-per-task" in config["machine"]):
+            sbatch += "-R 'rusage[mem=%s,ngpus_excl_p=%s]' " % (config["machine"]["mem"], config["machine"]["gpus-per-task"])
+        else:
             if "mem" in config["machine"]:
-                sbatch += "'rusage[mem=%s]' " % config["machine"]["mem"]
+                sbatch += "-R 'rusage[mem=%s]' " % config["machine"]["mem"]
+            elif "gpus-per-task" in config["machine"]:
+                sbatch += "-R 'rusage[ngpus_excl_p=%s]' " % config["machine"]["gpus-per-task"]
             
-            elif "mem-per-cpu" in config["machine"]["options"]:
-                assert "cpus-per-task" in config["machine"]
-                mem_cpu = int(config["machine"]["mem-per-cpu"].replace("G", ""))
-                cpus = int(config["machine"]["cpus-per-task"])
-                sbatch += "'[rusage[mem=%d]]' " % (mem_cpu * cpus)
+        if "mem-per-cpu" in config["machine"]:
+            assert "cpus-per-task" in config["machine"]
+            mem_cpu = int(config["machine"]["mem-per-cpu"].replace("G", ""))
+            cpus = int(config["machine"]["cpus-per-task"])
+            sbatch += "-R 'rusage[mem=%d]' " % (mem_cpu * cpus)
+        
+        if "gpu-model" in config["machine"]:
+            sbatch += "-R 'select[gpu_model0==%s]' " % config["machine"]["gpu-model"]
             
-            if "gpu-model" in config["machine"]["options"]:
-                sbatch += "'select[gpu_model0=%s]' " % config["machine"]["gpu-model"]
-            
-            if "gpus-per-task" in config["machine"]["options"]:
-                sbatch += "'rusage[ngpus_excl_p=%s]' " % config["machine"]["gpus-per-task"]
-            
+        if "cpus-per-task" in config["machine"]:
+            sbatch += "'span[ptile=%s]' " % config["machine"]["cpus-per-task"]
+        
+        
         
     expdir = join(group_root, name)
     log_dir = join(expdir, "logs")

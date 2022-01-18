@@ -15,10 +15,8 @@ def arg_parse():
     parser.add_argument(
         "--gpu",
         dest="gpu",
-        action="store_const",
-        const=True,
-        default=True,
-        help="whether to use GPU.",
+        default=False,
+        help="whether to use GPU."
     )
 
 
@@ -34,7 +32,7 @@ def arg_parse():
     parser.add_argument('--num_shapes', help='number of houses', type=int)
 
     parser.add_argument(
-        "--max-nodes",
+        "--max_nodes",
         dest="max_nodes",
         type=int,
         help="Maximum number of nodes (ignore graghs with nodes exceeding the number.",
@@ -44,12 +42,11 @@ def arg_parse():
     # training parameters
     parser.add_argument("--optimizer", type=str, default='adam')
     parser.add_argument("--lr_decay", type=float, default=0.5)
-    parser.add_argument("--weight_decay", type=float)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--bs", type=int)
 
 
-    parser.add_argument("--batch-size", dest="batch_size", type=int, help="Batch size.")
+    parser.add_argument("--batch_size", dest="batch_size", type=int, help="Batch size.")
     parser.add_argument(
         "--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train."
     )
@@ -68,19 +65,19 @@ def arg_parse():
 
     # gnn achitecture parameters
     parser.add_argument(
-        "--input-dim", dest="input_dim", type=int, help="Input feature dimension"
+        "--input_dim", dest="input_dim", type=int, help="Input feature dimension"
     )
     parser.add_argument(
-        "--hidden-dim", dest="hidden_dim", type=int, help="Hidden dimension"
+        "--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension"
     )
     parser.add_argument(
-        "--output-dim", dest="output_dim", type=int, help="Output dimension"
+        "--output_dim", dest="output_dim", type=int, help="Output dimension"
     )
     parser.add_argument(
-        "--num-classes", dest="num_classes", type=int, help="Number of label classes"
+        "--num_classes", dest="num_classes", type=int, help="Number of label classes"
     )
     parser.add_argument(
-        "--num-gc-layers",
+        "--num_gc_layers",
         dest="num_gc_layers",
         type=int,
         help="Number of graph convolution layers before each pooling",
@@ -103,7 +100,7 @@ def arg_parse():
         help="Whether to add bias. Default to True.",
     )
     parser.add_argument(
-        "--weight-decay",
+        "--weight_decay",
         dest="weight_decay",
         type=float,
         help="Weight decay regularization constant.",
@@ -113,18 +110,17 @@ def arg_parse():
         "--method", dest="method", help="Method. Possible values: base, "
     )
     parser.add_argument(
-        "--name-suffix", dest="name_suffix", help="suffix added to the output filename"
+        "--name_suffix", dest="name_suffix", help="suffix added to the output filename"
     )
 
     # explainer params
     parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int)
-    parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=6)
+    parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=-1)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
     parser.add_argument('--explainer_name', help='explainer', type=str)
 
     parser.set_defaults(
-        gpu = True,
         datadir="data",  # io_parser
         logdir="log",
         ckptdir="ckpt",
@@ -152,6 +148,6 @@ def arg_parse():
         weight_decay=0.005,
         method="base",
         name_suffix="",
-        explainer_name="subgraphx"
+        explainer_name="pagerank"
     )
     return parser.parse_args()

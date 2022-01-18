@@ -140,7 +140,7 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, args, incl
     depth_limit = args.num_gc_layers + 1
     data = Data(x=x, edge_index=edge_index)
     if target is None:
-        pred_probs = model(x, edge_index)[node_idx].detach().numpy()
+        pred_probs = model(x, edge_index)[node_idx].cpu().detach().numpy()
         pred_prob = pred_probs[target]
     else:
         pred_prob = 1
@@ -169,7 +169,7 @@ def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, args, i
     explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
     if node_idx is not None:
         edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-    edge_mask = edge_mask.detach().numpy()
+    edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
 
 def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
@@ -183,9 +183,8 @@ def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, args, i
 
 
 def explain_subgraphx(model, node_idx, x, edge_index, target, device, args, include_edges=None):
-    print('device for subgraphx', device)
-    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=args.num_gc_layers, explain_graph=False)
-    edge_mask = subgraphx.explain(x, edge_index, max_nodes=6, label=target, node_idx=node_idx)
+    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False)
+    edge_mask = subgraphx.explain(x, edge_index, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
     return edge_mask
 
 

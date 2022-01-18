@@ -32,14 +32,17 @@ def normalize_mask(x):
 # normalisation
 # sparsity
 # hard or soft
-def transform_mask(mask, sparsity=0.7, normalize=True, hard_mask=False):
-    if sparsity is not None:
-        mask = control_sparsity(mask, sparsity)
-    if normalize:
-        mask = normalize_mask(mask)
-    if hard_mask:
-        mask = np.where(mask>0, 1, 0)
-    return(mask)
+def transform_mask(masks, sparsity=0.7, normalize=True, hard_mask=False):
+    new_masks = []
+    for mask in masks:
+        if sparsity is not None:
+            mask = control_sparsity(mask, sparsity)
+        if normalize:
+            mask = normalize_mask(mask)
+        if hard_mask:
+            mask = np.where(mask>0, 1, 0)
+        new_masks.append(mask)
+    return(new_masks)
 
 def mask_to_shape(mask, edge_index, num_top_edges):
     indices = topk_edges_directed(mask, edge_index, num_top_edges)
@@ -100,16 +103,16 @@ def get_accuracy(data, edge_mask, node_idx, args):
     # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
     G_expl = get_explanation(data, edge_mask, args.num_top_edges)
     # plt.figure()
-    # nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
+    nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
     # plt.show()
     # plt.clf()
     recall, precision, f1_score, ged = get_scores(G_expl, G_true)
-    fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=2)
+    fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     return {'recall': recall, 'precision': precision, 'f1_score': f1_score, 'ged': ged, 'auc': auc}
 
 
-def eval_accuracy(data, edge_masks, list_node_idx, args):
+def eval_accuracy(data, edge_masks, list_node_idx, args, params):
     n_test = len(list_node_idx)
     scores = []
 
@@ -121,13 +124,13 @@ def eval_accuracy(data, edge_masks, list_node_idx, args):
 
     scores = list_to_dict(scores)
     accuracy_scores = {k: np.mean(v) for k, v in scores.items()}
-    return (accuracy_scores)
+    return dict(list(params.items()) + list(accuracy_scores.items()))
 
 
 ##### Fidelity #####
-def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
+def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, device, **kwargs):
     related_preds = []
-
+    data = data.to(device)
     n_test = len(list_node_idx)
 
     for i in range(n_test):
@@ -135,12 +138,10 @@ def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
-        edge_mask = transform_mask(edge_mask, sparsity=params['sparsity'],
-                                   normalize=params['normalize'], hard_mask=params['hard_mask'])
-
+        
         sub_x, sub_edge_index, mapping, hard_edge_mask, subset, _ = get_subgraph(node_idx, data.x, data.edge_index, 2)
 
-        ori_ypred = model(sub_x, sub_edge_index)
+        ori_ypred = model(sub_x.to(device), sub_edge_index.to(device))
         ori_yprob = get_proba(ori_ypred)
 
         sub_masked_x, sub_maskout_x = sub_x, sub_x
@@ -167,24 +168,24 @@ def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
             d = {v.item(): k for k, v in enumerate(masked_nodes)}
             sub_masked_edge_index = torch.LongTensor(vfunc(masked_edge_index, d))
             masked_node_idx = int(vfunc(node_idx, d))
-            sub_masked_x = torch.FloatTensor([[1]] * len(masked_nodes))
+            sub_masked_x = torch.FloatTensor([[1]] * len(masked_nodes)).to(device)
             return sub_masked_x, sub_masked_edge_index, masked_node_idx
 
         # sub_masked_x, sub_masked_edge_index, masked_node_idx = masking(indices)
         # sub_maskout_x, sub_maskout_edge_index, maskout_node_idx = masking(indices_inv)
 
-        if params['hard_mask']:
-            masked_ypred = model(sub_masked_x, sub_masked_edge_index)
+        if kwargs['hard_mask']:
+            masked_ypred = model(sub_masked_x.to(device), sub_masked_edge_index.to(device))
             masked_yprob = get_proba(masked_ypred)
 
-            maskout_ypred = model(sub_maskout_x, sub_maskout_edge_index)
+            maskout_ypred = model(sub_maskout_x.to(device), sub_maskout_edge_index.to(device))
             maskout_yprob = get_proba(maskout_ypred)
 
         else:
-            masked_ypred = model(sub_masked_x, sub_masked_edge_index, edge_weight=edge_mask[indices])
+            masked_ypred = model(sub_masked_x.to(device), sub_masked_edge_index.to(device), edge_weight=edge_mask[indices].to(device))
             masked_yprob = get_proba(masked_ypred)
 
-            maskout_ypred = model(sub_maskout_x, sub_maskout_edge_index, edge_weight=(1 - edge_mask)[indices_inv])
+            maskout_ypred = model(sub_maskout_x.to(device), sub_maskout_edge_index.to(device), edge_weight=(1 - edge_mask)[indices_inv].to(device))
             maskout_yprob = get_proba(maskout_ypred)
 
         ori_probs = ori_yprob[mapping.item()].detach().cpu().numpy()
@@ -207,9 +208,9 @@ def eval_related_pred_subgraph(model, data, edge_masks, list_node_idx, params):
     return related_preds
 
 
-def eval_related_pred(model, data, edge_masks, list_node_idx, params):
+def eval_related_pred(model, data, edge_masks, list_node_idx, device):
     related_preds = []
-
+    data = data.to(device)
     ori_ypred = model(data.x, data.edge_index)
     ori_yprob = get_proba(ori_ypred)
 
@@ -219,14 +220,12 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, params):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
-        edge_mask = transform_mask(edge_mask, sparsity=params['sparsity'],
-                                   normalize=params['normalize'], hard_mask=params['hard_mask'])
-
+        
         indices = np.where(edge_mask > 0)[0]
         indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
 
-        masked_edge_index = data.edge_index[:, indices]
-        maskout_edge_index = data.edge_index[:, indices_inv]
+        masked_edge_index = data.edge_index[:, indices].to(device)
+        maskout_edge_index = data.edge_index[:, indices_inv].to(device)
 
         masked_ypred = model(data.x, masked_edge_index)
         masked_yprob = get_proba(masked_ypred)

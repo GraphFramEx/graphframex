@@ -103,9 +103,9 @@ class GraphConv(nn.Module):
             
         if self.gpu:
             adj = adj.cuda()
+            x = x.cuda()
+            self.weight = nn.Parameter(self.weight.cuda())
             
-        print('adj.device', adj.device)
-        print('x.device', x.device)
         
         y = torch.matmul(adj, x)
         y = torch.matmul(y, self.weight)
@@ -447,9 +447,6 @@ def get_labels(ypred):
 def gnn_scores(model, data):
     ypred = model(data.x, data.edge_index)
     ylabels = get_labels(ypred).cpu()
-    
-    print('ylabels.device', ylabels.device)
-    print('data.y.device', data.y.device)
     data.y = data.y.cpu()
 
     result_train = {
