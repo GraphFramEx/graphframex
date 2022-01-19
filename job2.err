@@ -1,105 +1,0 @@
-/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/lib64/python3.7/site-packages/statsmodels/tools/_testing.py:19: FutureWarning: pandas.util.testing is deprecated. Use the functions in the public API at pandas.testing instead.
-  import pandas.util.testing as tm
-  0%|          | 0/1000 [00:00<?, ?it/s]Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]Traceback (most recent call last):
-  File "exp_synthetic/main.py", line 214, in <module>
-    main(args)
-  File "exp_synthetic/main.py", line 161, in main
-    edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
-  File "exp_synthetic/main.py", line 131, in compute_edge_masks
-    edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
-  File "/cluster/home/kamara/Explain/exp_synthetic/explainer.py", line 171, in explain_gnnexplainer
-    edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnnexplainer.py", line 86, in explain_node_with_target
-    out = self.model(h, edge_index)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 422, in forward
-    pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 408, in forward_batch
-    x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 275, in gcn_forward
-    x, adj_att = conv_first(x, adj)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 106, in forward
-    y = torch.matmul(adj, x)
-RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking arugment for argument mat2 in method wrapper_bmm)
-Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/lib64/python3.7/site-packages/statsmodels/tools/_testing.py:19: FutureWarning: pandas.util.testing is deprecated. Use the functions in the public API at pandas.testing instead.
-  import pandas.util.testing as tm
-  0%|          | 0/1000 [00:00<?, ?it/s]Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]Traceback (most recent call last):
-  File "exp_synthetic/main.py", line 214, in <module>
-    main(args)
-  File "exp_synthetic/main.py", line 161, in main
-    edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
-  File "exp_synthetic/main.py", line 131, in compute_edge_masks
-    edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
-  File "/cluster/home/kamara/Explain/exp_synthetic/explainer.py", line 171, in explain_gnnexplainer
-    edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnnexplainer.py", line 86, in explain_node_with_target
-    out = self.model(h, edge_index)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 422, in forward
-    pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 408, in forward_batch
-    x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 275, in gcn_forward
-    x, adj_att = conv_first(x, adj)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 106, in forward
-    y = torch.matmul(adj, x)
-RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking arugment for argument mat2 in method wrapper_bmm)
-Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/lib64/python3.7/site-packages/statsmodels/tools/_testing.py:19: FutureWarning: pandas.util.testing is deprecated. Use the functions in the public API at pandas.testing instead.
-  import pandas.util.testing as tm
-  0%|          | 0/1000 [00:00<?, ?it/s]Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]Traceback (most recent call last):
-  File "exp_synthetic/main.py", line 214, in <module>
-    main(args)
-  File "exp_synthetic/main.py", line 161, in main
-    edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
-  File "exp_synthetic/main.py", line 131, in compute_edge_masks
-    edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
-  File "/cluster/home/kamara/Explain/exp_synthetic/explainer.py", line 171, in explain_gnnexplainer
-    edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnnexplainer.py", line 86, in explain_node_with_target
-    out = self.model(h, edge_index)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 426, in forward
-    pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 412, in forward_batch
-    x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 279, in gcn_forward
-    x, adj_att = conv_first(x, adj)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 110, in forward
-    y = torch.matmul(adj, x)
-RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking arugment for argument mat2 in method wrapper_bmm)
-Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/lib64/python3.7/site-packages/statsmodels/tools/_testing.py:19: FutureWarning: pandas.util.testing is deprecated. Use the functions in the public API at pandas.testing instead.
-  import pandas.util.testing as tm
-  0%|          | 0/1000 [00:00<?, ?it/s]Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]Traceback (most recent call last):
-  File "exp_synthetic/main.py", line 214, in <module>
-    main(args)
-  File "exp_synthetic/main.py", line 161, in main
-    edge_masks, Time = compute_edge_masks(args.explainer_name, list_test_nodes, model, data, targets, device)
-  File "exp_synthetic/main.py", line 131, in compute_edge_masks
-    edge_mask = explain_function(model, node_idx, x, edge_index, targets[node_idx], device, args)
-  File "/cluster/home/kamara/Explain/exp_synthetic/explainer.py", line 171, in explain_gnnexplainer
-    edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnnexplainer.py", line 86, in explain_node_with_target
-    out = self.model(h, edge_index)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 426, in forward
-    pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 412, in forward_batch
-    x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 279, in gcn_forward
-    x, adj_att = conv_first(x, adj)
-  File "/cluster/home/kamara/.local/lib/python3.7/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
-    return forward_call(*input, **kwargs)
-  File "/cluster/home/kamara/Explain/exp_synthetic/gnn.py", line 110, in forward
-    y = torch.matmul(adj, x)
-RuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu! (when checking arugment for argument mat2 in method wrapper_bmm)
-Explain node 451:   0%|          | 0/1000 [00:00<?, ?it/s]
