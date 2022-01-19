@@ -9,7 +9,6 @@ from datetime import datetime
 import argparse
 import random
 import itertools
-import pandas.util.testing as tm
 
 from dataset import *
 from evaluate import *
@@ -49,16 +48,22 @@ def main(args):
         if args.num_top_edges==-1:
             if args.dataset == 'syn1':
                 args.num_top_edges = 6
+                args.num_basis = 300
             elif args.dataset == 'syn2':
                 args.num_top_edges = 6
+                args.num_basis = 0
             elif args.dataset == 'syn3':
                 args.num_top_edges = 12
+                args.num_basis = 300
             elif args.dataset == 'syn4':
                 args.num_top_edges = 6
+                args.num_basis = 511
             elif args.dataset == 'syn5':
                 args.num_top_edges = 12
+                args.num_basis = 511
             elif args.dataset == 'syn6':
                 args.num_top_edges = 5
+                args.num_basis = 300
         return args
     
     
@@ -121,6 +126,7 @@ def main(args):
     list_node_idx_house = list_node_idx[list_node_idx > args.num_basis]
     #list_test_nodes = list_node_idx_house[:args.num_test_nodes].tolist()
     list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
+    print(data.y)
     targets = data.y # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
     #list_test_nodes = range(args.num_basis,args.num_basis+args.num_test_nodes)
     
@@ -142,12 +148,12 @@ def main(args):
 
     #### Save edge_masks
     # save
-    mask_save_dir = os.path.join(res_save_dir, f'masks_{args.dataset}_{date}')
+    """mask_save_dir = os.path.join(res_save_dir, f'masks_{args.dataset}_{date}')
     check_dir(mask_save_dir)
 
     mask_filename = os.path.join(mask_save_dir, f'masks_{args.explainer_name}.pickle')
 
-    """if os.path.isfile(mask_filename):
+    if os.path.isfile(mask_filename):
         print(f"Mask for explainer {args.dataset}/{args.explainer_name} already exists. You can: ")
         print(f"- Run it anyway. Trash existing experiment folder and create a fresh one.")
         print(f"- (default) Abort. Experiment folder will be kpet untouched and new experiments will not be run.")
@@ -166,49 +172,48 @@ def main(args):
     #with open(mask_filename, 'wb') as handle:
         #pickle.dump((edge_masks, Time), handle)
 
+    # Normalize edge_masks to have value from 0 to 1 - compare edge_masks among different explainability methods
+    edge_masks = normalize_all_masks(edge_masks)
+
         
-    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "num_test_nodes": args.num_test_nodes,
+    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
     
-    ACCURACY = {}
-    FIDELITY_SCORES = {}
-    #FIDELITY_SUB_SCORES = {}
-    list_params = {"sparsity":[0, 0.7], "normalize": [True, False], "hard_mask": [True]}
-    keys, values = zip(*list_params.items())
-    permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
-    for i, params in enumerate(permutations_dicts):
+    ###### Evaluation ######
+    if args.dataset!='syn2':
+        accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top=True, num_top_edges=args.num_top_edges)
+        print("__accuracy_top:" + json.dumps(accuracy_top))
 
-        edge_masks = transform_mask(edge_masks, sparsity=params['sparsity'],
-                                   normalize=params['normalize'], hard_mask=params['hard_mask'])
-
-        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, params)
+    # Transform mask by selecting edges with values > threshold
+    edge_masks = transform_mask(edge_masks, threshold=args.threshold, sparsity=args.sparsity)
+    
+    if args.dataset!='syn2':
+        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top=False)
         print("__accuracy:" + json.dumps(accuracy))
         
-        related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, device)
-        #related_preds_sub = eval_related_pred_subgraph(model, data, edge_masks, list_test_nodes, device)
+    related_preds = eval_related_pred(model, data, edge_masks, list_test_nodes, device)
+    #related_preds_sub = eval_related_pred_subgraph(model, data, edge_masks_c, list_test_nodes, device)
 
-        labels = related_preds['true_label']
-        ori_probs = np.choose(labels, related_preds['origin'].T)
-        important_probs = np.choose(labels, related_preds['masked'].T)
-        unimportant_probs = np.choose(labels, related_preds['maskout'].T)
-        probs_summary = {'ori_probs': ori_probs.mean().item(), 'unimportant_probs': unimportant_probs.mean().item(), 'important_probs': important_probs.mean().item()}
-        print("__pred:" + json.dumps(probs_summary))
+    labels = related_preds['true_label']
+    ori_probs = np.choose(labels, related_preds['origin'].T)
+    important_probs = np.choose(labels, related_preds['masked'].T)
+    unimportant_probs = np.choose(labels, related_preds['maskout'].T)
+    probs_summary = {'ori_probs': ori_probs.mean().item(), 'unimportant_probs': unimportant_probs.mean().item(), 'important_probs': important_probs.mean().item()}
+    print("__pred:" + json.dumps(probs_summary))
 
-        fidelity = eval_fidelity(related_preds, params)
-        print("__fidelity:" + json.dumps(fidelity))
+    fidelity = eval_fidelity(related_preds)
+    fidelity['mask_sparsity'] = related_preds['mask_sparsity'].mean().item()
+    fidelity['expl_edges'] = related_preds['expl_edges'].mean().item()
+    print("__fidelity:" + json.dumps(fidelity))
 
-        #fidelity_sub = eval_fidelity(related_preds_sub, params)
-        #print("__fidelity_sub:" + json.dumps(fidelity_sub))
-
-        ACCURACY[i] = accuracy
-        FIDELITY_SCORES[i] = fidelity
-        #FIDELITY_SUB_SCORES[i] = fidelity_sub
+    #fidelity_sub = eval_fidelity(related_preds_sub, params)
+    #print("__fidelity_sub:" + json.dumps(fidelity_sub))
 
 
     # extract summary at results path and add a line in to the dict
-    stats = []
-    entry = dict(list(infos.items()) + list(ACCURACY.items()) + list(FIDELITY_SCORES.items())) # + list(FIDELITY_SUB_SCORES.items()))
+    """stats = []
+    entry = dict(list(infos.items()) + list(accuracy.items()) + list(fidelity.items())) # + list(fidelity_sub.items()))
     if not os.path.isfile(res_filename):
         stats.append(entry)
         with open(res_filename, mode='w') as f:
@@ -219,7 +224,7 @@ def main(args):
 
         feeds.append(entry)
         with open(res_filename, mode='w') as f:
-            f.write(json.dumps(feeds, indent=2))
+            f.write(json.dumps(feeds, indent=2))"""
 
 if __name__ == '__main__':
     args = arg_parse()

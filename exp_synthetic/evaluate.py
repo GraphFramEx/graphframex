@@ -1,7 +1,5 @@
 import networkx as nx
 import numpy as np
-import matplotlib
-matplotlib.use('PS')
 import matplotlib.pyplot as plt
 from synthetic_structsim import house
 from explainer import node_attr_to_edge
@@ -27,20 +25,24 @@ def topk_edges_directed(edge_mask, edge_index, num_top_edges):
 def normalize_mask(x):
     return (x - min(x)) / (max(x) - min(x))
 
+def normalize_all_masks(masks):
+    for i in range(len(masks)):
+        masks[i] = normalize_mask(masks[i])
+    return masks
 
+# Edge_masks are normalized; we then select only the edges for which the mask value > threshold
 #transform edge_mask:
 # normalisation
 # sparsity
 # hard or soft
-def transform_mask(masks, sparsity=0.7, normalize=True, hard_mask=False):
+
+def transform_mask(masks, **kwargs):
     new_masks = []
     for mask in masks:
-        if sparsity is not None:
-            mask = control_sparsity(mask, sparsity)
-        if normalize:
-            mask = normalize_mask(mask)
-        if hard_mask:
-            mask = np.where(mask>0, 1, 0)
+        if kwargs['sparsity']>=0:
+            mask = control_sparsity(mask, kwargs['sparsity'])
+        if kwargs['threshold']>=0:
+            mask = np.where(mask>kwargs['threshold'], mask, 0)
         new_masks.append(mask)
     return(new_masks)
 
@@ -64,10 +66,14 @@ def control_sparsity(mask, sparsity):
 
 
 ##### Accuracy #####
-def get_explanation(data, edge_mask, num_top_edges):
-    edge_mask = mask_to_shape(edge_mask, data.edge_index, num_top_edges)
-    indices = np.where(edge_mask>0)[0]
-    #indices = (-edge_mask).argsort()[:num_top_edges]
+def get_explanation(data, edge_mask, **kwargs): 
+    if kwargs['top']:
+        #indices = (-edge_mask).argsort()[:kwargs['num_top_edges']]
+        edge_mask = mask_to_shape(edge_mask, data.edge_index, kwargs['num_top_edges'])
+        indices = np.where(edge_mask>0)[0]
+    else:
+        indices = np.where(edge_mask>0)[0]
+    
     explanation = data.edge_index[:, indices]
     G_expl = nx.Graph()
     G_expl.add_nodes_from(np.unique(explanation.cpu()))
@@ -78,53 +84,56 @@ def get_explanation(data, edge_mask, num_top_edges):
 
 
 
-def get_scores(G1, G2):
+def get_scores(G1, G2, **kwargs):
     G1, G2 = G1.to_undirected(), G2.to_undirected()
     g_int = nx.intersection(G1, G2)
     g_int.remove_nodes_from(list(nx.isolates(g_int)))
-
+    
     n_tp = g_int.number_of_edges()
     n_fp = len(G1.edges() - g_int.edges())
     n_fn = len(G2.edges() - g_int.edges())
-
-    precision = n_tp / (n_tp + n_fp)
-    recall = n_tp / (n_tp + n_fn)
+    
     if n_tp == 0:
+        precision, recall = 0, 0
         f1_score = 0
     else:
+        precision = n_tp / (n_tp + n_fp)
+        recall = n_tp / (n_tp + n_fn)
         f1_score = 2 * (precision * recall) / (precision + recall)
-
-    ged = nx.graph_edit_distance(G1, G2)
-
+    
+    if kwargs['top']:
+        ged = nx.graph_edit_distance(G1, G2)
+    else: #Too long to compute
+        ged = -1
     return recall, precision, f1_score, ged
 
-def get_accuracy(data, edge_mask, node_idx, args):
+def get_accuracy(data, edge_mask, node_idx, args, **kwargs):
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
-    # nx.draw(G_true, cmap=plt.get_cmap('viridis'), node_color=role, with_labels=True, font_weight='bold')
-    G_expl = get_explanation(data, edge_mask, args.num_top_edges)
+    # nx.draw(G_true, with_labels=True, font_weight='bold')
+    G_expl = get_explanation(data, edge_mask, **kwargs)
     # plt.figure()
-    nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
+    # nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
     # plt.show()
     # plt.clf()
-    recall, precision, f1_score, ged = get_scores(G_expl, G_true)
+    recall, precision, f1_score, ged = get_scores(G_expl, G_true, **kwargs)
     fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     return {'recall': recall, 'precision': precision, 'f1_score': f1_score, 'ged': ged, 'auc': auc}
 
 
-def eval_accuracy(data, edge_masks, list_node_idx, args, params):
+def eval_accuracy(data, edge_masks, list_node_idx, args, **kwargs):
     n_test = len(list_node_idx)
     scores = []
 
     for i in range(n_test):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
-        entry = get_accuracy(data, edge_mask, node_idx, args)
+        entry = get_accuracy(data, edge_mask, node_idx, args, **kwargs)
         scores.append(entry)
 
     scores = list_to_dict(scores)
     accuracy_scores = {k: np.mean(v) for k, v in scores.items()}
-    return dict(list(params.items()) + list(accuracy_scores.items()))
+    return accuracy_scores
 
 
 ##### Fidelity #####
@@ -245,7 +254,8 @@ def eval_related_pred(model, data, edge_masks, list_node_idx, device):
                               'masked': masked_probs,
                               'maskout': maskout_probs,
                               'origin': ori_probs,
-                              'sparsity': mask_sparsity,
+                              'mask_sparsity': mask_sparsity,
+                              'expl_edges': (edge_mask != 0).sum(),
                               'true_label': true_label,
                               'pred_label': pred_label})
 
@@ -295,12 +305,12 @@ def fidelity_prob_inv(related_preds):
     return drop_probability.mean().item()
 
 
-def eval_fidelity(related_preds, params):
+def eval_fidelity(related_preds):
     fidelity_scores = {
         "fidelity_acc+": fidelity_acc(related_preds),
         "fidelity_acc-": fidelity_acc_inv(related_preds),
         "fidelity_prob+": fidelity_prob(related_preds),
         "fidelity_prob-": fidelity_prob_inv(related_preds),
     }
-    return dict(list(params.items()) + list(fidelity_scores.items()))
+    return fidelity_scores
 

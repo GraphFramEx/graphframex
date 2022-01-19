@@ -2,6 +2,7 @@ import numpy as np
 import os
 from synthetic_structsim import house, grid, cycle, bottle
 from explainer import node_attr_to_edge
+import networkx as nx
 
 
 # Only compares common nodes in the predicted and groundtruth graphs
@@ -48,6 +49,7 @@ def get_ground_truth(node, data, args):
         graph, role = house(gt[0], role_start=1)
     elif args.dataset == 'syn2':
         gt = get_ground_truth_syn1(node)  # correct
+        role = data.y[gt]
     elif args.dataset == 'syn3':
         gt = get_ground_truth_syn3(node)  # correct
         graph, role = grid(gt[0], dim=3, role_start=1)
@@ -61,10 +63,17 @@ def get_ground_truth(node, data, args):
         gt = get_ground_truth_syn1(node)  # correct
         graph, role = bottle(gt[0], role_start=1)
 
-    true_node_mask = np.zeros(data.edge_index.shape[1])
+    true_node_mask = np.zeros(data.x.shape[0])
     true_node_mask[gt] = 1
     true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
     true_edge_mask = np.where(true_edge_mask==2, 1, 0)
+
+    if args.dataset == 'syn2':
+        graph = nx.Graph()
+        graph.add_nodes_from(gt)
+        new_edges = np.array(data.edge_index[:, np.where(true_edge_mask>0)[0]].T)
+        graph.add_edges_from(new_edges)
+        
     return graph, role, true_edge_mask
 
 

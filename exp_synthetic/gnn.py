@@ -4,7 +4,6 @@ from torch_geometric.nn import GCNConv
 from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR, StepLR
 import sklearn.metrics as metrics
 import matplotlib
-matplotlib.use('PS')
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -106,7 +105,6 @@ class GraphConv(nn.Module):
             x = x.cuda()
             self.weight = nn.Parameter(self.weight.cuda())
             
-        
         y = torch.matmul(adj, x)
         y = torch.matmul(y, self.weight)
         if self.add_self:

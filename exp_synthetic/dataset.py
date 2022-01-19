@@ -20,10 +20,11 @@ def build_data(args):
     data.adj = torch.LongTensor(nx.to_numpy_matrix(G))
     data.num_classes = len(np.unique(labels))
     data.y = torch.LongTensor(labels)
+    data.x = data.x.float()
     n = data.num_nodes
-    data.train_mask, data.val_mask, data.test_mask = torch.zeros(n, dtype=torch.bool), \
-                                                     torch.zeros(n, dtype=torch.bool), \
-                                                     torch.zeros(n, dtype=torch.bool)
+    data.train_mask, data.val_mask, data.test_mask = torch.zeros(n, dtype=torch.long), \
+                                                     torch.zeros(n, dtype=torch.long), \
+                                                     torch.zeros(n, dtype=torch.long)
     train_ids, test_ids = train_test_split(range(n), test_size=args.test_ratio, random_state=args.seed, shuffle=True)
     train_ids, val_ids = train_test_split(train_ids, test_size=args.val_ratio, random_state=args.seed, shuffle=True)
 
