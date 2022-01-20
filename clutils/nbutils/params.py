@@ -1,4 +1,15 @@
 from collections import OrderedDict
+import json
+
+
+def get_param_ranges(jsonpath):
+    f = open(jsonpath,)
+    data = json.load(f)
+    ranges = data['params']
+    ranges['none'] = ''
+    return(ranges)  
+
+
 
 def enumerateParams(params, keys: list=None):
     """

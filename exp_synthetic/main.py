@@ -174,8 +174,8 @@ def main(args):
     edge_masks = clean_masks(edge_masks)
     # Normalize edge_masks to have value from 0 to 1 - compare edge_masks among different explainability methods
     edge_masks = normalize_all_masks(edge_masks)
-
-    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "sparsity": args.sparsity, "edge_mask size": mask_size(edge_masks), "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
+    mask_sparsity_init = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
+    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "mask_sparsity_init": mask_sparsity_init, "edge_mask_size": mask_size(edge_masks), "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
     
