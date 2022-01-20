@@ -257,8 +257,8 @@ if args.command == 'sweep':
                 if args.dest_arg:
                     if os.path.exists(join(expdir, ext)):
                         print('WARNING: %s already exists (whatever is in there will probably be overwritten by experiment)' % join(expdir, ext))
-                    else:
-                        os.makedirs(join(expdir, ext))
+                    #else:
+                        #os.makedirs(join(expdir, ext))
                     dest_name = config["meta"]["dest-name"] if "dest-name" in config["meta"] else "dest"
                     dest_name = [dest_name] if type(dest_name) is str else dest_name
                     for dname in dest_name:
@@ -299,8 +299,8 @@ if args.command == 'sweep':
             if args.dest_arg:
                 if os.path.exists(join(expdir, ext)):
                     print('WARNING: %s already exists (whatever is in there will probably be overwritten by experiment)' % join(expdir, ext))
-                else:
-                    os.makedirs(join(expdir, ext))
+                #else:
+                    #os.makedirs(join(expdir, ext))
                 dest_name = config["meta"]["dest-name"] if "dest-name" in config["meta"] else "dest"
                 dest_name = [dest_name] if type(dest_name) is str else dest_name
                 for dname in dest_name:

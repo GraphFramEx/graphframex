@@ -446,7 +446,7 @@ def gnn_scores(model, data):
     ypred = model(data.x, data.edge_index)
     ylabels = get_labels(ypred).cpu()
     data.y = data.y.cpu()
-
+    
     result_train = {
         "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
         "recall": metrics.recall_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),

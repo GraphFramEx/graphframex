@@ -102,15 +102,12 @@ def main(args):
 
     ckpt = torch.load(model_filename, map_location=device)
     model.load_state_dict(ckpt['model_state'])
+    model.eval()
     print("__gnn_train_scores: ", ckpt['results_train'])
     print("__gnn_test_scores: ", ckpt['results_test'])
     #print("__gnn_train_scores:" + json.dumps(ckpt['results_train']))
     #print("__gnn_test_scores:" + json.dumps(ckpt['results_test']))
     
-    model.eval()
-    
-
-
     ### Store results in summary.json
 
     date = datetime.now().strftime("%Y_%m_%d")
@@ -126,7 +123,6 @@ def main(args):
     list_node_idx_house = list_node_idx[list_node_idx > args.num_basis]
     #list_test_nodes = list_node_idx_house[:args.num_test_nodes].tolist()
     list_test_nodes = [x.item() for x in random.choices(list_node_idx_house, k=args.num_test_nodes)]
-    print(data.y)
     targets = data.y # here using true_labels or pred_labels is equivalent for nodes in list_test_nodes
     #list_test_nodes = range(args.num_basis,args.num_basis+args.num_test_nodes)
     
@@ -172,11 +168,14 @@ def main(args):
     #with open(mask_filename, 'wb') as handle:
         #pickle.dump((edge_masks, Time), handle)
 
+
+    ###### Mask sanity check #####
+    # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
+    edge_masks = clean_masks(edge_masks)
     # Normalize edge_masks to have value from 0 to 1 - compare edge_masks among different explainability methods
     edge_masks = normalize_all_masks(edge_masks)
 
-        
-    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
+    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "sparsity": args.sparsity, "edge_mask size": mask_size(edge_masks), "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
     

@@ -59,3 +59,5 @@ def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
     edges, _ = from_scipy_sparse_matrix(A)
     return torch.LongTensor(edges)
+
+

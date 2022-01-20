@@ -30,6 +30,17 @@ def normalize_all_masks(masks):
         masks[i] = normalize_mask(masks[i])
     return masks
 
+def clean_masks(masks):
+    for i in range(len(masks)):
+        masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
+        masks[i] = np.clip(masks[i], -10, 10)
+    return masks
+
+def mask_size(masks):
+    size = 0
+    for i in range(len(masks)):
+        size += len(masks[i][masks[i]>0])
+    return size/len(masks)
 # Edge_masks are normalized; we then select only the edges for which the mask value > threshold
 #transform edge_mask:
 # normalisation
