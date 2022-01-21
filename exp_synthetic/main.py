@@ -171,22 +171,28 @@ def main(args):
 
     ###### Mask sanity check #####
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
+    edge_masks = [edge_mask.astype('float') for edge_mask in edge_masks]
+    print('mask has nan: ', np.isnan(edge_masks).any())
     edge_masks = clean_masks(edge_masks)
+    print('max(edge_masks)', np.max(edge_masks))
+    print('min(edge_masks)', np.min(edge_masks))
+    
     # Normalize edge_masks to have value from 0 to 1 - compare edge_masks among different explainability methods
     edge_masks = normalize_all_masks(edge_masks)
-    mask_sparsity_init = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
-    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "mask_sparsity_init": mask_sparsity_init, "edge_mask_size": mask_size(edge_masks), "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
+    
+    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "number_of_edges": data.edge_index.size(1), "mask_sparsity_init": get_sparsity(edge_masks), "non_zero_values_init": get_size(edge_masks), 
+            "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
              "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
     print("__infos:" + json.dumps(infos))
     
     ###### Evaluation ######
-    if args.dataset!='syn2':
+    """if args.dataset!='syn2':
         accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top=True, num_top_edges=args.num_top_edges)
         print("__accuracy_top:" + json.dumps(accuracy_top))
-
-    # Transform mask by selecting edges with values > threshold
-    edge_masks = transform_mask(edge_masks, threshold=args.threshold, sparsity=args.sparsity)
-    
+"""
+    # Transform mask by selecting edges according to the strategy {threshold, sparsity, topk}
+    edge_masks = transform_mask(edge_masks, args)
+    print('transformation done')
     if args.dataset!='syn2':
         accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top=False)
         print("__accuracy:" + json.dumps(accuracy))

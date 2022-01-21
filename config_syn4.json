@@ -9,7 +9,7 @@
   },
   "meta": {
     "group": "checkpoints",
-    "name": "syn4_gpu1",
+    "name": "syn4",
     "dest-arg": "yes",
     "dest-name": "dest"
   },

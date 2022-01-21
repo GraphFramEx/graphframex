@@ -166,6 +166,8 @@ if args.command == 'sweep':
     
     
     if "machine" in config:
+        if "time" in config["machine"]:
+            sbatch += "-W %s " % config["machine"]["time"] #In minutes
         #Task is a node
         if "cpus" in config["machine"]:
             sbatch += "-n %s " % config["machine"]["cpus"]

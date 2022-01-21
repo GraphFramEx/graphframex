@@ -117,6 +117,7 @@ def arg_parse():
     parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int)
     parser.add_argument('--threshold', help='threshold to select edges in mask', type=float, default=-1)
     parser.add_argument('--sparsity', help='ratio of edges to remove from mask', type=float, default=-1)
+    parser.add_argument('--topk', help='num top k edges to keep in mask', type=int, default=-1)
     parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=-1)
     parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
                         default='True')
@@ -130,7 +131,6 @@ def arg_parse():
         num_basis=300,
         num_shapes=150,
         num_test_nodes=100,
-        sparsity=0.7,
         opt="adam",  # opt_parser
         opt_scheduler="none",
         max_nodes=100,

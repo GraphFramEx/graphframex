@@ -22,8 +22,10 @@ def topk_edges_directed(edge_mask, edge_index, num_top_edges):
         i+=1
     return top[:num_top_edges]
 
+    
+
 def normalize_mask(x):
-    return (x - min(x)) / (max(x) - min(x))
+    return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
 
 def normalize_all_masks(masks):
     for i in range(len(masks)):
@@ -36,7 +38,14 @@ def clean_masks(masks):
         masks[i] = np.clip(masks[i], -10, 10)
     return masks
 
-def mask_size(masks):
+
+def get_sparsity(masks):
+    sparsity = 0
+    for i in range(len(masks)):
+        sparsity += 1.0 - (masks[i]!= 0).sum() / len(masks[i])
+    return sparsity/len(masks)
+
+def get_size(masks):
     size = 0
     for i in range(len(masks)):
         size += len(masks[i][masks[i]>0])
@@ -47,13 +56,16 @@ def mask_size(masks):
 # sparsity
 # hard or soft
 
-def transform_mask(masks, **kwargs):
+def transform_mask(masks, args):
     new_masks = []
     for mask in masks:
-        if kwargs['sparsity']>=0:
-            mask = control_sparsity(mask, kwargs['sparsity'])
-        if kwargs['threshold']>=0:
-            mask = np.where(mask>kwargs['threshold'], mask, 0)
+        if args.topk >= 0:
+            unimportant_indices = (-mask).argsort()[args.topk:]
+            mask[unimportant_indices] = 0
+        if args.sparsity>=0:
+            mask = control_sparsity(mask, args.sparsity)
+        if args.threshold>=0:
+            mask = np.where(mask>args.threshold, mask, 0)
         new_masks.append(mask)
     return(new_masks)
 
