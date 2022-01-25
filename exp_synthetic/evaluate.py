@@ -125,7 +125,7 @@ def get_scores(G1, G2, **kwargs):
         f1_score = 2 * (precision * recall) / (precision + recall)
     
     if kwargs['top']:
-        ged = nx.graph_edit_distance(G1, G2)
+        ged = -1 #nx.graph_edit_distance(G1, G2)
     else: #Too long to compute
         ged = -1
     return recall, precision, f1_score, ged
@@ -139,8 +139,9 @@ def get_accuracy(data, edge_mask, node_idx, args, **kwargs):
     # plt.show()
     # plt.clf()
     recall, precision, f1_score, ged = get_scores(G_expl, G_true, **kwargs)
-    fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
-    auc = metrics.auc(fpr, tpr)
+    #fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
+    #auc = metrics.auc(fpr, tpr)
+    auc = -1
     return {'recall': recall, 'precision': precision, 'f1_score': f1_score, 'ged': ged, 'auc': auc}
 
 

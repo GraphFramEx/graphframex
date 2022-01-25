@@ -4,7 +4,7 @@
   "ckpt_root": ".",
   "version": "1.0.0",
   "machine":{
-    "gpus-per-task":2,
+    "gpus-per-task":1,
     "mem": 5000
   },
   "meta": {
@@ -29,6 +29,6 @@
       "gnnexplainer",
       "pgmexplainer",
       "subgraphx"
-    ]
+  ]
   }
 }

@@ -186,10 +186,10 @@ def main(args):
     print("__infos:" + json.dumps(infos))
     
     ###### Evaluation ######
-    """if args.dataset!='syn2':
+    if args.dataset!='syn2':
         accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top=True, num_top_edges=args.num_top_edges)
         print("__accuracy_top:" + json.dumps(accuracy_top))
-"""
+
     # Transform mask by selecting edges according to the strategy {threshold, sparsity, topk}
     edge_masks = transform_mask(edge_masks, args)
     print('transformation done')
