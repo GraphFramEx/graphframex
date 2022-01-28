@@ -1,123 +1,3 @@
-import torch
-import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
-from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR, StepLR
-import sklearn.metrics as metrics
-import matplotlib
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-
-from gen_utils import from_edge_index_to_adj, from_adj_to_edge_index
-
-#### GNN Model #####
-class GCN(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes, num_layers, hidden_dim):
-        super().__init__()
-        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim = num_node_features, num_classes, num_layers, hidden_dim
-        self.layers = torch.nn.ModuleList()
-        current_dim = self.num_node_features
-        for l in range(self.num_layers - 1):
-            self.layers.append(GCNConv(current_dim, hidden_dim))
-            current_dim = hidden_dim
-        self.layers.append(GCNConv(current_dim, self.num_classes))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        for layer in self.layers[:-1]:
-            x = layer(x, edge_index, edge_weight)
-            x = F.relu(x)
-            x = F.dropout(x, training=self.training)
-        x = self.layers[-1](x, edge_index, edge_weight)
-        return F.log_softmax(x, dim=1)
-
-
-import torch
-import torch.nn as nn
-from torch.nn import init
-import torch.nn.functional as F
-
-
-# GCN basic operation
-class GraphConv(nn.Module):
-    def __init__(
-            self,
-            input_dim,
-            output_dim,
-            add_self=False,
-            normalize_embedding=False,
-            dropout=0.0,
-            bias=True,
-            gpu=True,
-            att=False,
-    ):
-        super(GraphConv, self).__init__()
-        self.gpu = gpu
-        self.att = att
-        self.add_self = add_self
-        self.dropout = dropout
-        if dropout > 0.001:
-            self.dropout_layer = nn.Dropout(p=dropout)
-        self.normalize_embedding = normalize_embedding
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        if not gpu:
-            self.weight = nn.Parameter(torch.FloatTensor(input_dim, output_dim))
-            if add_self:
-                self.self_weight = nn.Parameter(
-                    torch.FloatTensor(input_dim, output_dim)
-                )
-            if att:
-                self.att_weight = nn.Parameter(torch.FloatTensor(input_dim, input_dim))
-        else:
-            self.weight = nn.Parameter(torch.FloatTensor(input_dim, output_dim).cuda())
-            if add_self:
-                self.self_weight = nn.Parameter(
-                    torch.FloatTensor(input_dim, output_dim).cuda()
-                )
-            if att:
-                self.att_weight = nn.Parameter(
-                    torch.FloatTensor(input_dim, input_dim).cuda()
-                )
-        if bias:
-            if not gpu:
-                self.bias = nn.Parameter(torch.FloatTensor(output_dim))
-            else:
-                self.bias = nn.Parameter(torch.FloatTensor(output_dim).cuda())
-        else:
-            self.bias = None
-
-        # self.softmax = nn.Softmax(dim=-1)
-
-    def forward(self, x, adj):
-        if self.dropout > 0.001:
-            x = self.dropout_layer(x)
-        # deg = torch.sum(adj, -1, keepdim=True)
-        if self.att:
-            x_att = torch.matmul(x, self.att_weight)
-            # import pdb
-            # pdb.set_trace()
-            att = x_att @ x_att.permute(0, 2, 1)
-            # att = self.softmax(att)
-            adj = adj * att
-            
-        if self.gpu:
-            adj = adj.cuda()
-            x = x.cuda()
-            self.weight = nn.Parameter(self.weight.cuda())
-            
-        y = torch.matmul(adj, x)
-        y = torch.matmul(y, self.weight)
-        if self.add_self:
-            self_emb = torch.matmul(x, self.self_weight)
-            y += self_emb
-        if self.bias is not None:
-            y = y + self.bias
-        # if self.normalize_embedding:
-        # y = F.normalize(y, p=2, dim=2)
-        # print(y[0][0])
-        return y, adj
-
-
 class GcnEncoderGraph(nn.Module):
     def __init__(
             self,
@@ -255,7 +135,11 @@ class GcnEncoderGraph(nn.Module):
         out_tensor = torch.zeros(batch_size, max_nodes)
         for i, mask in enumerate(packed_masks):
             out_tensor[i, : batch_num_nodes[i]] = mask
-        return out_tensor.unsqueeze(2).cuda()
+        if self.gpu:
+            out = out_tensor.unsqueeze(2).cuda()
+        else:
+            out = out_tensor.unsqueeze(2)
+        return out
 
     def apply_bn(self, x):
         """ Batch normalization of 3D tensor x
@@ -303,7 +187,7 @@ class GcnEncoderGraph(nn.Module):
         adj_att_tensor = torch.stack(adj_att_all, dim=3)
         return x_tensor, adj_att_tensor
 
-    def forward(self, x, adj, batch_num_nodes=None, **kwargs):
+    def forward_batch(self, x, adj, batch_num_nodes=None, **kwargs):
         # mask
         max_num_nodes = adj.size()[1]
         if batch_num_nodes is not None:
@@ -351,6 +235,22 @@ class GcnEncoderGraph(nn.Module):
         ypred = self.pred_model(output)
         # print(output.size())
         return ypred, adj_att_tensor
+    
+    def forward(self, x, edge_index, batch_num_nodes=None, **kwargs):
+        # Encoder Node receives no batch - only one graph
+        if x.ndim<3:
+            x = x.expand(1,-1,-1)
+            edge_index = edge_index.expand(1,-1,-1)
+        adj=[]
+        for i in range(len(x)):
+            max_n = torch.Tensor(x[i]).size(0)
+            adj.append(from_edge_index_to_adj(edge_index[i], max_n))
+        adj = torch.stack(adj)
+        
+        if self.gpu:
+            adj = adj.cuda()
+        pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
+        return pred
 
     def loss(self, pred, label, type="softmax"):
         # softmax + CE
