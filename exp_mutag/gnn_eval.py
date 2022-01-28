@@ -2,6 +2,10 @@ from sklearn import metrics
 
 import torch
 from scipy.special import softmax
+from torch.autograd import Variable
+from gen_utils import check_dir, get_subgraph, from_edge_index_to_adj, from_adj_to_edge_index
+
+import numpy as np
 
 def gnn_scores(dataset, model, args, name="Validation", max_num_examples=None):
     model.eval()

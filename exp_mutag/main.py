@@ -10,8 +10,28 @@ from torch_geometric.data import download_url
 from gen_utils import check_dir
 from dataset import extract_zip, extract_gz, process_mutag, collate_data
 import math_utils
-from train_gnn import train
+
+
+import json
+import pickle
+import time
+from datetime import datetime
+import argparse
+import random
+import itertools
+
+from dataset import *
 from evaluate import *
+from explainer import *
+from gnn_model import *
+from gnn_train import *
+from gnn_eval import *
+from data_sampler import *
+
+import random
+
+from gen_utils import check_dir, get_subgraph
+from parser_utils import arg_parse
 
 
 
@@ -52,16 +72,15 @@ def main(args):
     
     check_dir(os.path.join(args.model_save_dir, args.dataset))
     model_filename = os.path.join(args.model_save_dir, args.dataset) + f"/gcn_{args.num_gc_layers}.pth.tar"
-
-
-    data_name = 'mutag'
-    data_save_dir = os.path.join('data', data_name)
+    
+    data_save_dir = os.path.join('data', args.dataset)
 
     check_dir(data_save_dir)
     raw_data_dir = os.path.join(data_save_dir, 'raw_data')
     # Save data_list
-    data_filename = os.path.join(data_save_dir, data_name) + '.pt'
-
+    data_filename = os.path.join(data_save_dir, args.dataset) + '.pt'
+    print(model_filename)
+    print(data_filename)
     #download MUTAG from url and put it in raw_dir
     url = 'https://github.com/divelab/DIG_storage/raw/main/xgraph/datasets/MUTAG.zip'
 
@@ -79,31 +98,32 @@ def main(args):
     graphs = data_process(data_list)
     train_dataset, val_dataset, test_dataset, max_num_nodes, feat_dim, assign_feat_dim = prepare_data(graphs, args)
 
+
     if os.path.isfile(model_filename):
-        model = GcnEncoderGraph((args.input_dim,
+        model = GcnEncoderGraph(args.input_dim,
                                 args.hidden_dim,
                                 args.output_dim,
                                 args.num_classes,
                                 args.num_gc_layers, args=args)
     else:
-        model = GcnEncoderGraph((args.input_dim,
+        model = GcnEncoderGraph(args.input_dim,
                                 args.hidden_dim,
                                 args.output_dim,
                                 args.num_classes,
                                 args.num_gc_layers, args=args)
-            train(model, train_dataset, val_dataset, test_dataset, device, args)
-            model.eval()
-            results_train = evaluate(train_dataset, model, args, name="Train", max_num_examples=100)
-            results_test = evaluate(test_dataset, model, args, name="Test", max_num_examples=100)
-            torch.save(
-                        {
-                            "model_type": 'gcn',
-                            "results_train": results_train,
-                            "results_test": results_test,
-                            "model_state": model.state_dict()
-                        },
-                        str(model_filename),
-                    )
+        train(model, train_dataset, val_dataset, test_dataset, device, args)
+        model.eval()
+        results_train = evaluate(train_dataset, model, args, name="Train", max_num_examples=100)
+        results_test = evaluate(test_dataset, model, args, name="Test", max_num_examples=100)
+        torch.save(
+                    {
+                        "model_type": 'gcn',
+                        "results_train": results_train,
+                        "results_test": results_test,
+                        "model_state": model.state_dict()
+                    },
+                    str(model_filename),
+                )
 
     ckpt = torch.load(model_filename, map_location=device)
     model.load_state_dict(ckpt['model_state'])

@@ -4,9 +4,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
-from subgraphx import SubgraphX
 from gnnexplainer import TargetedGNNExplainer
-from pgmexplainer import Node_Explainer
 
 from captum._utils.common import (
     _format_additional_forward_args,

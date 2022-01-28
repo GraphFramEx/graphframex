@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+import torch
+import torch.nn as nn
+from torch.nn import init
+import torch.nn.functional as F
+
 from gen_utils import from_edge_index_to_adj, from_adj_to_edge_index
 
 #### GNN Model #####
@@ -30,11 +35,6 @@ class GCN(torch.nn.Module):
         x = self.layers[-1](x, edge_index, edge_weight)
         return F.log_softmax(x, dim=1)
 
-
-import torch
-import torch.nn as nn
-from torch.nn import init
-import torch.nn.functional as F
 
 
 # GCN basic operation

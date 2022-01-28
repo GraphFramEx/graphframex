@@ -1,5 +1,28 @@
 
 from sklearn import metrics
+import time
+from torch.autograd import Variable
+from gen_utils import check_dir, get_subgraph, from_edge_index_to_adj, from_adj_to_edge_index
+import math_utils
+
+import torch
+import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
+from torch.optim.lr_scheduler import ReduceLROnPlateau, ExponentialLR, StepLR
+import sklearn.metrics as metrics
+import matplotlib
+import matplotlib.pyplot as plt
+import os
+import numpy as np
+
+import torch
+import torch.nn as nn
+from torch.nn import init
+import torch.nn.functional as F
+
+from gen_utils import from_edge_index_to_adj, from_adj_to_edge_index
+from evaluate import *
+from gnn_eval import *
 
 def train(model, train_dataset, val_dataset, test_dataset, 
     device,
@@ -87,18 +110,18 @@ def train(model, train_dataset, val_dataset, test_dataset,
         elapsed = time.time() - begin_time
         print("Avg loss: ", avg_loss, "; epoch time: ", elapsed)
         
-        result = evaluate(train_dataset, model, args, name="Train", max_num_examples=100)
+        result = gnn_scores(train_dataset, model, args, name="Train", max_num_examples=100)
         train_accs.append(result["acc"])
         train_epochs.append(epoch)
         if val_dataset is not None:
-            val_result = evaluate(val_dataset, model, args, name="Validation")
+            val_result = gnn_scores(val_dataset, model, args, name="Validation")
             val_accs.append(val_result["acc"])
         if val_result["acc"] > best_val_result["acc"] - 1e-7:
             best_val_result["acc"] = val_result["acc"]
             best_val_result["epoch"] = epoch
             best_val_result["loss"] = avg_loss
         if test_dataset is not None:
-            test_result = evaluate(test_dataset, model, args, name="Test")
+            test_result = gnn_scores(test_dataset, model, args, name="Test")
             test_result["epoch"] = epoch
         print("Best val result: ", best_val_result)
         best_val_epochs.append(best_val_result["epoch"])
