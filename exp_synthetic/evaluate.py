@@ -6,8 +6,8 @@ from explainer import node_attr_to_edge
 from gengroundtruth import get_ground_truth
 from sklearn import metrics
 import torch
-from gen_utils import list_to_dict, get_subgraph
-from gnn import get_proba
+from code.utils.gen_utils import list_to_dict, get_subgraph
+from gnn_eval import get_proba
 
 def topk_edges_directed(edge_mask, edge_index, num_top_edges):
     indices = (-edge_mask).argsort()

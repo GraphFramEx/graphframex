@@ -14,7 +14,7 @@ from dataset import *
 from evaluate import *
 from explainer import *
 from gnn import GcnEncoderNode, train, gnn_scores, get_labels
-from gen_utils import check_dir, get_subgraph
+from code.utils.gen_utils import check_dir, get_subgraph
 from parser_utils import arg_parse
 
 

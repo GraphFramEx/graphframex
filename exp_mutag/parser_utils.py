@@ -22,7 +22,7 @@ def arg_parse():
 
     # saving data
     parser.add_argument('--data_save_dir', help="Directory where benchmark is located", type=str, default='data')
-    parser.add_argument('--dataset', type=str, default='mutag')
+    parser.add_argument('--dataset', type=str)
 
     # saving model
     parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
@@ -74,6 +74,7 @@ def arg_parse():
         dest="num_workers",
         type=int,
         help="Number of workers to load data.",
+        default=1
     )
     parser.add_argument(
         "--feature_type",
@@ -131,7 +132,8 @@ def arg_parse():
     )
 
     # explainer params
-    parser.add_argument('--num_test_nodes', help='number of testing nodes', type=int)
+    parser.add_argument('--explain_graph', help='graph classification or node classification', type=bool, default=True)
+    parser.add_argument('--num_test', help='number of testing entities (graphs or nodes)', type=int)
     parser.add_argument('--threshold', help='threshold to select edges in mask', type=float, default=-1)
     parser.add_argument('--sparsity', help='ratio of edges to remove from mask', type=float, default=-1)
     parser.add_argument('--topk', help='num top k edges to keep in mask', type=int, default=-1)
@@ -147,7 +149,7 @@ def arg_parse():
         dataset="mutag",
         num_basis=300,
         num_shapes=150,
-        num_test_nodes=100,
+        num_test=100,
         opt="adam",  # opt_parser
         opt_scheduler="none",
         max_nodes=100,
@@ -169,7 +171,6 @@ def arg_parse():
         weight_decay=0.005,
         method="base",
         name_suffix="",
-        explainer_name="pagerank",
-        num_workers=1
+        explainer_name="gnnexplainer"
     )
     return parser.parse_args()

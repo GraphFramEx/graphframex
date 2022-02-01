@@ -1,3 +1,9 @@
+import torch
+import numpy as np
+from torch.autograd import Variable
+from code.utils.gen_utils import from_adj_to_edge_index
+
+
 def get_edge_index_set(dataset):
     edge_index_set = []
     for batch_idx, data in enumerate(dataset):
@@ -9,7 +15,7 @@ def get_edge_index_set(dataset):
     return edge_index_set
 
 
-def compute_masked_edges(edge_masks_set, edge_index_set):
+def compute_masked_edges(edge_masks_set, edge_index_set, device):
     
     masked_edge_index_set = []
     maskout_edge_index_set = []

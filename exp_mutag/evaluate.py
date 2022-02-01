@@ -1,95 +1,94 @@
-from sklearn import metrics
-
-
-def gnn_scores(dataset, model, args, name="Validation", max_num_examples=None):
-    model.eval()
-
-    labels = []
-    preds = []
-    for batch_idx, data in enumerate(dataset):
-        if args.gpu:
-            adj = Variable(data["adj"].float(), requires_grad=False).cuda()
-            h0 = Variable(data["feats"].float()).cuda()
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(
-                data["assign_feats"].float(), requires_grad=False
-            ).cuda()
-        else:
-            adj = Variable(data["adj"].float(), requires_grad=False)
-            h0 = Variable(data["feats"].float())
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(
-                data["assign_feats"].float(), requires_grad=False
-            )
-            
-        edge_index = []
-        for a in adj:
-            edge_index.append(from_adj_to_edge_index(a))
-
-        ypred = model(h0, edge_index, batch_num_nodes, assign_x=assign_input)
-        _, indices = torch.max(ypred, 1)
-        preds.append(indices.cpu().data.numpy())
-
-        if max_num_examples is not None:
-            if (batch_idx + 1) * args.batch_size > max_num_examples:
-                break
-
-    labels = np.hstack(labels)
-    preds = np.hstack(preds)
-
-    result = {
-        "prec": metrics.precision_score(labels, preds, average="macro"),
-        "recall": metrics.recall_score(labels, preds, average="macro"),
-        "acc": metrics.accuracy_score(labels, preds),
-    }
-    print(name, " accuracy:", result["acc"])
-    return result
-
-
+import numpy as np
 import torch
-from torch.nn import Softmax
 from scipy.special import softmax
+
+from gnn_eval import get_proba
+from graph_utils import compute_masked_edges
+
+
+def topk_edges_directed(edge_mask, edge_index, num_top_edges):
+    indices = (-edge_mask).argsort()
+    top = np.array([], dtype='int')
+    i = 0
+    list_edges = np.sort(edge_index.cpu().T, axis=1)
+    while len(top)<num_top_edges:
+        subset = indices[num_top_edges*i:num_top_edges*(i+1)]
+        topk_edges = list_edges[subset]
+        u, idx = np.unique(topk_edges, return_index=True, axis=0)
+        top = np.concatenate([top, subset[idx]])
+        i+=1
+    return top[:num_top_edges]
+
+    
+
+def normalize_mask(x):
+    return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
+
+def normalize_all_masks(masks):
+    for i in range(len(masks)):
+        masks[i] = normalize_mask(masks[i])
+    return masks
+
+def clean_masks(masks):
+    for i in range(len(masks)):
+        masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
+        masks[i] = np.clip(masks[i], -10, 10)
+    return masks
+
+
+def get_sparsity(masks):
+    sparsity = 0
+    for i in range(len(masks)):
+        sparsity += 1.0 - (masks[i]!= 0).sum() / len(masks[i])
+    return sparsity/len(masks)
+
+def get_size(masks):
+    size = 0
+    for i in range(len(masks)):
+        size += len(masks[i][masks[i]>0])
+    return size/len(masks)
+# Edge_masks are normalized; we then select only the edges for which the mask value > threshold
+#transform edge_mask:
+# normalisation
+# sparsity
+# hard or soft
+
+def transform_mask(masks, args):
+    new_masks = []
+    for mask in masks:
+        if args.topk >= 0:
+            unimportant_indices = (-mask).argsort()[args.topk:]
+            mask[unimportant_indices] = 0
+        if args.sparsity>=0:
+            mask = control_sparsity(mask, args.sparsity)
+        if args.threshold>=0:
+            mask = np.where(mask>args.threshold, mask, 0)
+        new_masks.append(mask)
+    return(new_masks)
+
+def mask_to_shape(mask, edge_index, num_top_edges):
+    indices = topk_edges_directed(mask, edge_index, num_top_edges)
+    new_mask = np.zeros(len(mask))
+    new_mask[indices] = 1
+    return new_mask
+
+def control_sparsity(mask, sparsity):
+    r"""
+        :param edge_mask: mask that need to transform
+        :param sparsity: sparsity we need to control i.e. 0.7, 0.5
+        :return: transformed mask where top 1 - sparsity values are set to inf.
+    """
+    mask_len = len(mask)
+    split_point = int((1 - sparsity) * mask_len)
+    unimportant_indices = (-mask).argsort()[split_point:]
+    mask[unimportant_indices] = 0
+    return mask
+
+
+
+
 ##### Fidelity #####
 
-def gnn_preds(model, dataset, edge_index_set, max_num_examples=None):
-    model.eval()
-    labels = []
-    pred_labels = []
-    ypreds = []
-    for batch_idx, data in enumerate(dataset):
-        if args.gpu:
-            adj = Variable(data["adj"].float(), requires_grad=False).cuda()
-            h0 = Variable(data["feats"].float()).cuda()
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(
-                data["assign_feats"].float(), requires_grad=False
-            ).cuda()
-        else:
-            adj = Variable(data["adj"].float(), requires_grad=False)
-            h0 = Variable(data["feats"].float())
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(
-                data["assign_feats"].float(), requires_grad=False
-            )
-        
-        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
-        _, indices = torch.max(ypred, 1)
-        pred_labels.append(indices.cpu().data.numpy())
-        ypreds.append(ypred.cpu().data.numpy())
-
-        
-        if max_num_examples is not None:
-            if (batch_idx + 1) * args.batch_size > max_num_examples:
-                break
-
-    labels = np.hstack(labels)
-    pred_labels = np.hstack(pred_labels)
-    ypreds = np.concatenate(ypreds)
-    return(ypreds)
     
 def get_true_labels(dataset):
     labels = []
@@ -112,7 +111,7 @@ def list_to_dict(preds):
         preds_dict[key] = preds_dict[key][0]
     return(preds_dict)
 
-def eval_related_pred_batch(model, dataset, edge_index_set, edge_masks_set, device):
+def eval_related_pred_batch(model, dataset, edge_index_set, edge_masks_set, device, args):
     n_graphs = len(np.hstack(edge_masks_set))
     n_bs = len(edge_masks_set)
     
@@ -126,15 +125,15 @@ def eval_related_pred_batch(model, dataset, edge_index_set, edge_masks_set, devi
     
     #related_preds = []
     
-    ori_ypred = eval_gnn(model, dataset, edge_index_set)
+    ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args)
     ori_yprob = get_proba(ori_ypred)
 
-    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(edge_masks_set, edge_index_set)
+    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(edge_masks_set, edge_index_set, device)
 
-    masked_ypred = eval_gnn(model, dataset, masked_edge_index_set)
+    masked_ypred = gnn_preds_gc(model, dataset, masked_edge_index_set, args)
     masked_yprob = get_proba(masked_ypred)
 
-    maskout_ypred = eval_gnn(model, dataset, maskout_edge_index_set)
+    maskout_ypred = gnn_preds_gc(model, dataset, maskout_edge_index_set, args)
     maskout_yprob = get_proba(maskout_ypred)
 
     #true_label = [data["label"].long().numpy() for batch_idx, data in enumerate(dataset)]

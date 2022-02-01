@@ -1,16 +1,19 @@
 import networkx as nx
 import numpy as np
-import math
-
 import torch
-from torch_geometric.utils import from_networkx
 from sklearn.model_selection import train_test_split
+from torch_geometric.utils import from_networkx
 
 from gengraph import *
 from parser_utils import arg_parse
 
 
-def build_data(args):
+def build_syndata(args):
+    """Generate synthetic graohs and convert them into Pytorch geometric Data object.
+    
+    Returns:
+        Data: converted synthetic graph
+    """    
     generate_function = "gen_" + args.dataset
 
     G, labels, name = eval(generate_function)(

@@ -238,14 +238,15 @@ def prepare_data(graphs, args, test_graphs=None, max_nodes=0):
         dataset_sampler.assign_feat_dim,
     )
 
-def gen_dataloader(graphs, max_nodes=0):
+def gen_dataloader(graphs, args, max_nodes=0):
+    idx = np.random.randint(0, len(graphs), args.num_test_graphs)
     dataset_sampler = GraphSampler(
-        graphs,
+        np.array(graphs)[idx],
         normalize=False,
         max_num_nodes=max_nodes,
         features=args.feature_type,
     )
-    train_dataset_loader = torch.utils.data.DataLoader(
+    dataset_loader = torch.utils.data.DataLoader(
         dataset_sampler,
         batch_size=args.batch_size,
         shuffle=False,

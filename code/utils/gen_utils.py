@@ -8,12 +8,6 @@ from torch_geometric.utils import from_scipy_sparse_matrix, to_scipy_sparse_matr
 from scipy.sparse import csr_matrix
 
 
-def check_dir(save_dirs):
-    if save_dirs:
-        if os.path.isdir(save_dirs):
-            pass
-        else:
-            os.makedirs(save_dirs)
 
 def list_to_dict(preds):
     preds_dict = pd.DataFrame(preds).to_dict('list')

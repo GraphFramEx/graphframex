@@ -7,9 +7,10 @@ import torch
 from torch_geometric.data import download_url
 
 
-from gen_utils import check_dir
+from code.utils.gen_utils import check_dir
 from dataset import extract_zip, extract_gz, process_mutag, collate_data
 import math_utils
+from torch.autograd import Variable
 
 
 import json
@@ -30,8 +31,9 @@ from data_sampler import *
 
 import random
 
-from gen_utils import check_dir, get_subgraph
+from code.utils.gen_utils import check_dir, get_subgraph
 from parser_utils import arg_parse
+from graph_utils import compute_masked_edges, get_edge_index_set
 
 
 
@@ -66,6 +68,8 @@ def compute_edge_masks(explainer_name, dataset, model, device):
 
 def main(args):
 
+    random.seed(args.seed)
+
     ### Init GNN model and train on data + save model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.gpu = True if torch.cuda.is_available() else False
@@ -79,8 +83,6 @@ def main(args):
     raw_data_dir = os.path.join(data_save_dir, 'raw_data')
     # Save data_list
     data_filename = os.path.join(data_save_dir, args.dataset) + '.pt'
-    print(model_filename)
-    print(data_filename)
     #download MUTAG from url and put it in raw_dir
     url = 'https://github.com/divelab/DIG_storage/raw/main/xgraph/datasets/MUTAG.zip'
 
@@ -113,8 +115,8 @@ def main(args):
                                 args.num_gc_layers, args=args)
         train(model, train_dataset, val_dataset, test_dataset, device, args)
         model.eval()
-        results_train = evaluate(train_dataset, model, args, name="Train", max_num_examples=100)
-        results_test = evaluate(test_dataset, model, args, name="Test", max_num_examples=100)
+        results_train = gnn_scores(train_dataset, model, args, name="Train", max_num_examples=100)
+        results_test = gnn_scores(test_dataset, model, args, name="Test", max_num_examples=100)
         torch.save(
                     {
                         "model_type": 'gcn',
@@ -131,17 +133,18 @@ def main(args):
     print("__gnn_train_scores: ", ckpt['results_train'])
     print("__gnn_test_scores: ", ckpt['results_test'])
 
-    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "number_of_edges": data.edge_index.size(1), "mask_sparsity_init": get_sparsity(edge_masks), "non_zero_values_init": get_size(edge_masks), 
-            "threshold": args.threshold, "num_test_nodes": args.num_test_nodes,
-             "groundtruth target": is_true_label, "time": float(format(np.mean(Time), '.4f'))}
-    print("__infos:" + json.dumps(infos))
     
-    new_dataset = gen_dataloader(graphs)
+    new_dataset = gen_dataloader(graphs, args)
 
-    edge_masks_set = compute_edge_masks(args.explainer_name, new_dataset, model, device)
+    edge_masks_set, Time = compute_edge_masks(args.explainer_name, new_dataset, model, device)
     edge_index_set = get_edge_index_set(new_dataset)
 
-    related_preds = eval_related_pred_batch(model, new_dataset, edge_index_set, edge_masks_set, device)
+    infos = {"dataset": args.dataset, "explainer": args.explainer_name, "mask_sparsity_init": get_sparsity(np.hstack(edge_masks_set)), "non_zero_values_init": get_size(np.hstack(edge_masks_set)), 
+            "threshold": args.threshold, "num_test_graphs": args.num_test_graphs,
+             "groundtruth target": eval(args.true_label), "time": float(format(np.mean(Time), '.4f'))}
+    print("__infos:" + json.dumps(infos))
+
+    related_preds = eval_related_pred_batch(model, new_dataset, edge_index_set, edge_masks_set, device, args)
 
     fidelity = eval_fidelity(related_preds)
     fidelity['mask_sparsity'] = related_preds['mask_sparsity'].mean().item()

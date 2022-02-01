@@ -1,5 +1,10 @@
 ####### Evaluate GNN #######
 
+import sklearn.metrics as metrics
+import torch
+import torch.nn as nn
+
+
 def get_proba(ypred):
     m = nn.Softmax(dim=1)
     yprob = m(ypred)
@@ -10,7 +15,7 @@ def get_labels(ypred):
     return ylabels
 
 
-def gnn_scores(model, data):
+def gnn_scores_nc(model, data):
     ypred = model(data.x, data.edge_index)
     ylabels = get_labels(ypred).cpu()
     data.y = data.y.cpu()
