@@ -7,15 +7,7 @@ import pandas as pd
 
 
 class Node_Explainer:
-    def __init__(
-            self,
-            model,
-            edge_index,
-            X,
-            num_layers,
-            mode=0,
-            print_result=1
-    ):
+    def __init__(self, model, edge_index, X, num_layers, mode=0, print_result=1):
         self.model = model
         self.model.eval()
         self.edge_index = edge_index
@@ -40,8 +32,9 @@ class Node_Explainer:
             if random == 0:
                 perturb_array = X_perturb[node_idx]
             elif random == 1:
-                perturb_array = np.multiply(X_perturb[node_idx],
-                                            np.random.uniform(low=0.0, high=2.0, size=X_perturb[node_idx].shape[0]))
+                perturb_array = np.multiply(
+                    X_perturb[node_idx], np.random.uniform(low=0.0, high=2.0, size=X_perturb[node_idx].shape[0])
+                )
             X_perturb[node_idx] = perturb_array
         return X_perturb
 
@@ -49,7 +42,7 @@ class Node_Explainer:
         neighbors, _, _, _ = k_hop_subgraph(node_idx, self.num_layers, self.edge_index)
         neighbors = neighbors.cpu().detach().numpy()
 
-        if (node_idx not in neighbors):
+        if node_idx not in neighbors:
             neighbors = np.append(neighbors, node_idx)
 
         pred_torch = self.model(self.X, self.edge_index).cpu()
@@ -78,7 +71,8 @@ class Node_Explainer:
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float).to(device)
             pred_perturb_torch = self.model(X_perturb_torch, self.edge_index).cpu()
             soft_pred_perturb = np.asarray(
-                [softmax(np.asarray(pred_perturb_torch[node_].data)) for node_ in range(self.X.shape[0])])
+                [softmax(np.asarray(pred_perturb_torch[node_].data)) for node_ in range(self.X.shape[0])]
+            )
 
             sample_bool = []
             for node in neighbors:
@@ -95,19 +89,22 @@ class Node_Explainer:
         Combine_Samples = Samples - Samples
         for s in range(Samples.shape[0]):
             Combine_Samples[s] = np.asarray(
-                [Samples[s, i] * 10 + Pred_Samples[s, i] + 1 for i in range(Samples.shape[1])])
+                [Samples[s, i] * 10 + Pred_Samples[s, i] + 1 for i in range(Samples.shape[1])]
+            )
 
         data_pgm = pd.DataFrame(Combine_Samples)
-        data_pgm = data_pgm.rename(columns={0: 'A', 1: 'B'})  # Trick to use chi_square test on first two data columns
+        data_pgm = data_pgm.rename(columns={0: "A", 1: "B"})  # Trick to use chi_square test on first two data columns
         ind_ori_to_sub = dict(zip(neighbors, list(data_pgm.columns)))
 
         p_values = []
         for node in neighbors:
             if node == node_idx:
-                p = 0 # p<0.05 => we are confident that we can reject the null hypothesis (i.e. the prediction is the same after perturbing the neighbouring node
+                p = 0  # p<0.05 => we are confident that we can reject the null hypothesis (i.e. the prediction is the same after perturbing the neighbouring node
                 # => this neighbour has no influence on the prediction - should not be in the explanation)
             else:
-                chi2, p,_ = chi_square(ind_ori_to_sub[node], ind_ori_to_sub[node_idx], [], data_pgm, boolean=False, significance_level=0.05)
+                chi2, p, _ = chi_square(
+                    ind_ori_to_sub[node], ind_ori_to_sub[node_idx], [], data_pgm, boolean=False, significance_level=0.05
+                )
             p_values.append(p)
 
         pgm_stats = dict(zip(neighbors, p_values))

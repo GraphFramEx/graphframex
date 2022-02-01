@@ -1,12 +1,6 @@
 import networkx as nx
 import numpy as np
 import torch
-from captum._utils.common import (_format_additional_forward_args,
-                                  _format_input, _format_output)
-from captum._utils.gradient import (apply_gradient_requirements,
-                                    compute_layer_gradients_and_eval,
-                                    undo_gradient_requirements)
-from captum._utils.typing import TargetType
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
@@ -28,26 +22,31 @@ def balance_mask_undirected(edge_mask, edge_index):
                 balanced_edge_mask[indices] = np.max([edge_mask[indices[0]], edge_mask[indices[1]]])
     return balanced_edge_mask
 
+
 def mask_to_directed(edge_mask, edge_index):
     directed_edge_mask = edge_mask.copy()
     for i, (u, v) in enumerate(edge_index.t().tolist()):
         if u > v:
-            directed_edge_mask[i]=0
+            directed_edge_mask[i] = 0
     return directed_edge_mask
+
 
 def model_forward(edge_mask, model, node_idx, x, edge_index):
     out = model(x, edge_index, edge_mask)
     return out[[node_idx]]
 
+
 def model_forward_node(x, model, edge_index, node_idx):
     out = model(x, edge_index)
     return out[[node_idx]]
+
 
 def node_attr_to_edge(edge_index, node_mask):
     edge_mask = np.zeros(edge_index.shape[1])
     edge_mask += node_mask[edge_index[0].cpu().numpy()]
     edge_mask += node_mask[edge_index[1].cpu().numpy()]
     return edge_mask
+
 
 def get_all_convolution_layers(model):
     layers = []
@@ -75,6 +74,7 @@ def explain_distance(model, node_idx, x, edge_index, target, device, args, inclu
     edge_sources = edge_index[1].cpu().numpy()
     return np.array([get_attr(node) for node in edge_sources])
 
+
 def explain_pagerank(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     data = Data(x=x, edge_index=edge_index)
     g = to_networkx(data)
@@ -86,7 +86,9 @@ def explain_pagerank(model, node_idx, x, edge_index, target, device, args, inclu
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
+
 #### Methods ####
+
 
 def explain_gradcam(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     # Captum default implementation of LayerGradCam does not average over nodes for different channels because of
@@ -103,34 +105,44 @@ def explain_gradcam(model, node_idx, x, edge_index, target, device, args, includ
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
+
 def explain_sa(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     saliency = Saliency(model_forward)
     input_mask = torch.ones(edge_index.shape[1]).requires_grad_(True).to(device)
-    saliency_mask = saliency.attribute(input_mask, target=target,
-                                       additional_forward_args=(model, node_idx, x, edge_index), abs=False)
+    saliency_mask = saliency.attribute(
+        input_mask, target=target, additional_forward_args=(model, node_idx, x, edge_index), abs=False
+    )
 
     edge_mask = saliency_mask.cpu().numpy()
     return edge_mask
 
+
 def explain_sa_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     saliency = Saliency(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
-    saliency_mask = saliency.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx),
-                                       abs=False)
+    saliency_mask = saliency.attribute(
+        input_mask, target=target, additional_forward_args=(model, edge_index, node_idx), abs=False
+    )
 
     node_attr = saliency_mask.cpu().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
 
+
 def explain_ig_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     ig = IntegratedGradients(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
-    ig_mask = ig.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx),
-                           internal_batch_size=input_mask.shape[0])
+    ig_mask = ig.attribute(
+        input_mask,
+        target=target,
+        additional_forward_args=(model, edge_index, node_idx),
+        internal_batch_size=input_mask.shape[0],
+    )
 
     node_attr = ig_mask.cpu().detach().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
     return edge_mask
+
 
 def explain_occlusion(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     depth_limit = args.num_gc_layers + 1
@@ -160,11 +172,13 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, args, incl
             edge_occlusion_mask[i] = True
     return edge_mask
 
+
 def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
     edge_mask = explainer.explain_graph_with_target(x=x, edge_index=edge_index, target=target)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
+
 
 def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
@@ -172,6 +186,7 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, ar
         edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
+
 
 def explain_pgmexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     explainer = Node_Explainer(model, edge_index, x, args.num_gc_layers, print_result=0)
@@ -187,5 +202,3 @@ def explain_subgraphx(model, node_idx, x, edge_index, target, device, args, incl
     subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False)
     edge_mask = subgraphx.explain(x, edge_index, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
     return edge_mask
-
-

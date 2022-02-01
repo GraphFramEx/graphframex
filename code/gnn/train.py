@@ -1,19 +1,17 @@
 import os
-import torch
-
 import time
 
 import matplotlib
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-from code.utils.gen_utils import from_adj_to_edge_index
-from torch.autograd import Variable
-
-import utils.math_utils
 import utils.io_utils
-from evaluate import *
+import utils.math_utils
+from torch.autograd import Variable
+from utils.gen_utils import from_adj_to_edge_index
+
 from eval import *
+
 
 ####### GNN Training #######
 def train_node_classification(model, data, device, args):
@@ -46,10 +44,7 @@ def train_node_classification(model, data, device, args):
     plt.plot(range(args.num_epochs // 10), train_err)
 
 
-def train_graph_classification(model, train_dataset, val_dataset, test_dataset, 
-    device,
-    args,
-    mask_nodes=True):
+def train_graph_classification(model, train_dataset, val_dataset, test_dataset, device, args, mask_nodes=True):
     """Train GNN model.
 
     Args:
@@ -64,10 +59,7 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset,
         mask_nodes (bool, optional): [description]. Defaults to True.
     """
 
-
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=0.001
-    )
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
     iter = 0
     best_val_result = {"epoch": 0, "loss": 0, "acc": 0}
     test_result = {"epoch": 0, "loss": 0, "acc": 0}
@@ -101,31 +93,27 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset,
                 all_adjs = torch.cat((all_adjs, prev_adjs), dim=0)
                 all_feats = torch.cat((all_feats, prev_feats), dim=0)
                 all_labels = torch.cat((all_labels, prev_labels), dim=0)
-                
+
             if args.gpu:
                 adj = Variable(data["adj"].float(), requires_grad=False).cuda()
                 h0 = Variable(data["feats"].float(), requires_grad=False).cuda()
                 label = Variable(data["label"].long()).cuda()
                 batch_num_nodes = data["num_nodes"].int().numpy() if mask_nodes else None
-                assign_input = Variable(
-                    data["assign_feats"].float(), requires_grad=False
-                ).cuda()
-                
+                assign_input = Variable(data["assign_feats"].float(), requires_grad=False).cuda()
+
             else:
                 adj = Variable(data["adj"].float(), requires_grad=False)
                 h0 = Variable(data["feats"].float(), requires_grad=False)
                 label = Variable(data["label"].long())
                 batch_num_nodes = data["num_nodes"].int().numpy() if mask_nodes else None
-                assign_input = Variable(
-                    data["assign_feats"].float(), requires_grad=False
-                )
+                assign_input = Variable(data["assign_feats"].float(), requires_grad=False)
 
             edge_index = []
             for a in adj:
                 edge_index.append(from_adj_to_edge_index(a))
-            
+
             ypred = model(h0, edge_index, batch_num_nodes, assign_x=assign_input)
-            #ypred, att_adj = model(h0, adj, batch_num_nodes, assign_x=assign_input)
+            # ypred, att_adj = model(h0, adj, batch_num_nodes, assign_x=assign_input)
             if batch_idx < 5:
                 predictions += ypred.cpu().detach().numpy().tolist()
 
@@ -142,7 +130,7 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset,
         avg_loss /= batch_idx + 1
         elapsed = time.time() - begin_time
         print("Avg loss: ", avg_loss, "; epoch time: ", elapsed)
-        
+
         result = gnn_scores_gc(train_dataset, model, args, name="Train", max_num_examples=100)
         train_accs.append(result["acc"])
         train_epochs.append(epoch)
@@ -167,14 +155,14 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset,
     matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     plt.figure()
-    plt.plot(train_epochs, math_utils.exp_moving_avg(train_accs, 0.85), "-", lw=1)
+    plt.plot(train_epochs, utils.math_utils.exp_moving_avg(train_accs, 0.85), "-", lw=1)
     if test_dataset is not None:
         plt.plot(best_val_epochs, best_val_accs, "bo", test_epochs, test_accs, "go")
         plt.legend(["train", "val", "test"])
     else:
         plt.plot(best_val_epochs, best_val_accs, "bo")
         plt.legend(["train", "val"])
-    plt.savefig(io_utils.gen_train_plt_name(args), dpi=600)
+    plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
     plt.close()
     matplotlib.style.use("default")
 
@@ -182,22 +170,16 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset,
     return
 
 
-
-
-
 def save_model(model, args):
     filename = os.path.join(args.save_dir, args.dataset) + "gcn.pth.tar"
     torch.save(
-        {
-            "model_type": 'gcn',
-            "model_state": model.state_dict()
-        },
+        {"model_type": "gcn", "model_state": model.state_dict()},
         str(filename),
     )
 
+
 def load_model(args):
-    '''Load a pre-trained pytorch model from checkpoint.
-        '''
+    """Load a pre-trained pytorch model from checkpoint."""
     print("loading model")
     filename = os.path.join(args.save_dir, args.dataset) + "/gcn.pth.tar"
     print(filename)
@@ -215,4 +197,3 @@ def load_model(args):
         print()
         raise Exception("File not found.")
     return ckpt
-

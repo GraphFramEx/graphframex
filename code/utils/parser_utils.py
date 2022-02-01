@@ -1,35 +1,53 @@
 import argparse
 
 
+def get_data_args(data, args):
+    args.num_classes = data.num_classes
+    args.input_dim = data.x.size(1)
+    if args.num_top_edges == -1:
+        if args.dataset == "syn1":
+            args.num_top_edges = 6
+            args.num_basis = 300
+        elif args.dataset == "syn2":
+            args.num_top_edges = 6
+            args.num_basis = 0
+        elif args.dataset == "syn3":
+            args.num_top_edges = 12
+            args.num_basis = 300
+        elif args.dataset == "syn4":
+            args.num_top_edges = 6
+            args.num_basis = 511
+        elif args.dataset == "syn5":
+            args.num_top_edges = 12
+            args.num_basis = 511
+        elif args.dataset == "syn6":
+            args.num_top_edges = 5
+            args.num_basis = 300
+    return args
+
 
 def arg_parse():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dest', type=str, default='/Users/kenzaamara/GithubProjects/Explain')
+    parser.add_argument("--dest", type=str, default="/Users/kenzaamara/GithubProjects/Explain")
 
-    parser.add_argument('--seed', help='random seed', type=int, default=41)
+    parser.add_argument("--seed", help="random seed", type=int, default=41)
 
     # Computing power
     parser.add_argument("--cuda", dest="cuda", help="CUDA.")
-    parser.add_argument(
-        "--gpu",
-        dest="gpu",
-        default=False,
-        help="whether to use GPU."
-    )
-
+    parser.add_argument("--gpu", dest="gpu", default=False, help="whether to use GPU.")
 
     # saving data
-    parser.add_argument('--data_save_dir', help="Directory where benchmark is located", type=str, default='data')
-    parser.add_argument('--dataset', type=str)
+    parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default="data")
+    parser.add_argument("--dataset", type=str)
 
     # saving model
-    parser.add_argument('--model_save_dir', help='saving directory for gnn model', type=str, default='model')
+    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
 
     # build ba-shape graphs
-    parser.add_argument('--num_basis', help='number of nodes in graph', type=int)
-    parser.add_argument('--num_shapes', help='number of houses', type=int)
+    parser.add_argument("--num_basis", help="number of nodes in graph", type=int)
+    parser.add_argument("--num_shapes", help="number of houses", type=int)
 
     parser.add_argument(
         "--max_nodes",
@@ -38,18 +56,14 @@ def arg_parse():
         help="Maximum number of nodes (ignore graghs with nodes exceeding the number.",
     )
 
-
     # training parameters
-    parser.add_argument("--optimizer", type=str, default='adam')
+    parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--lr_decay", type=float, default=0.5)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--bs", type=int)
 
-
     parser.add_argument("--batch_size", dest="batch_size", type=int, help="Batch size.")
-    parser.add_argument(
-        "--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train."
-    )
+    parser.add_argument("--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train.")
     parser.add_argument(
         "--train_ratio",
         dest="train_ratio",
@@ -70,30 +84,18 @@ def arg_parse():
     )
 
     parser.add_argument(
-        "--num_workers",
-        dest="num_workers",
-        type=int,
-        help="Number of workers to load data.",
-        default=1
+        "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=1
     )
     parser.add_argument(
         "--feature_type",
         dest="feature_type",
         help="Feature used for encoder. Can be: id, deg",
-    )    
+    )
     # gnn achitecture parameters
-    parser.add_argument(
-        "--input_dim", dest="input_dim", type=int, help="Input feature dimension"
-    )
-    parser.add_argument(
-        "--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension"
-    )
-    parser.add_argument(
-        "--output_dim", dest="output_dim", type=int, help="Output dimension"
-    )
-    parser.add_argument(
-        "--num_classes", dest="num_classes", type=int, help="Number of label classes"
-    )
+    parser.add_argument("--input_dim", dest="input_dim", type=int, help="Input feature dimension")
+    parser.add_argument("--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension")
+    parser.add_argument("--output_dim", dest="output_dim", type=int, help="Output dimension")
+    parser.add_argument("--num_classes", dest="num_classes", type=int, help="Number of label classes")
     parser.add_argument(
         "--num_gc_layers",
         dest="num_gc_layers",
@@ -124,23 +126,20 @@ def arg_parse():
         help="Weight decay regularization constant.",
     )
 
-    parser.add_argument(
-        "--method", dest="method", help="Method. Possible values: base, "
-    )
-    parser.add_argument(
-        "--name_suffix", dest="name_suffix", help="suffix added to the output filename"
-    )
+    parser.add_argument("--method", dest="method", help="Method. Possible values: base, ")
+    parser.add_argument("--name_suffix", dest="name_suffix", help="suffix added to the output filename")
 
     # explainer params
-    parser.add_argument('--explain_graph', help='graph classification or node classification', type=bool, default=True)
-    parser.add_argument('--num_test', help='number of testing entities (graphs or nodes)', type=int)
-    parser.add_argument('--threshold', help='threshold to select edges in mask', type=float, default=-1)
-    parser.add_argument('--sparsity', help='ratio of edges to remove from mask', type=float, default=-1)
-    parser.add_argument('--topk', help='num top k edges to keep in mask', type=int, default=-1)
-    parser.add_argument('--num_top_edges', help='number of edges to keep in explanation', type=int, default=-1)
-    parser.add_argument('--true_label', help='do you take target as true label or predicted label', type=str,
-                        default='True')
-    parser.add_argument('--explainer_name', help='explainer', type=str)
+    parser.add_argument("--explain_graph", help="graph classification or node classification", type=bool, default=True)
+    parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
+    parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
+    parser.add_argument("--sparsity", help="ratio of edges to remove from mask", type=float, default=-1)
+    parser.add_argument("--topk", help="num top k edges to keep in mask", type=int, default=-1)
+    parser.add_argument("--num_top_edges", help="number of edges to keep in explanation", type=int, default=-1)
+    parser.add_argument(
+        "--true_label", help="do you take target as true label or predicted label", type=str, default="True"
+    )
+    parser.add_argument("--explainer_name", help="explainer", type=str)
 
     parser.set_defaults(
         datadir="data",  # io_parser
@@ -171,6 +170,6 @@ def arg_parse():
         weight_decay=0.005,
         method="base",
         name_suffix="",
-        explainer_name="pagerank"
+        explainer_name="pagerank",
     )
     return parser.parse_args()

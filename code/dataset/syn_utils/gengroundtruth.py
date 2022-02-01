@@ -1,8 +1,10 @@
-import numpy as np
 import os
-from synthetic_structsim import house, grid, cycle, bottle
-from explainer import node_attr_to_edge
+
 import networkx as nx
+import numpy as np
+from explainer import node_attr_to_edge
+
+from synthetic_structsim import bottle, cycle, grid, house
 
 
 # Only compares common nodes in the predicted and groundtruth graphs
@@ -24,56 +26,47 @@ def evaluate_syn_explanation(explanations, args):
     print("Accuracy: ", accuracy)
     print("Precision: ", precision)
 
-    savedir = 'result/'
+    savedir = "result/"
     if args.top_node == None:
         top = "no_top"
     else:
         top = "top_" + str(args.top_node)
-    report_file_name = 'report_' + args.dataset + ".txt"
+    report_file_name = "report_" + args.dataset + ".txt"
     report_file = os.path.join(savedir, report_file_name)
-
-    with open(report_file, "a") as text_file:
-        text_file.write(
-            prog_args.dataset + ", " + str(prog_args.num_perturb_samples) + " samples, " + top + " | Accuracy: " + str(
-                accuracy) + "\n")
-        text_file.write(
-            prog_args.dataset + ", " + str(prog_args.num_perturb_samples) + " samples, " + top + " | Precision: " + str(
-                precision) + "\n")
-        text_file.write("\n")
 
 
 def get_ground_truth(node, data, args):
     gt = []
-    if args.dataset == 'syn1':
+    if args.dataset == "syn1":
         gt = get_ground_truth_syn1(node)  # correct
         graph, role = house(gt[0], role_start=1)
-    elif args.dataset == 'syn2':
+    elif args.dataset == "syn2":
         gt = get_ground_truth_syn1(node)  # correct
         role = data.y[gt]
-    elif args.dataset == 'syn3':
+    elif args.dataset == "syn3":
         gt = get_ground_truth_syn3(node)  # correct
         graph, role = grid(gt[0], dim=3, role_start=1)
-    elif args.dataset == 'syn4':
+    elif args.dataset == "syn4":
         gt = get_ground_truth_syn4(node)  # correct
         graph, role = cycle(gt[0], 6, role_start=1)
-    elif args.dataset == 'syn5':
+    elif args.dataset == "syn5":
         gt = get_ground_truth_syn5(node)  # correct
         graph, role = grid(gt[0], dim=3, role_start=1)
-    elif args.dataset == 'syn6':
+    elif args.dataset == "syn6":
         gt = get_ground_truth_syn1(node)  # correct
         graph, role = bottle(gt[0], role_start=1)
 
     true_node_mask = np.zeros(data.x.shape[0])
     true_node_mask[gt] = 1
     true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
-    true_edge_mask = np.where(true_edge_mask==2, 1, 0)
+    true_edge_mask = np.where(true_edge_mask == 2, 1, 0)
 
-    if args.dataset == 'syn2':
+    if args.dataset == "syn2":
         graph = nx.Graph()
         graph.add_nodes_from(gt)
-        new_edges = np.array(data.edge_index[:, np.where(true_edge_mask>0)[0]].T)
+        new_edges = np.array(data.edge_index[:, np.where(true_edge_mask > 0)[0]].T)
         graph.add_edges_from(new_edges)
-        
+
     return graph, role, true_edge_mask
 
 
@@ -117,30 +110,4 @@ prog_args = configs.arg_parse()
 savename = utils.gen_filesave(prog_args)
 explanations = np.load(savename, allow_pickle='TRUE').item()
 """
-#evaluate_syn_explanation(explanations, prog_args)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# evaluate_syn_explanation(explanations, prog_args)

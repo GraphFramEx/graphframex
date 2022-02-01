@@ -7,8 +7,8 @@ import math
 import networkx as nx
 import numpy as np
 
-
 # Following GraphWave's representation of structural similarity
+
 
 def bottle(start, role_start=0):
     """Builds a bottle-like  graph, with index of nodes starting at start
@@ -29,20 +29,14 @@ def bottle(start, role_start=0):
     graph = nx.Graph()
     graph.add_nodes_from(range(start, start + 5))
     graph.add_edges_from(
-        [
-            (start, start + 1),
-            (start + 1, start + 2),
-            (start + 2, start),
-            (start + 3, start),
-            (start + 4, start)
-        ]
+        [(start, start + 1), (start + 1, start + 2), (start + 2, start), (start + 3, start), (start + 4, start)]
     )
     roles = [role_start, role_start + 1, role_start + 1, role_start + 2, role_start + 2]
     return graph, roles
 
 
 def clique(start, nb_nodes, nb_to_remove=0, role_start=0):
-    """ Defines a clique (complete graph on nb_nodes nodes,
+    """Defines a clique (complete graph on nb_nodes nodes,
     with nb_to_remove  edges that will have to be removed),
     index of nodes starting at start
     and role_ids at role_start
@@ -236,8 +230,7 @@ def house(start, role_start=0):
 
 
 def grid(start, dim=2, role_start=0):
-    """ Builds a 2by2 grid
-    """
+    """Builds a 2by2 grid"""
     grid_G = nx.grid_graph([dim, dim])
     grid_G = nx.convert_node_labels_to_integers(grid_G, first_label=start)
     roles = [role_start for i in grid_G.nodes()]
@@ -292,13 +285,13 @@ def path(start, width, role_start=0):
 
 
 def build_graph(
-        width_basis,
-        basis_type,
-        list_shapes,
-        start=0,
-        rdm_basis_plugins=False,
-        add_random_edges=0,
-        m=5,
+    width_basis,
+    basis_type,
+    list_shapes,
+    start=0,
+    rdm_basis_plugins=False,
+    add_random_edges=0,
+    m=5,
 ):
     """This function creates a basis (scale-free, path, or cycle)
     and attaches elements of the type in the list randomly along the basis.

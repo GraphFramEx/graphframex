@@ -3,24 +3,16 @@
    Generating and manipulaton the synthetic graphs needed for the paper's experiments.
 """
 
-import os
-
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
-import matplotlib.colors as colors
 
 # Set matplotlib backend to file writing
 plt.switch_backend("agg")
 
 import networkx as nx
-
 import numpy as np
 
-from tensorboardX import SummaryWriter
-
-import synthetic_structsim
 import featgen
+import synthetic_structsim
 
 
 ####################################
@@ -29,7 +21,7 @@ import featgen
 #
 ####################################
 def perturb(graph_list, p):
-    """ Perturb the list of (sparse) graphs by adding/removing edges.
+    """Perturb the list of (sparse) graphs by adding/removing edges.
     Args:
         p: proportion of added edges based on current number of edges.
     Returns:
@@ -52,7 +44,7 @@ def perturb(graph_list, p):
 
 
 def join_graph(G1, G2, n_pert_edges):
-    """ Join two graphs along matching nodes, then perturb the resulting graph.
+    """Join two graphs along matching nodes, then perturb the resulting graph.
     Args:
         G1, G2: Networkx graphs to be joined.
         n_pert_edges: number of perturbed edges.
@@ -71,7 +63,7 @@ def join_graph(G1, G2, n_pert_edges):
 
 
 def preprocess_input_graph(G, labels, normalize_adj=False):
-    """ Load an existing graph to be converted for the experiments.
+    """Load an existing graph to be converted for the experiments.
     Args:
         G: Networkx graph to be loaded.
         labels: Associated node labels.
@@ -103,7 +95,7 @@ def preprocess_input_graph(G, labels, normalize_adj=False):
 #
 ###################################
 def gen_syn1(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
-    """ Synthetic Graph #1:
+    """Synthetic Graph #1:
 
     Start with Barabasi-Albert graph and attach house-shaped subgraphs.
 
@@ -122,11 +114,9 @@ def gen_syn1(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     basis_type = "ba"
     list_shapes = [["house"]] * nb_shapes
 
-    #plt.figure(figsize=(8, 6), dpi=300)
+    # plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0, m=5
-    )
+    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -138,7 +128,7 @@ def gen_syn1(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
 
 def gen_syn2(nb_shapes=100, width_basis=350, feature_generator=None):
-    """ Synthetic Graph #2:
+    """Synthetic Graph #2:
 
     Start with Barabasi-Albert graph and add node features indicative of a community label.
 
@@ -185,7 +175,7 @@ def gen_syn2(nb_shapes=100, width_basis=350, feature_generator=None):
 
 
 def gen_syn3(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
-    """ Synthetic Graph #3:
+    """Synthetic Graph #3:
 
     Start with Barabasi-Albert graph and attach grid-shaped subgraphs.
 
@@ -205,9 +195,7 @@ def gen_syn3(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
     #     plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0, m=5
-    )
+    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -219,7 +207,7 @@ def gen_syn3(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
 
 def gen_syn4(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
-    """ Synthetic Graph #4:
+    """Synthetic Graph #4:
 
     Start with a tree and attach cycle-shaped subgraphs.
 
@@ -239,9 +227,7 @@ def gen_syn4(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
 
     #     fig = plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, plugins = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0
-    )
+    G, role_id, plugins = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0)
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -254,7 +240,7 @@ def gen_syn4(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
 
 
 def gen_syn5(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
-    """ Synthetic Graph #5:
+    """Synthetic Graph #5:
 
     Start with a tree and attach grid-shaped subgraphs.
 
@@ -274,9 +260,7 @@ def gen_syn5(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
 
     #     plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0
-    )
+    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0)
     G = perturb([G], 0.1)[0]
 
     if feature_generator is None:
@@ -289,7 +273,7 @@ def gen_syn5(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
 
 
 def gen_syn6(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
-    """ Synthetic Graph #6:
+    """Synthetic Graph #6:
 
     Start with Barabasi-Albert graph and attach bottle-shaped subgraphs.
 
@@ -308,9 +292,7 @@ def gen_syn6(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     basis_type = "ba"
     list_shapes = [["bottle"]] * nb_shapes
 
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0, m=5
-    )
+    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
