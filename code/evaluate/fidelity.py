@@ -4,8 +4,10 @@
 
 import numpy as np
 import torch
-from code.utils.gen_utils import list_to_dict
+from exp_mutag.graph_utils import compute_masked_edges
 
+from .code.gnn.eval import get_proba, get_true_labels_gc, gnn_preds_gc
+from .code.utils.gen_utils import list_to_dict
 
 
 def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
@@ -20,7 +22,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
-        
+
         indices = np.where(edge_mask > 0)[0]
         indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
 
@@ -57,7 +59,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
 def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device, args):
     n_graphs = len(np.hstack(edge_masks_set))
     n_bs = len(edge_masks_set)
-    
+
     mask_sparsity = 0
     expl_edges = 0
     for edge_mask in np.hstack(edge_masks_set):
@@ -65,13 +67,14 @@ def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device,
         expl_edges += (edge_mask != 0).sum()
     mask_sparsity /= n_graphs
     expl_edges /= n_graphs
-    
+
     #related_preds = []
-    
+
     ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args)
     ori_yprob = get_proba(ori_ypred)
 
-    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(edge_masks_set, edge_index_set, device)
+    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(
+        edge_masks_set, edge_index_set, device)
 
     masked_ypred = gnn_preds_gc(model, dataset, masked_edge_index_set, args)
     masked_yprob = get_proba(masked_ypred)
@@ -81,20 +84,19 @@ def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device,
 
     #true_label = [data["label"].long().numpy() for batch_idx, data in enumerate(dataset)]
     #pred_label = get_labels(ori_ypred)
-    #print(true_label)
-    #print(pred_label)
+    # print(true_label)
+    # print(pred_label)
     # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
 
     related_preds = {'masked': masked_yprob,
-                          'maskout': maskout_yprob,
-                          'origin': ori_yprob,
-                          'mask_sparsity': mask_sparsity,
-                          'expl_edges': expl_edges, 
-                        'true_label': get_true_labels(dataset)
-                    }
+                     'maskout': maskout_yprob,
+                     'origin': ori_yprob,
+                     'mask_sparsity': mask_sparsity,
+                     'expl_edges': expl_edges,
+                     'true_label': get_true_labels_gc(dataset)
+                     }
     #related_preds = list_to_dict(related_preds)
     return related_preds
-
 
 
 def fidelity_acc(related_preds):
