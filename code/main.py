@@ -50,7 +50,7 @@ def main_syn(args):
         train_node_classification(model, data, device, args)
         model.eval()
         results_train, results_test = gnn_scores_nc(model, data)
-        save_checkpoint(model, args, results_train, results_test)
+        save_checkpoint(model_filename, model, args, results_train, results_test)
 
     ckpt = load_ckpt(model_filename)
     model.load_state_dict(ckpt["model_state"])

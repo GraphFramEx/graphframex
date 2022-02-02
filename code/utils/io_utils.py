@@ -54,9 +54,8 @@ def create_model_filename(args, isbest=False, num_epochs=-1):
         num_epochs  :  epoch number of the model (when isbest=False)
     """
     subdir = os.path.join(args.model_save_dir, args.dataset)
-    check_dir(subdir)
+    os.makedirs(subdir, exist_ok=True)
     filename = os.path.join(subdir, gen_prefix(args))
-    os.makedirs(filename, exist_ok=True)
 
     if isbest:
         filename = os.path.join(filename, "best")
@@ -64,7 +63,7 @@ def create_model_filename(args, isbest=False, num_epochs=-1):
     return filename + ".pth.tar"
 
 
-def save_checkpoint(model, args, results_train, results_test, isbest=False, cg_dict=None):
+def save_checkpoint(filename, model, args, results_train, results_test, isbest=False, cg_dict=None):
     """Save pytorch model checkpoint.
     Args:
         - model         : The PyTorch model to save.
@@ -74,7 +73,6 @@ def save_checkpoint(model, args, results_train, results_test, isbest=False, cg_d
         - isbest        : True if the model has the highest accuracy so far.
         - cg_dict       : A dictionary of the sampled computation graphs.
     """
-    filename = create_model_filename(args, isbest, num_epochs=args.num_epochs)
     torch.save(
         {
             "model_type": "gcn",
