@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import utils.io_utils
 import utils.math_utils
+from dataset.mutag_utils import data_to_graph, prepare_data
 from torch.autograd import Variable
 from utils.gen_utils import from_adj_to_edge_index
 
@@ -44,7 +45,7 @@ def train_node_classification(model, data, device, args):
     plt.plot(range(args.num_epochs // 10), train_err)
 
 
-def train_graph_classification(model, train_dataset, val_dataset, test_dataset, device, args, mask_nodes=True):
+def train_graph_classification(model, data, device, args, mask_nodes=True):
     """Train GNN model.
 
     Args:
@@ -58,6 +59,8 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset, 
         writer ([type], optional): [description]. Defaults to None.
         mask_nodes (bool, optional): [description]. Defaults to True.
     """
+    graphs = data_to_graph(data)
+    train_dataset, val_dataset, test_dataset, max_num_nodes, feat_dim, assign_feat_dim = prepare_data(graphs, args)
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
     iter = 0
@@ -94,19 +97,11 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset, 
                 all_feats = torch.cat((all_feats, prev_feats), dim=0)
                 all_labels = torch.cat((all_labels, prev_labels), dim=0)
 
-            if args.gpu:
-                adj = Variable(data["adj"].float(), requires_grad=False).cuda()
-                h0 = Variable(data["feats"].float(), requires_grad=False).cuda()
-                label = Variable(data["label"].long()).cuda()
-                batch_num_nodes = data["num_nodes"].int().numpy() if mask_nodes else None
-                assign_input = Variable(data["assign_feats"].float(), requires_grad=False).cuda()
-
-            else:
-                adj = Variable(data["adj"].float(), requires_grad=False)
-                h0 = Variable(data["feats"].float(), requires_grad=False)
-                label = Variable(data["label"].long())
-                batch_num_nodes = data["num_nodes"].int().numpy() if mask_nodes else None
-                assign_input = Variable(data["assign_feats"].float(), requires_grad=False)
+            adj = Variable(data["adj"].float(), requires_grad=False).to(device)
+            h0 = Variable(data["feats"].float(), requires_grad=False).to(device)
+            label = Variable(data["label"].long()).to(device)
+            batch_num_nodes = data["num_nodes"].int().numpy() if mask_nodes else None
+            assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
 
             edge_index = []
             for a in adj:
@@ -131,18 +126,18 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset, 
         elapsed = time.time() - begin_time
         print("Avg loss: ", avg_loss, "; epoch time: ", elapsed)
 
-        result = gnn_scores_gc(train_dataset, model, args, name="Train", max_num_examples=100)
+        result = gnn_scores_gc(model, train_dataset, args, device, name="Train", max_num_examples=100)
         train_accs.append(result["acc"])
         train_epochs.append(epoch)
         if val_dataset is not None:
-            val_result = gnn_scores_gc(val_dataset, model, args, name="Validation")
+            val_result = gnn_scores_gc(model, val_dataset, args, device, name="Validation")
             val_accs.append(val_result["acc"])
         if val_result["acc"] > best_val_result["acc"] - 1e-7:
             best_val_result["acc"] = val_result["acc"]
             best_val_result["epoch"] = epoch
             best_val_result["loss"] = avg_loss
         if test_dataset is not None:
-            test_result = gnn_scores_gc(test_dataset, model, args, name="Test")
+            test_result = gnn_scores_gc(model, test_dataset, args, device, name="Test")
             test_result["epoch"] = epoch
         print("Best val result: ", best_val_result)
         best_val_epochs.append(best_val_result["epoch"])

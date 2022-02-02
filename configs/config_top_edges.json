@@ -1,0 +1,34 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 5000
+  },
+  "meta": {
+    "group": "checkpoints",
+    "name": "top_edges",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "gpu": true,
+    "data_save_dir": "data",
+    "num_test_nodes": 200,
+    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa_node",
+      "ig_node",
+      "occlusion",
+      "gnnexplainer",
+      "pgmexplainer",
+      "subgraphx"
+    ]
+  }
+}

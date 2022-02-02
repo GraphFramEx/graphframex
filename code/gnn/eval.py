@@ -25,24 +25,17 @@ def gnn_scores_nc(model, data):
     return result_train, result_test
 
 
-def gnn_scores_gc(dataset, model, args, name="Validation", max_num_examples=None):
+def gnn_scores_gc(model, dataset, args, device, name="Validation", max_num_examples=None):
     model.eval()
 
     labels = []
     preds = []
     for batch_idx, data in enumerate(dataset):
-        if args.gpu:
-            adj = Variable(data["adj"].float(), requires_grad=False).cuda()
-            h0 = Variable(data["feats"].float()).cuda()
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(data["assign_feats"].float(), requires_grad=False).cuda()
-        else:
-            adj = Variable(data["adj"].float(), requires_grad=False)
-            h0 = Variable(data["feats"].float())
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(data["assign_feats"].float(), requires_grad=False)
+        adj = Variable(data["adj"].float(), requires_grad=False).to(device)
+        h0 = Variable(data["feats"].float()).to(device)
+        labels.append(data["label"].long().numpy())
+        batch_num_nodes = data["num_nodes"].int().numpy()
+        assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
 
         edge_index = []
         for a in adj:

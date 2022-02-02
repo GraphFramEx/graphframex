@@ -1,24 +1,24 @@
 {
-  "cmd": "python exp_synthetic/main.py",
+  "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
   "ckpt_root": ".",
   "version": "1.0.0",
-  "machine":{
-    "time": 600,
-    "gpus-per-task":2,
+  "machine": {
+    "gpus-per-task": 1,
     "mem": 5000
   },
   "meta": {
     "group": "checkpoints",
-    "name": "top_edges",
+    "name": "test",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
-    "gpu": true, 
+    "gpu": true,
+    "explain_graph": false,
     "data_save_dir": "data",
-    "num_test_nodes": 200,
-    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
+    "num_test_nodes": 10,
+    "dataset": "syn1",
     "explainer_name": [
       "random",
       "distance",

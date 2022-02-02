@@ -1,11 +1,11 @@
 {
-  "cmd": "python exp_synthetic/main.py",
+  "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
   "ckpt_root": ".",
   "version": "1.0.0",
-  "machine":{
+  "machine": {
     "time": 600,
-    "gpus-per-task":2,
+    "gpus-per-task": 2,
     "mem": 5000
   },
   "meta": {

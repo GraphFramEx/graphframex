@@ -1,7 +1,8 @@
 import json
 import os
 import random
-from dataset.gen_mutag import build_mutag
+from dataset.mutag_utils import gen_dataloader
+from dataset.gen_mutag import build_mutag, collate_data
 from dataset.gen_syn import build_syndata
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_nc
@@ -40,12 +41,24 @@ def main_syn(args):
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
         model = GcnEncoderNode(
-            args.input_dim, args.hidden_dim, args.output_dim, args.num_classes, args.num_gc_layers, args=args
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
+            device=device,
         )
 
     else:
         model = GcnEncoderNode(
-            args.input_dim, args.hidden_dim, args.output_dim, args.num_classes, args.num_gc_layers, args=args
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
+            device=device,
         )
         train_node_classification(model, data, device, args)
         model.eval()
@@ -113,30 +126,38 @@ def main_mutag(args):
     ### Generate, Save, Load data ###
     check_dir(args.data_save_dir)
     data_filename = create_data_filename(args)
-
     if os.path.isfile(data_filename):
         data = torch.load(data_filename)
     else:
         data = build_mutag(args)
         torch.save(data, data_filename)
 
-    data = data.to(device)
-    args = get_data_args(data, args)
-
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
         model = GcnEncoderGraph(
-            args.input_dim, args.hidden_dim, args.output_dim, args.num_classes, args.num_gc_layers, args=args
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
+            device=device,
         )
 
     else:
         model = GcnEncoderGraph(
-            args.input_dim, args.hidden_dim, args.output_dim, args.num_classes, args.num_gc_layers, args=args
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
+            device=device,
         )
         train_graph_classification(model, data, device, args)
         model.eval()
-        results_train, results_test = gnn_scores_gc(model, data)
+        results_train, results_test = gnn_scores_gc(model, data, args, device)
         save_checkpoint(model, args, results_train, results_test)
 
     ckpt = load_ckpt(model_filename)
@@ -147,8 +168,8 @@ def main_mutag(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
-    list_test_graphs = get_test_graphs(data, model, args)
-    edge_masks, Time = compute_edge_masks_gc(model, data, list_test_graphs, args)
+    test_data = gen_dataloader(data, args)
+    edge_masks, Time = compute_edge_masks_gc(model, test_data, device, args)
 
     ### Mask transformation ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2

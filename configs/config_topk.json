@@ -1,15 +1,16 @@
 {
-  "cmd": "python exp_synthetic/main.py",
+  "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
   "ckpt_root": ".",
   "version": "1.0.0",
-  "machine":{
-    "gpus-per-task":1,
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
     "mem": 5000
   },
   "meta": {
     "group": "checkpoints",
-    "name": "sparsity",
+    "name": "topk",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -18,7 +19,7 @@
     "data_save_dir": "data",
     "num_test_nodes": 100,
     "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "sparsity": [0, 0.7, 0.99, 0.997],
+    "topk": [10, 20, 40, 100, 500],
     "explainer_name": [
       "random",
       "distance",
@@ -29,6 +30,6 @@
       "gnnexplainer",
       "pgmexplainer",
       "subgraphx"
-  ]
+    ]
   }
 }

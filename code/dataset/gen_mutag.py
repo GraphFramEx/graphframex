@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
 from torch import Tensor
-from torch_geometric.data import Data
+from torch_geometric.data import Data, download_url
 from torch_geometric.data.collate import collate
 from torch_geometric.utils import dense_to_sparse
 
@@ -54,7 +54,22 @@ def extract_zip(path, folder, log=True):
         f.extractall(folder)
 
 
-def build_mutag(raw_data_dir):
+def build_mutag(args):
+
+    data_dir = os.path.join(args.data_save_dir, args.dataset)
+    raw_data_dir = os.path.join(data_dir, "raw_data")
+
+    # download MUTAG from url and put it in raw_dir
+    url = "https://github.com/divelab/DIG_storage/raw/main/xgraph/datasets/MUTAG.zip"
+
+    path = download_url(url, raw_data_dir)
+    if url[-2:] == "gz":
+        extract_gz(path, raw_data_dir)
+        os.unlink(path)
+    elif url[-3:] == "zip":
+        extract_zip(path, raw_data_dir)
+        os.unlink(path)
+
     with open(os.path.join(raw_data_dir, "MUTAG_node_labels.txt"), "r") as f:
         nodes_all_temp = f.read().splitlines()
         nodes_all = [int(i) for i in nodes_all_temp]
@@ -91,4 +106,5 @@ def build_mutag(raw_data_dir):
             x=torch.from_numpy(one_hot_feature).float(), edge_index=dense_to_sparse(torch.from_numpy(adj))[0], y=label
         )
         data_list.append(data_example)
+
     return data_list

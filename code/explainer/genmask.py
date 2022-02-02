@@ -1,6 +1,7 @@
 import time
 import torch
 from torch.autograd import Variable
+from dataset.mutag_utils import data_to_graph, gen_dataloader
 
 from utils.graph_utils import get_edge_index_set
 from explainer.method import *
@@ -24,6 +25,8 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
 
 
 def compute_edge_masks_gc(model, dataset, device, args):
+    graphs = data_to_graph(dataset)
+    dataset = gen_dataloader(graphs, args)
     explain_function = eval("explain_" + args.explainer_name)
     edge_index_set = get_edge_index_set(dataset)
     edge_masks_set = []
