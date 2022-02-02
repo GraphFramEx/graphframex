@@ -4,7 +4,7 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch_geometric.utils import from_networkx
 
-from syn_utils.gengraph import *
+from dataset.syn_utils.gengraph import *
 
 
 def build_syndata(args):

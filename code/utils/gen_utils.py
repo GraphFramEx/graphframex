@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import pandas as pd
 import torch
@@ -53,3 +55,37 @@ def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
     edges, _ = from_scipy_sparse_matrix(A)
     return torch.LongTensor(edges)
+
+
+def get_test_nodes(data, model, args):
+    if args.true_label:
+        pred_labels = get_labels(model(data.x, data.edge_index))
+        list_node_idx = np.where(pred_labels.cpu().numpy() == data.y.cpu().numpy())[0]
+    else:
+        list_node_idx = np.arange(data.x.size(0))
+    list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
+    list_test_nodes = [x.item() for x in random.choices(list_node_idx_pattern, k=args.num_test)]
+    return list_test_nodes
+
+
+def get_test_graphs(graphs, args):
+    list_test_graphs = np.random.choice(graphs, args.num_test_graphs)
+    return list_test_graphs
+
+
+def get_true_labels_gc(dataset):
+    labels = []
+    for batch_idx, data in enumerate(dataset):
+        labels.append(data["label"].long().numpy())
+    labels = np.hstack(labels)
+    return labels
+
+
+def get_proba(ypred):
+    yprob = torch.softmax(ypred, axis=1)
+    return yprob
+
+
+def get_labels(ypred):
+    ylabels = torch.argmax(ypred, dim=1)
+    return ylabels

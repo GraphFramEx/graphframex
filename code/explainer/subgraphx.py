@@ -12,7 +12,7 @@ from torch_geometric.data import Batch, Data
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import k_hop_subgraph, remove_self_loops, to_networkx
 
-from shapley import (
+from explainer.shapley import (
     GnnNetsGC2valueFunc,
     GnnNetsNC2valueFunc,
     NC_mc_l_shapley,

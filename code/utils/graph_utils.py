@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from gen_utils import from_adj_to_edge_index
+from utils.gen_utils import from_adj_to_edge_index
 
 
 def get_edge_index_set(dataset):

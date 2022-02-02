@@ -3,7 +3,7 @@ import torch
 from scipy.special import softmax
 from sklearn import metrics
 from torch.autograd import Variable
-from utils.gen_utils import from_adj_to_edge_index
+from utils.gen_utils import from_adj_to_edge_index, get_labels
 
 
 def gnn_scores_nc(model, data):
@@ -100,21 +100,3 @@ def gnn_preds_gc(model, dataset, edge_index_set, args, max_num_examples=None):
     pred_labels = np.hstack(pred_labels)
     ypreds = np.concatenate(ypreds)
     return ypreds
-
-
-def get_true_labels_gc(dataset):
-    labels = []
-    for batch_idx, data in enumerate(dataset):
-        labels.append(data["label"].long().numpy())
-    labels = np.hstack(labels)
-    return labels
-
-
-def get_proba(ypred):
-    yprob = softmax(ypred, axis=1)
-    return yprob
-
-
-def get_labels(ypred):
-    ylabels = torch.argmax(ypred, dim=1)
-    return ylabels

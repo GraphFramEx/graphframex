@@ -42,7 +42,7 @@ def get_sparsity(masks):
 def get_size(masks):
     size = 0
     for i in range(len(masks)):
-        size += len(masks[i][masks[i] > 0])
+        size += (masks[i] != 0).sum()
     return size / len(masks)
 
 

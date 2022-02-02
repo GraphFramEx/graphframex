@@ -3,13 +3,14 @@ import torch
 from torch.autograd import Variable
 
 from utils.graph_utils import get_edge_index_set
+from explainer.method import *
 
 
 def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     explain_function = eval("explain_" + args.explainer_name)
     Time = []
     edge_masks = []
-    targets = data.y.numpy()
+    targets = data.y
     for node_idx in list_test_nodes:
         x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
         edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)

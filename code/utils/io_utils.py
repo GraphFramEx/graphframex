@@ -22,7 +22,6 @@ def check_dir(save_dirs):
 def gen_prefix(args):
     """Generate label prefix for a graph model."""
     name = args.dataset
-    name += "_" + args.explainer_name
 
     name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim)
     if not args.bias:
@@ -91,10 +90,9 @@ def save_checkpoint(model, args, results_train, results_test, isbest=False, cg_d
     )
 
 
-def load_ckpt(args, isbest=False):
+def load_ckpt(filename, isbest=False):
     """Load a pre-trained pytorch model from checkpoint."""
     print("loading model")
-    filename = create_model_filename(args, isbest)
     print(filename)
     if os.path.isfile(filename):
         print("=> loading checkpoint '{}'".format(filename))

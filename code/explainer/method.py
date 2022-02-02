@@ -6,9 +6,9 @@ from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
 
-from gnnexplainer import TargetedGNNExplainer
-from pgmexplainer import Node_Explainer
-from subgraphx import SubgraphX
+from explainer.gnnexplainer import TargetedGNNExplainer
+from explainer.pgmexplainer import Node_Explainer
+from explainer.subgraphx import SubgraphX
 
 
 def balance_mask_undirected(edge_mask, edge_index):

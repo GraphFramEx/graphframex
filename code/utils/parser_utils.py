@@ -130,7 +130,7 @@ def arg_parse():
     parser.add_argument("--name_suffix", dest="name_suffix", help="suffix added to the output filename")
 
     # explainer params
-    parser.add_argument("--explain_graph", help="graph classification or node classification", type=bool, default=True)
+    parser.add_argument("--explain_graph", help="graph classification or node classification", type=bool)
     parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
     parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
     parser.add_argument("--sparsity", help="ratio of edges to remove from mask", type=float, default=-1)
@@ -145,6 +145,7 @@ def arg_parse():
         datadir="data",  # io_parser
         logdir="log",
         ckptdir="ckpt",
+        explain_graph=False,
         dataset="syn1",
         num_basis=300,
         num_shapes=150,

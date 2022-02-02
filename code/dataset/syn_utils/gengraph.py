@@ -11,8 +11,8 @@ plt.switch_backend("agg")
 import networkx as nx
 import numpy as np
 
-import featgen
-import synthetic_structsim
+from . import featgen
+from . import synthetic_structsim
 
 
 ####################################

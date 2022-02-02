@@ -10,7 +10,7 @@ import utils.math_utils
 from torch.autograd import Variable
 from utils.gen_utils import from_adj_to_edge_index
 
-from eval import *
+from gnn.eval import *
 
 
 ####### GNN Training #######
@@ -168,32 +168,3 @@ def train_graph_classification(model, train_dataset, val_dataset, test_dataset, 
 
     print(all_adjs.shape, all_feats.shape, all_labels.shape)
     return
-
-
-def save_model(model, args):
-    filename = os.path.join(args.save_dir, args.dataset) + "gcn.pth.tar"
-    torch.save(
-        {"model_type": "gcn", "model_state": model.state_dict()},
-        str(filename),
-    )
-
-
-def load_model(args):
-    """Load a pre-trained pytorch model from checkpoint."""
-    print("loading model")
-    filename = os.path.join(args.save_dir, args.dataset) + "/gcn.pth.tar"
-    print(filename)
-    if os.path.isfile(filename):
-        print("=> loading checkpoint '{}'".format(filename))
-        ckpt = torch.load(filename)
-    else:
-        print("Checkpoint does not exist!")
-        print("Checked path -- {}".format(filename))
-        print("Make sure you have provided the correct path!")
-        print("You may have forgotten to train a model for this dataset.")
-        print()
-        print("To train one of the paper's models, run the following")
-        print(">> python train_gnn.py --dataset=DATASET_NAME")
-        print()
-        raise Exception("File not found.")
-    return ckpt
