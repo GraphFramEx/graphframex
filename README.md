@@ -1,4 +1,4 @@
-# Framework for Explainability Framewo
+# GNN Explainability Framework
 
 **Node Classification Tasks**
 
