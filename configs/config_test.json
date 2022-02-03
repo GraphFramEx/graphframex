@@ -14,21 +14,12 @@
     "dest-name": "dest"
   },
   "params": {
-    "gpu": true,
-    "explain_graph": false,
+    "explain_graph": "True",
     "data_save_dir": "data",
     "num_test": 10,
-    "dataset": "syn1",
-    "explainer_name": [
-      "random",
-      "distance",
-      "pagerank",
-      "sa_node",
-      "ig_node",
-      "occlusion",
-      "gnnexplainer",
-      "pgmexplainer",
-      "subgraphx"
-    ]
+    "dataset": "mutag",
+    "num_classes": 2,
+    "input_dim": 7,
+    "explainer_name": ["gnnexplainer"]
   }
 }

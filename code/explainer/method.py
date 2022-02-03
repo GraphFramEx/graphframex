@@ -175,14 +175,9 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, args, incl
 
 def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
-    edge_mask = explainer.explain_graph_with_target(x=x, edge_index=edge_index, target=target)
-    edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask
-
-
-def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
-    explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
-    if node_idx is not None:
+    if eval(args.explain_graph):
+        edge_mask = explainer.explain_graph_with_target(x=x, edge_index=edge_index, target=target)
+    else:
         edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
