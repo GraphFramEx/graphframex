@@ -1,6 +1,7 @@
 import numpy as np
 import torch
-from scipy.special import softmax
+from utils.graph_utils import get_edge_index_set
+from dataset.mutag_utils import prepare_data
 from sklearn import metrics
 from torch.autograd import Variable
 from utils.gen_utils import from_adj_to_edge_index, get_labels
@@ -8,7 +9,7 @@ from utils.gen_utils import from_adj_to_edge_index, get_labels
 
 def gnn_scores_nc(model, data):
     ypred = model(data.x, data.edge_index)
-    ylabels = get_labels(ypred).cpu()
+    ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
     result_train = {
@@ -25,7 +26,41 @@ def gnn_scores_nc(model, data):
     return result_train, result_test
 
 
-def gnn_scores_gc(model, dataset, args, device, name="Validation", max_num_examples=None):
+def gnn_scores_gc(model, dataset, args, device):
+    train_dataset, val_dataset, test_dataset, max_num_nodes, feat_dim, assign_feat_dim = prepare_data(dataset, args)
+    model.eval()
+    result_train = evaluate_gc(model, train_dataset, args, device, name="Train")
+    result_test = evaluate_gc(model, test_dataset, args, device, name="Test")
+    return result_train, result_test
+
+
+def gnn_preds_gc(model, dataset, edge_index_set, args, device, max_num_examples=None):
+    model.eval()
+    labels = []
+    pred_labels = []
+    ypreds = []
+    for batch_idx, data in enumerate(dataset):
+        h0 = Variable(data["feats"].float()).to(device)
+        labels.append(data["label"].long().numpy())
+        batch_num_nodes = data["num_nodes"].int().numpy()
+        assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
+
+        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
+        _, indices = torch.max(ypred, 1)
+        pred_labels.append(indices.cpu().data.numpy())
+        ypreds.append(ypred.cpu().data.numpy())
+
+        if max_num_examples is not None:
+            if (batch_idx + 1) * args.batch_size > max_num_examples:
+                break
+
+    labels = np.hstack(labels)
+    pred_labels = np.hstack(pred_labels)
+    ypreds = np.concatenate(ypreds)
+    return ypreds
+
+
+def evaluate_gc(model, dataset, args, device, name="Validation", max_num_examples=None):
     model.eval()
 
     labels = []
@@ -59,37 +94,3 @@ def gnn_scores_gc(model, dataset, args, device, name="Validation", max_num_examp
     }
     print(name, " accuracy:", result["acc"])
     return result
-
-
-def gnn_preds_gc(model, dataset, edge_index_set, args, max_num_examples=None):
-    model.eval()
-    labels = []
-    pred_labels = []
-    ypreds = []
-    for batch_idx, data in enumerate(dataset):
-        if args.gpu:
-            adj = Variable(data["adj"].float(), requires_grad=False).cuda()
-            h0 = Variable(data["feats"].float()).cuda()
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(data["assign_feats"].float(), requires_grad=False).cuda()
-        else:
-            adj = Variable(data["adj"].float(), requires_grad=False)
-            h0 = Variable(data["feats"].float())
-            labels.append(data["label"].long().numpy())
-            batch_num_nodes = data["num_nodes"].int().numpy()
-            assign_input = Variable(data["assign_feats"].float(), requires_grad=False)
-
-        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
-        _, indices = torch.max(ypred, 1)
-        pred_labels.append(indices.cpu().data.numpy())
-        ypreds.append(ypred.cpu().data.numpy())
-
-        if max_num_examples is not None:
-            if (batch_idx + 1) * args.batch_size > max_num_examples:
-                break
-
-    labels = np.hstack(labels)
-    pred_labels = np.hstack(pred_labels)
-    ypreds = np.concatenate(ypreds)
-    return ypreds

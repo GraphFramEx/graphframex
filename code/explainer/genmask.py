@@ -1,9 +1,9 @@
 import time
+
 import torch
 from torch.autograd import Variable
-from dataset.mutag_utils import data_to_graph, gen_dataloader
-
 from utils.graph_utils import get_edge_index_set
+
 from explainer.method import *
 
 
@@ -25,14 +25,12 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
 
 
 def compute_edge_masks_gc(list_test_graphs, model, data, device, args):
-    test_graphs = data_to_graph(np.array(data)[list_test_graphs])
-    test_data = gen_dataloader(test_graphs, args)
     explain_function = eval("explain_" + args.explainer_name)
-    edge_index_set = get_edge_index_set(test_data)
+    edge_index_set = get_edge_index_set(list_test_graphs)
     edge_masks_set = []
     Time = []
 
-    for batch_idx, data in enumerate(test_data):
+    for batch_idx, data in enumerate(list_test_graphs):
         edge_masks = []
 
         h0 = Variable(data["feats"].float()).to(device)
@@ -40,7 +38,7 @@ def compute_edge_masks_gc(list_test_graphs, model, data, device, args):
 
         for i in range(len(edge_index_set[batch_idx])):
             start_time = time.time()
-            edge_mask = explain_function(model, -1, h0[i], edge_index_set[batch_idx][i], targets[i], device)
+            edge_mask = explain_function(model, -1, h0[i], edge_index_set[batch_idx][i], targets[i], device, args)
             end_time = time.time()
             duration_seconds = end_time - start_time
             edge_masks.append(edge_mask)

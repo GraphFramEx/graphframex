@@ -91,13 +91,13 @@ def save_checkpoint(filename, model, args, results_train, results_test, isbest=F
     )
 
 
-def load_ckpt(filename, isbest=False):
+def load_ckpt(filename, device, isbest=False):
     """Load a pre-trained pytorch model from checkpoint."""
     print("loading model")
     print(filename)
     if os.path.isfile(filename):
         print("=> loading checkpoint '{}'".format(filename))
-        ckpt = torch.load(filename)
+        ckpt = torch.load(filename, map_location=device)
     else:
         print("Checkpoint does not exist!")
         print("Checked path -- {}".format(filename))
@@ -111,20 +111,7 @@ def load_ckpt(filename, isbest=False):
     return ckpt
 
 
-def load_model(path):
-    """Load a pytorch model."""
-    model = torch.load(path)
-    model.eval()
-    if use_cuda:
-        model.cuda()
-
-    for p in model.features.parameters():
-        p.requires_grad = False
-    for p in model.classifier.parameters():
-        p.requires_grad = False
-
-    return
-
-
 def gen_train_plt_name(args):
-    return "results/" + gen_prefix(args) + ".png"
+    save_fig_dir = os.path.join(os.path.join(args.model_save_dir, args.dataset), "results")
+    os.makedirs(save_fig_dir, exist_ok=True)
+    return os.path.join(save_fig_dir, gen_prefix(args)) + ".png"

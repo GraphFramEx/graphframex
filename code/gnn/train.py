@@ -59,8 +59,7 @@ def train_graph_classification(model, data, device, args, mask_nodes=True):
         writer ([type], optional): [description]. Defaults to None.
         mask_nodes (bool, optional): [description]. Defaults to True.
     """
-    graphs = data_to_graph(data)
-    train_dataset, val_dataset, test_dataset, max_num_nodes, feat_dim, assign_feat_dim = prepare_data(graphs, args)
+    train_dataset, val_dataset, test_dataset, max_num_nodes, feat_dim, assign_feat_dim = prepare_data(data, args)
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
     iter = 0
@@ -126,18 +125,18 @@ def train_graph_classification(model, data, device, args, mask_nodes=True):
         elapsed = time.time() - begin_time
         print("Avg loss: ", avg_loss, "; epoch time: ", elapsed)
 
-        result = gnn_scores_gc(model, train_dataset, args, device, name="Train", max_num_examples=100)
+        result = evaluate_gc(model, train_dataset, args, device, name="Train", max_num_examples=100)
         train_accs.append(result["acc"])
         train_epochs.append(epoch)
         if val_dataset is not None:
-            val_result = gnn_scores_gc(model, val_dataset, args, device, name="Validation")
+            val_result = evaluate_gc(model, val_dataset, args, device, name="Validation")
             val_accs.append(val_result["acc"])
         if val_result["acc"] > best_val_result["acc"] - 1e-7:
             best_val_result["acc"] = val_result["acc"]
             best_val_result["epoch"] = epoch
             best_val_result["loss"] = avg_loss
         if test_dataset is not None:
-            test_result = gnn_scores_gc(model, test_dataset, args, device, name="Test")
+            test_result = evaluate_gc(model, test_dataset, args, device, name="Test")
             test_result["epoch"] = epoch
         print("Best val result: ", best_val_result)
         best_val_epochs.append(best_val_result["epoch"])

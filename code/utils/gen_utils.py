@@ -3,7 +3,9 @@ import random
 import numpy as np
 import pandas as pd
 import torch
+from dataset.mutag_utils import GraphSampler
 from scipy.sparse import csr_matrix
+from scipy.special import softmax
 from torch_geometric.utils import from_scipy_sparse_matrix, k_hop_subgraph, to_scipy_sparse_matrix
 
 
@@ -59,8 +61,8 @@ def from_adj_to_edge_index(adj):
 
 def get_test_nodes(data, model, args):
     if args.true_label:
-        pred_labels = get_labels(model(data.x, data.edge_index))
-        list_node_idx = np.where(pred_labels.cpu().numpy() == data.y.cpu().numpy())[0]
+        pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
+        list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
     else:
         list_node_idx = np.arange(data.x.size(0))
     list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
@@ -69,8 +71,25 @@ def get_test_nodes(data, model, args):
 
 
 def get_test_graphs(data, args):
-    list_test_graphs = np.random.randint(0, len(data), args.num_test)
-    return list_test_graphs
+    list_test_idx = np.random.randint(0, len(data), args.num_test)
+    test_graphs = gen_dataloader(np.array(data)[list_test_idx], args)
+    return test_graphs
+
+
+def gen_dataloader(graphs, args, max_nodes=0):
+    dataset_sampler = GraphSampler(
+        graphs,
+        normalize=False,
+        max_num_nodes=max_nodes,
+        features=args.feature_type,
+    )
+    dataset_loader = torch.utils.data.DataLoader(
+        dataset_sampler,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+    )
+    return dataset_loader
 
 
 def get_true_labels_gc(dataset):
@@ -82,10 +101,10 @@ def get_true_labels_gc(dataset):
 
 
 def get_proba(ypred):
-    yprob = torch.softmax(ypred, axis=1)
+    yprob = softmax(ypred, axis=1)
     return yprob
 
 
 def get_labels(ypred):
-    ylabels = torch.argmax(ypred, dim=1)
+    ylabels = np.argmax(ypred, axis=1)
     return ylabels

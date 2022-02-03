@@ -1,9 +1,13 @@
 import json
 import os
 import random
-from dataset.mutag_utils import gen_dataloader
-from dataset.gen_mutag import build_mutag, collate_data
+
+import numpy as np
+import torch
+
+from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
+from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_size, get_sparsity, normalize_all_masks, transform_mask
@@ -12,11 +16,9 @@ from gnn.eval import gnn_scores_gc, gnn_scores_nc
 from gnn.model import GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification
 from utils.gen_utils import get_test_graphs, get_test_nodes
+from utils.graph_utils import get_edge_index_set
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args
-
-import numpy as np
-import torch
 
 
 def main_syn(args):
@@ -65,7 +67,7 @@ def main_syn(args):
         results_train, results_test = gnn_scores_nc(model, data)
         save_checkpoint(model_filename, model, args, results_train, results_test)
 
-    ckpt = load_ckpt(model_filename)
+    ckpt = load_ckpt(model_filename, device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
     model.to(device)
@@ -132,6 +134,9 @@ def main_mutag(args):
         data = build_mutag(args)
         torch.save(data, data_filename)
 
+    ### Crucial step: converting Pytorch Data object to networkx Graph object with features: adj, feat, ...
+    data = data_to_graph(data)
+
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
@@ -157,10 +162,11 @@ def main_mutag(args):
         )
         train_graph_classification(model, data, device, args)
         model.eval()
+        print("data", data)
         results_train, results_test = gnn_scores_gc(model, data, args, device)
-        save_checkpoint(model, args, results_train, results_test)
+        save_checkpoint(model_filename, model, args, results_train, results_test)
 
-    ckpt = load_ckpt(model_filename)
+    ckpt = load_ckpt(model_filename, device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
     model.to(device)
@@ -168,8 +174,8 @@ def main_mutag(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
-    list_test_graphs = get_test_graphs(data, args)
-    edge_masks, Time = compute_edge_masks_gc(list_test_graphs, model, data, device, args)
+    test_data = get_test_graphs(data, args)
+    edge_masks, Time = compute_edge_masks_gc(test_data, model, data, device, args)
 
     ### Mask transformation ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
@@ -182,12 +188,12 @@ def main_mutag(args):
     infos = {
         "dataset": args.dataset,
         "explainer": args.explainer_name,
-        "number_of_edges": data.edge_index.size(1),
-        "mask_sparsity_init": get_sparsity(edge_masks),
-        "non_zero_values_init": get_size(edge_masks),
+        "number_of_edges": np.mean([len(edge_mask) for edge_mask in np.hstack(edge_masks)]),
+        "mask_sparsity_init": get_sparsity(np.hstack(edge_masks)),
+        "non_zero_values_init": get_size(np.hstack(edge_masks)),
         "sparsity": args.sparsity,
         "threshold": args.threshold,
-        "ktop": args.ktop,
+        "topk": args.topk,
         "num_test": args.num_test,
         "groundtruth target": args.true_label,
         "time": float(format(np.mean(Time), ".4f")),
@@ -198,7 +204,8 @@ def main_mutag(args):
     # edge_masks = transform_mask(edge_masks, args)
 
     ### Fidelity ###
-    related_preds = eval_related_pred_gc(model, data, edge_masks, list_test_graphs, device)
+    edge_index = get_edge_index_set(test_data)
+    related_preds = eval_related_pred_gc(model, test_data, edge_index, edge_masks, device, args)
     fidelity = eval_fidelity(related_preds)
     print("__fidelity:" + json.dumps(fidelity))
 

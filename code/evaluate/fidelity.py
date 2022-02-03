@@ -13,7 +13,7 @@ from evaluate.mask_utils import get_size, get_sparsity
 def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
     related_preds = []
     data = data.to(device)
-    ori_ypred = model(data.x, data.edge_index)
+    ori_ypred = model(data.x, data.edge_index).cpu().detach().numpy()
     ori_yprob = get_proba(ori_ypred)
 
     n_test = len(list_node_idx)
@@ -29,16 +29,15 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
         masked_edge_index = data.edge_index[:, indices].to(device)
         maskout_edge_index = data.edge_index[:, indices_inv].to(device)
 
-        masked_ypred = model(data.x, masked_edge_index)
+        masked_ypred = model(data.x, masked_edge_index).cpu().detach().numpy()
         masked_yprob = get_proba(masked_ypred)
 
-        maskout_ypred = model(data.x, maskout_edge_index)
+        maskout_ypred = model(data.x, maskout_edge_index).cpu().detach().numpy()
         maskout_yprob = get_proba(maskout_ypred)
 
-        ori_probs = ori_yprob[node_idx].detach().cpu().numpy()
-        masked_probs = masked_yprob[node_idx].detach().cpu().numpy()
-        maskout_probs = maskout_yprob[node_idx].detach().cpu().numpy()
-
+        ori_probs = ori_yprob[node_idx]
+        masked_probs = masked_yprob[node_idx]
+        maskout_probs = maskout_yprob[node_idx]
         true_label = data.y[node_idx].cpu().numpy()
         pred_label = np.argmax(ori_probs)
         # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
@@ -67,15 +66,15 @@ def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device,
     mask_sparsity = get_sparsity(np.hstack(edge_masks_set))
     expl_edges = get_size(np.hstack(edge_masks_set))
 
-    ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args)
+    ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args, device)
     ori_yprob = get_proba(ori_ypred)
 
     masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(edge_masks_set, edge_index_set, device)
 
-    masked_ypred = gnn_preds_gc(model, dataset, masked_edge_index_set, args)
+    masked_ypred = gnn_preds_gc(model, dataset, masked_edge_index_set, args, device)
     masked_yprob = get_proba(masked_ypred)
 
-    maskout_ypred = gnn_preds_gc(model, dataset, maskout_edge_index_set, args)
+    maskout_ypred = gnn_preds_gc(model, dataset, maskout_edge_index_set, args, device)
     maskout_yprob = get_proba(maskout_ypred)
 
     related_preds = {

@@ -6,7 +6,6 @@ import torch
 import torch.utils.data
 from torch.autograd import Variable
 from torch_geometric.utils.convert import to_networkx
-from utils.gen_utils import get_test_graphs
 
 
 class GraphSampler(torch.utils.data.Dataset):
@@ -154,7 +153,6 @@ def neighborhoods(adj, n_hops, use_cuda):
 
 
 def prepare_data(graphs, args, test_graphs=None, max_nodes=0):
-
     random.shuffle(graphs)
     if test_graphs is None:
         train_idx = int(len(graphs) * args.train_ratio)
@@ -227,22 +225,6 @@ def prepare_data(graphs, args, test_graphs=None, max_nodes=0):
         dataset_sampler.feat_dim,
         dataset_sampler.assign_feat_dim,
     )
-
-
-def gen_dataloader(graphs, args, max_nodes=0):
-    dataset_sampler = GraphSampler(
-        graphs,
-        normalize=False,
-        max_num_nodes=max_nodes,
-        features=args.feature_type,
-    )
-    dataset_loader = torch.utils.data.DataLoader(
-        dataset_sampler,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=args.num_workers,
-    )
-    return dataset_loader
 
 
 def data_to_graph(data_list):
