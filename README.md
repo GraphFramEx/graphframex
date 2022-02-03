@@ -49,11 +49,7 @@ pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-${TORCH
 pip install torch-geometric==2.0.3
 ```
 
-2. Visual Genome (optional). [Google Drive Download](https://drive.google.com/file/d/132ziPf2PKqjGoZkqh9194rT17qr3ywN8/view?usp=sharing).
-   This is used for preprocessing the VG-5 dataset and visualizing the generated explanations.
-   Manually download it to the same directory as `data`. (This package can be accessed by API, but we found it slow to use.) You can still run the other datasets without downloading it.
-
-3. Other packages
+2. Other packages
 
 ```
 pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
@@ -65,9 +61,8 @@ pip install tensorboardx
 
 1. The processed raw data for datasets `syn1`, `syn2`, `syn3`, `syn4`, `syn5`, `syn6` is available in the `data/` folder.
 2. Dataset `MUTAG` will be automatically downloaded when training models.
-3. We select and label 4443 graphs from <https://visualgenome.org/> to construct the **VG-5** dataset. The graphs are
 
-The dir ir aranged as
+The data directory is arranged as
 
 ```
 .
@@ -94,11 +89,11 @@ The dir ir aranged as
     └── syn6.pt
 ```
 
-## Train GNNs
+## Trained GNN models
 
 We provide the trained GNNs in `model/` for reproducing the results in our paper.
 
-## Code map
+## Python code map
 
 ```
 .
@@ -138,7 +133,7 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
     └── parser_utils.py
 ```
 
-## Explaining the Predictions
+## Demo
 
 ### Node Classification
 
@@ -158,7 +153,7 @@ python3 code/main.py --dataset [dataset-name] --explain_graph True --explainer_n
 - dataset-name: mutag
 - explainer_name: random, sa, ig, gnnexplainer (to complete)
 
-## Mask transformation
+### Mask transformation
 
 To compare the methods, we adopt separately three strategies to cut off the masks:
 
@@ -168,7 +163,7 @@ To compare the methods, we adopt separately three strategies to cut off the mask
 
 3. Topk
 
-For baseline explainers, e.g.,
+### Baseline explainers
 
 ```python
 gnn_explainer = GNNExplainer(device, gnn_path)
@@ -179,24 +174,45 @@ screener = Screener(device, gnn_path)
 screener.explain_graph(test_dataset[0])
 ```
 
-5. Evaluation & Visualization
+## Visualization
 
-Evaluation and visualization are made universal for every `explainer`. After explaining a single graph, the pair `(graph, edge_imp:np.ndarray)` is saved as `explainer.last_result` by default, which is then evaluated or visualized.
+Visualisation of the GNN model training
+Visualisation of the explanations
 
-```python
-ratios = [0.1 *i for i in range(1,11)]
-acc_auc = refine.evaluate_acc(ratios).mean()
-racall =  refine.evaluate_recall(topk=5)
-refine.visualize(vis_ratio=0.3) # visualize the explanation
-```
+### Jupyter Notebook
 
-To evaluate ReFine-FT and ReFine in the testing datasets, run
+The default visualizations are provided in `notebook/GNN-Explainer-Viz.ipynb`.
 
-```bash
-python evaluate.py --dataset ba3
-```
+> Note: For an interactive version, you must enable ipywidgets
+>
+> ```
+> jupyter nbextension enable --py widgetsnbextension
+> ```
 
-The results will be included in file `results/ba3_results.json`, where `ReFine-FT.ACC-AUC` (`ReFine-FT.Recall@5`) and `ReFine.ACC-AUC` (`ReFine.Recall@5`) are the performances of ReFine-FT and ReFine, respectively.
+Tuningthe mask sparsity/threshold/top-k values.
+You can now play around with the mask threshold in the `GNN-Explainer-Viz-interactive.ipynb`.
+
+> TODO: Explain outputs + visualizations + baselines
+
+#### Included experiments
+
+| Name         | `EXPERIMENT_NAME` | Description                                                                                                                            |
+| ------------ | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Synthetic #1 |      `syn1`       | Random BA graph with House attachments.                                                                                                |
+| Synthetic #2 |      `syn2`       | Random BA graph with community features.                                                                                               |
+| Synthetic #3 |      `syn3`       | Random BA graph with grid attachments.                                                                                                 |
+| Synthetic #4 |      `syn4`       | Random Tree with cycle attachments.                                                                                                    |
+| Synthetic #5 |      `syn5`       | Random Tree with grid attachments.                                                                                                     |
+| MUTAG        |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+
+### Using the explainer on other models
+
+A graph convolutional model is provided. This repo is still being actively developed to support other
+GNN models in the future.
+
+## Changelog
+
+See [CHANGELOG.md](#)
 
 ## Citation
 
