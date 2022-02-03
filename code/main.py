@@ -168,8 +168,8 @@ def main_mutag(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
-    test_data = gen_dataloader(data, args)
-    edge_masks, Time = compute_edge_masks_gc(model, test_data, device, args)
+    list_test_graphs = get_test_graphs(data, args)
+    edge_masks, Time = compute_edge_masks_gc(list_test_graphs, model, data, device, args)
 
     ### Mask transformation ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
@@ -207,7 +207,7 @@ def main_mutag(args):
 
 if __name__ == "__main__":
     args = arg_parse()
-    if args.explain_graph:
+    if eval(args.explain_graph):
         main_mutag(args)
     else:
         main_syn(args)

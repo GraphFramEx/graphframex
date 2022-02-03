@@ -24,15 +24,15 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     return edge_masks, Time
 
 
-def compute_edge_masks_gc(model, dataset, device, args):
-    graphs = data_to_graph(dataset)
-    dataset = gen_dataloader(graphs, args)
+def compute_edge_masks_gc(list_test_graphs, model, data, device, args):
+    test_graphs = data_to_graph(np.array(data)[list_test_graphs])
+    test_data = gen_dataloader(test_graphs, args)
     explain_function = eval("explain_" + args.explainer_name)
-    edge_index_set = get_edge_index_set(dataset)
+    edge_index_set = get_edge_index_set(test_data)
     edge_masks_set = []
     Time = []
 
-    for batch_idx, data in enumerate(dataset):
+    for batch_idx, data in enumerate(test_data):
         edge_masks = []
 
         h0 = Variable(data["feats"].float()).to(device)

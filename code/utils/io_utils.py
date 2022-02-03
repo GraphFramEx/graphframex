@@ -22,7 +22,10 @@ def check_dir(save_dirs):
 def gen_prefix(args):
     """Generate label prefix for a graph model."""
     name = args.dataset
-
+    if eval(args.explain_graph):
+        name += "_gc"
+    else:
+        name += "_nc"
     name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim)
     if not args.bias:
         name += "_nobias"

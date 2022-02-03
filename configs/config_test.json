@@ -17,7 +17,7 @@
     "gpu": true,
     "explain_graph": false,
     "data_save_dir": "data",
-    "num_test_nodes": 10,
+    "num_test": 10,
     "dataset": "syn1",
     "explainer_name": [
       "random",

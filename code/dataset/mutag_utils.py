@@ -229,11 +229,9 @@ def prepare_data(graphs, args, test_graphs=None, max_nodes=0):
     )
 
 
-def gen_dataloader(data, args, max_nodes=0):
-    graphs = data_to_graph(data)
-    list_test_graphs = get_test_graphs(graphs, args)
+def gen_dataloader(graphs, args, max_nodes=0):
     dataset_sampler = GraphSampler(
-        list_test_graphs,
+        graphs,
         normalize=False,
         max_num_nodes=max_nodes,
         features=args.feature_type,

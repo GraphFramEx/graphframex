@@ -68,8 +68,8 @@ def get_test_nodes(data, model, args):
     return list_test_nodes
 
 
-def get_test_graphs(graphs, args):
-    list_test_graphs = np.random.choice(graphs, args.num_test_graphs)
+def get_test_graphs(data, args):
+    list_test_graphs = np.random.randint(0, len(data), args.num_test)
     return list_test_graphs
 
 
