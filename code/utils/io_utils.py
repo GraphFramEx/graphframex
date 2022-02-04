@@ -115,3 +115,9 @@ def gen_train_plt_name(args):
     save_fig_dir = os.path.join(os.path.join(args.model_save_dir, args.dataset), "results")
     os.makedirs(save_fig_dir, exist_ok=True)
     return os.path.join(save_fig_dir, gen_prefix(args)) + ".png"
+
+
+def gen_mask_density_plt_name(args):
+    save_fig_dir = os.path.join(args.fig_save_dir, args.dataset)
+    os.makedirs(save_fig_dir, exist_ok=True)
+    return os.path.join(save_fig_dir, args.explainer_name) + ".png"
