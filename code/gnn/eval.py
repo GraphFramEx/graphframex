@@ -34,28 +34,18 @@ def gnn_scores_gc(model, dataset, args, device):
     return result_train, result_test
 
 
-def gnn_preds_gc(model, dataset, edge_index_set, args, device, max_num_examples=None):
+def gnn_preds_gc(model, dataset, edge_index, args, device, max_num_examples=None):
     model.eval()
-    labels = []
     pred_labels = []
     ypreds = []
-    for batch_idx, data in enumerate(dataset):
-        h0 = Variable(data["feats"].float()).to(device)
-        labels.append(data["label"].long().numpy())
-        batch_num_nodes = data["num_nodes"].int().numpy()
-        assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
-
-        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
+    for i in range(len(dataset)):
+        data = dataset[i]
+        h0 = Variable(torch.Tensor(data["feats"])).to(device)
+        edges = Variable(torch.LongTensor(edge_index[i])).to(device)
+        ypred = model(h0, edges)
         _, indices = torch.max(ypred, 1)
         pred_labels.append(indices.cpu().data.numpy())
         ypreds.append(ypred.cpu().data.numpy())
-
-        if max_num_examples is not None:
-            if (batch_idx + 1) * args.batch_size > max_num_examples:
-                break
-
-    labels = np.hstack(labels)
-    pred_labels = np.hstack(pred_labels)
     ypreds = np.concatenate(ypreds)
     return ypreds
 

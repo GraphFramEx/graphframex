@@ -37,7 +37,7 @@ def arg_parse():
 
     parser.add_argument("--dest", type=str, default="/Users/kenzaamara/GithubProjects/Explain")
 
-    parser.add_argument("--seed", help="random seed", type=int, default=41)
+    parser.add_argument("--seed", help="random seed", type=int, default=10)
 
     # Computing power
     parser.add_argument("--cuda", dest="cuda", help="CUDA.")
@@ -145,6 +145,20 @@ def arg_parse():
     )
     parser.add_argument("--explainer_name", help="explainer", type=str)
 
+    # hyperparameters for GNNExplainer
+    parser.add_argument(
+        "--edge_size",
+        dest="edge_size",
+        type=float,
+        help="Constraining edge mask size (high `edge_size` => small edge mask)",
+    )
+    parser.add_argument(
+        "--edge_ent",
+        dest="edge_ent",
+        type=float,
+        help="Constraining edge mask entropy: mask is uniform or discriminative",
+    )
+
     parser.set_defaults(
         datadir="data",  # io_parser
         logdir="log",
@@ -153,7 +167,7 @@ def arg_parse():
         dataset="syn1",
         num_basis=300,
         num_shapes=150,
-        num_test=100,
+        num_test=10,
         opt="adam",  # opt_parser
         opt_scheduler="none",
         max_nodes=100,
@@ -175,6 +189,8 @@ def arg_parse():
         weight_decay=0.005,
         method="base",
         name_suffix="",
-        explainer_name="pagerank",
+        edge_ent=1,
+        edge_size=0,
+        explainer_name="gnnexplainer",
     )
     return parser.parse_args()

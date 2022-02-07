@@ -2,11 +2,12 @@ import networkx as nx
 import numpy as np
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
+from torch.autograd import Variable
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
 
-from explainer.gnnexplainer import TargetedGNNExplainer
+from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.pgmexplainer import Node_Explainer
 from explainer.subgraphx import SubgraphX
 
@@ -117,6 +118,25 @@ def explain_sa(model, node_idx, x, edge_index, target, device, args, include_edg
     return edge_mask
 
 
+def explain_sa_graph(graph, model, draw_graph=0, vis_ratio=0.2):
+
+    tmp_graph = graph.clone()
+
+    tmp_graph.edge_attr = Variable(tmp_graph.edge_attr, requires_grad=True)
+    tmp_graph.x = Variable(tmp_graph.x, requires_grad=True)
+    pred = model(tmp_graph)
+    pred[0, tmp_graph.y].backward()
+
+    def norm_imp(imp):
+        imp[imp < 0] = 0
+        imp += 1e-16
+        return imp / imp.sum()
+
+    edge_grads = pow(tmp_graph.edge_attr.grad, 2).sum(dim=1).cpu().numpy()
+    edge_imp = norm_imp(edge_grads)
+    return edge_imp
+
+
 def explain_sa_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     saliency = Saliency(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
@@ -174,11 +194,27 @@ def explain_occlusion(model, node_idx, x, edge_index, target, device, args, incl
 
 
 def explain_gnnexplainer(model, node_idx, x, edge_index, target, device, args, include_edges=None):
-    explainer = TargetedGNNExplainer(model, num_hops=args.num_gc_layers, epochs=args.num_epochs)
+    """explainer = GNNExplainer(
+        model, num_hops=args.num_gc_layers, epochs=args.num_epochs, edge_ent=args.edge_ent, edge_size=args.edge_size
+    )
+    if eval(args.explain_graph):
+        _, edge_mask = explainer.explain_graph(x=x, edge_index=edge_index)
+    else:
+        _, edge_mask = explainer.explain_node(node_idx, x=x, edge_index=edge_index)
+    """
+    explainer = TargetedGNNExplainer(
+        model,
+        num_hops=args.num_gc_layers,
+        epochs=args.num_epochs,
+        edge_ent=args.edge_ent,
+        edge_size=args.edge_size,
+        allow_node_mask=False,
+    )
     if eval(args.explain_graph):
         edge_mask = explainer.explain_graph_with_target(x=x, edge_index=edge_index, target=target)
     else:
         edge_mask = explainer.explain_node_with_target(node_idx, x=x, edge_index=edge_index, target=target)
+
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
 

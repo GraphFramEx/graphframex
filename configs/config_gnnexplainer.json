@@ -10,16 +10,18 @@
   },
   "meta": {
     "group": "checkpoints",
-    "name": "gnnexplainer",
+    "name": "gnnexplainer_size",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
-    "gpu": true,
+    "explain_graph": "False",
     "data_save_dir": "data",
-    "num_test_nodes": 100,
-    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "edge_entropy": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-    "explainer_name": "gnnexplainer"
+    "num_test": 100,
+    "dataset": "syn1",
+    "explainer_name": {
+      "gnnexplainer": { "edge_size": [0, 0.005, 0.05, 0.5, 1, 5, 10, 100] },
+      "pagerank": { "edge_size": 0.005 }
+    }
   }
 }

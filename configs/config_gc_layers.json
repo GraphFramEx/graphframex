@@ -16,7 +16,7 @@
   },
   "params": {
     "data_save_dir": "data",
-    "num_test_nodes": 200,
+    "num_test": 200,
     "dataset": "syn1",
     "num_gc_layers": [1, 2, 3, 4, 5, 6],
     "explainer_name": ["pagerank", "gnnexplainer"]

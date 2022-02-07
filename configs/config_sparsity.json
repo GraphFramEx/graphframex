@@ -15,9 +15,8 @@
     "dest-name": "dest"
   },
   "params": {
-    "gpu": true,
     "data_save_dir": "data",
-    "num_test_nodes": 100,
+    "num_test": 100,
     "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
     "sparsity": [0, 0.7, 0.99, 0.997],
     "explainer_name": [

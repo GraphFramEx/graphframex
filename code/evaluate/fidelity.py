@@ -63,8 +63,8 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
 
 def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device, args):
 
-    mask_sparsity = get_sparsity(np.hstack(edge_masks_set))
-    expl_edges = get_size(np.hstack(edge_masks_set))
+    mask_sparsity = get_sparsity(edge_masks_set)
+    expl_edges = get_size(edge_masks_set)
 
     ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args, device)
     ori_yprob = get_proba(ori_ypred)

@@ -40,7 +40,7 @@ def train_node_classification(model, data, device, args):
         loss.backward()
         optimizer.step()
 
-    matplotlib.style.use("seaborn")
+    """matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     plt.figure()
     plt.plot(range(args.num_epochs // 10), train_err)
@@ -48,7 +48,7 @@ def train_node_classification(model, data, device, args):
     plt.legend(["train", "val"])
     plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
     plt.close()
-    matplotlib.style.use("default")
+    matplotlib.style.use("default")"""
 
 
 def train_graph_classification(model, data, device, args, mask_nodes=True):

@@ -66,13 +66,20 @@ def get_test_nodes(data, model, args):
     else:
         list_node_idx = np.arange(data.x.size(0))
     list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
-    list_test_nodes = [x.item() for x in random.choices(list_node_idx_pattern, k=args.num_test)]
+    # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
+    list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
     return list_test_nodes
 
 
 def get_test_graphs(data, args):
     list_test_idx = np.random.randint(0, len(data), args.num_test)
-    test_graphs = gen_dataloader(np.array(data)[list_test_idx], args)
+    test_graphs = np.array(data)[list_test_idx]
+    test_graphs = GraphSampler(
+        test_graphs,
+        normalize=False,
+        max_num_nodes=args.max_nodes,
+        features=args.feature_type,
+    )
     return test_graphs
 
 
@@ -94,9 +101,8 @@ def gen_dataloader(graphs, args, max_nodes=0):
 
 def get_true_labels_gc(dataset):
     labels = []
-    for batch_idx, data in enumerate(dataset):
-        labels.append(data["label"].long().numpy())
-    labels = np.hstack(labels)
+    for data in dataset:
+        labels.append(int(data["label"]))
     return labels
 
 

@@ -3,19 +3,20 @@ import os
 import random
 
 import numpy as np
+from sklearn import metrics
 import torch
 
 from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
-from dataset.mutag_utils import data_to_graph
+from dataset.mutag_utils import GraphSampler, data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_nc
-from gnn.eval import gnn_scores_gc, gnn_scores_nc
+from gnn.eval import gnn_preds_gc, gnn_scores_gc, gnn_scores_nc
 from gnn.model import GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification
-from utils.gen_utils import get_test_graphs, get_test_nodes
+from utils.gen_utils import get_labels, get_test_graphs, get_test_nodes, get_true_labels_gc
 from utils.graph_utils import get_edge_index_set
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args
@@ -23,14 +24,14 @@ from utils.plot_utils import plot_mask_density
 
 
 def main_syn(args):
-    random.seed(args.seed)
+    np.random.seed(args.seed)
+    print(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ### Generate, Save, Load data ###
     check_dir(args.data_save_dir)
     data_filename = create_data_filename(args)
-
     if os.path.isfile(data_filename):
         data = torch.load(data_filename)
     else:
@@ -77,6 +78,7 @@ def main_syn(args):
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+    # plot_mask_density(edge_masks, args)
 
     ### Mask transformation ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
@@ -85,7 +87,6 @@ def main_syn(args):
 
     # Normalize edge_masks to have value from 0 to 1
     edge_masks = normalize_all_masks(edge_masks)
-    plot_mask_density(edge_masks, args)
 
     infos = {
         "dataset": args.dataset,
@@ -176,23 +177,40 @@ def main_mutag(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
-    test_data = get_test_graphs(data, args)
-    edge_masks, Time = compute_edge_masks_gc(test_data, model, data, device, args)
+    data2 = GraphSampler(
+        data,
+        normalize=False,
+        max_num_nodes=args.max_nodes,
+        features=args.feature_type,
+    )
+    edge_index = get_edge_index_set(data2)
+    ypreds = gnn_preds_gc(model, data2, edge_index, args, device, max_num_examples=None)
+    preds = get_labels(ypreds)
+    labels = get_true_labels_gc(data2)
 
+    result = {
+        "prec": metrics.precision_score(labels, preds, average="macro"),
+        "recall": metrics.recall_score(labels, preds, average="macro"),
+        "acc": metrics.accuracy_score(labels, preds),
+    }
+    print("result", result)
+
+    test_data = get_test_graphs(data, args)
+    edge_masks, Time = compute_edge_masks_gc(model, test_data, device, args)
     ### Mask transformation ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
-    # edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
-    # edge_masks = clean_masks(edge_masks)
+    edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
+    edge_masks = clean_masks(edge_masks)
 
     # Normalize edge_masks to have value from 0 to 1
-    # edge_masks = normalize_all_masks(edge_masks)
+    edge_masks = normalize_all_masks(edge_masks)
 
     infos = {
         "dataset": args.dataset,
         "explainer": args.explainer_name,
-        "number_of_edges": np.mean([len(edge_mask) for edge_mask in np.hstack(edge_masks)]),
-        "mask_sparsity_init": get_sparsity(np.hstack(edge_masks)),
-        "non_zero_values_init": get_size(np.hstack(edge_masks)),
+        "number_of_edges": np.mean([len(edge_mask) for edge_mask in edge_masks]),
+        "mask_sparsity_init": get_sparsity(edge_masks),
+        "non_zero_values_init": get_size(edge_masks),
         "sparsity": args.sparsity,
         "threshold": args.threshold,
         "topk": args.topk,
@@ -203,7 +221,7 @@ def main_mutag(args):
     print("__infos:" + json.dumps(infos))
 
     ### Mask transformation ###
-    # edge_masks = transform_mask(edge_masks, args)
+    edge_masks = transform_mask(edge_masks, args)
 
     ### Fidelity ###
     edge_index = get_edge_index_set(test_data)
