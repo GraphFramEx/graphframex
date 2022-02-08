@@ -183,7 +183,9 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, ar
 
 def explain_pgmexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None):
     explainer = Node_Explainer(model, edge_index, x, args.num_gc_layers, device=device, print_result=0)
-    explanation = explainer.explain(node_idx, target)
+    explanation = explainer.explain(
+        node_idx, target, num_samples=100, top_node=None, p_threshold=0.05, pred_threshold=0.1
+    )
     node_attr = np.zeros(x.shape[0])
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value

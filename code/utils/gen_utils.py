@@ -16,17 +16,6 @@ def list_to_dict(preds):
     return preds_dict
 
 
-def normalize(x):
-    return (x - min(x)) / (max(x) - min(x))
-
-
-def normalize_masks(edge_masks):
-    new_list = []
-    for mask in edge_masks:
-        new_list.append(normalize(mask))
-    return new_list
-
-
 def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
     num_nodes, num_edges = x.size(0), edge_index.size(1)
 
@@ -69,18 +58,6 @@ def get_test_nodes(data, model, args):
     # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
     list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
     return list_test_nodes
-
-
-"""def get_test_graphs(data, args):
-    list_test_idx = np.random.randint(0, len(data), args.num_test)
-    test_graphs = np.array(data)[list_test_idx]
-    test_graphs = GraphSampler(
-        test_graphs,
-        normalize=False,
-        max_num_nodes=args.max_nodes,
-        features=args.feature_type,
-    )
-    return test_graphs"""
 
 
 def get_test_graphs(data, args):

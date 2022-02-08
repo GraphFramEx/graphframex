@@ -115,7 +115,8 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 │   ├── __init__.py
 │   ├── genmask.py
 │   ├── gnnexplainer.py
-│   ├── method.py
+│   ├── graph_explainer.py
+│   ├── node_explainer.py
 │   ├── pgmexplainer.py
 │   ├── shapley.py
 │   └── subgraphx.py
@@ -130,7 +131,8 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
     ├── graph_utils.py
     ├── io_utils.py
     ├── math_utils.py
-    └── parser_utils.py
+    ├── parser_utils.py
+    └── plot_utils.py
 ```
 
 ## Demo

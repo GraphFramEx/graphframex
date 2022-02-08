@@ -152,7 +152,6 @@ class Graph_Explainer:
         self.snorm_n = snorm_n
         self.snorm_e = snorm_e
         self.num_layers = num_layers
-        self.perturb_feature_list = perturb_feature_list
         self.perturb_mode = perturb_mode
         self.perturb_indicator = perturb_indicator
         self.print_result = print_result
@@ -167,19 +166,18 @@ class Graph_Explainer:
         if random == 1:
             if seed == 1:
                 for i in range(perturb_array.shape[0]):
-                    if i in self.perturb_feature_list:
-                        if self.perturb_mode == "mean":
-                            perturb_array[i] = np.mean(feature_matrix[:, i])
-                        elif self.perturb_mode == "zero":
+                    if self.perturb_mode == "mean":
+                        perturb_array[i] = np.mean(feature_matrix[:, i])
+                    elif self.perturb_mode == "zero":
+                        perturb_array[i] = 0
+                    elif self.perturb_mode == "max":
+                        perturb_array[i] = np.max(feature_matrix[:, i])
+                    elif self.perturb_mode == "uniform":
+                        perturb_array[i] = perturb_array[i] + np.random.uniform(low=-epsilon[i], high=epsilon[i])
+                        if perturb_array[i] < 0:
                             perturb_array[i] = 0
-                        elif self.perturb_mode == "max":
-                            perturb_array[i] = np.max(feature_matrix[:, i])
-                        elif self.perturb_mode == "uniform":
-                            perturb_array[i] = perturb_array[i] + np.random.uniform(low=-epsilon[i], high=epsilon[i])
-                            if perturb_array[i] < 0:
-                                perturb_array[i] = 0
-                            elif perturb_array[i] > np.max(self.X_feat, axis=0)[i]:
-                                perturb_array[i] = np.max(self.X_feat, axis=0)[i]
+                        elif perturb_array[i] > np.max(self.X_feat, axis=0)[i]:
+                            perturb_array[i] = np.max(self.X_feat, axis=0)[i]
 
         X_perturb[node_idx] = perturb_array
 
@@ -208,7 +206,7 @@ class Graph_Explainer:
                 sample.append(latent)
 
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float)
-            pred_perturb_torch = self.model.forward(self.graph, X_perturb_torch, E_torch, self.snorm_n, self.snorm_e)
+            pred_perturb_torch = self.model(X_perturb_torch, self.edge_index).cpu()
             soft_pred_perturb = np.asarray(softmax(np.asarray(pred_perturb_torch[0].data)))
 
             pred_change = np.max(soft_pred) - soft_pred_perturb[pred_label]
@@ -230,11 +228,11 @@ class Graph_Explainer:
 
         return Samples
 
-    def explain(self, num_samples=10, percentage=50, top_node=None, p_threshold=0.05, pred_threshold=0.1):
+    def explain(self, num_samples=1000, percentage=10, top_node=None, p_threshold=0.05, pred_threshold=0.1):
 
         num_nodes = self.X_feat.shape[0]
         if top_node == None:
-            top_node = int(num_nodes / 20)
+            top_node = int(num_nodes * 0.3)
 
         #         Round 1
         Samples = self.batch_perturb_features_on_node(
@@ -248,10 +246,10 @@ class Graph_Explainer:
 
         target = num_nodes  # The entry for the graph classification data is at "num_nodes"
         for node in range(num_nodes):
-            chi2, p = chi_square(node, target, [], data)
+            chi2, p, _ = chi_square(node, target, [], data, boolean=False, significance_level=0.05)
             p_values.append(p)
 
-        number_candidates = int(top_node * 4)
+        number_candidates = top_node
         candidate_nodes = np.argpartition(p_values, number_candidates)[0:number_candidates]
 
         #         Round 2
@@ -265,7 +263,7 @@ class Graph_Explainer:
 
         target = num_nodes
         for node in range(num_nodes):
-            chi2, p = chi_square(node, target, [], data)
+            chi2, p, _ = chi_square(node, target, [], data, boolean=False, significance_level=0.05)
             p_values.append(p)
             if p < p_threshold:
                 dependent_nodes.append(node)
@@ -274,4 +272,5 @@ class Graph_Explainer:
         ind_top_p = np.argpartition(p_values, top_p)[0:top_p]
         pgm_nodes = list(ind_top_p)
 
-        return pgm_nodes, p_values, candidate_nodes
+        pgm_stats = dict(zip(pgm_nodes, p_values))
+        return pgm_stats

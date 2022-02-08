@@ -137,12 +137,8 @@ def main_mutag(args):
         torch.save(data, data_filename)
 
     ### Crucial step: converting Pytorch Data object to networkx Graph object with features: adj, feat, ...
-<<<<<<< HEAD
     graph = data_to_graph(data)
     args = get_data_args(data, args)
-=======
-    data = data_to_graph(data)
->>>>>>> parent of 4ed2ee9... gnnexplainer hyperparams
 
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)

@@ -16,6 +16,8 @@ def topk_edges_directed(edge_mask, edge_index, num_top_edges):
 
 
 def normalize_mask(x):
+    if (np.nanmax(x) - np.nanmin(x)) == 0:
+        return x
     return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
 
 

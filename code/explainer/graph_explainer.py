@@ -93,9 +93,11 @@ def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, inclu
     return edge_mask
 
 
-def explain_pgmexplainer_node(model, x, edge_index, target, device, args, include_edges=None):
+def explain_pgmexplainer_graph(model, x, edge_index, target, device, args, include_edges=None):
     explainer = Graph_Explainer(model, edge_index, x, device=device, print_result=0)
-    explanation = explainer.explain()
+    explanation = explainer.explain(
+        num_samples=1000, percentage=10, top_node=None, p_threshold=0.05, pred_threshold=0.1
+    )
     node_attr = np.zeros(x.shape[0])
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value
