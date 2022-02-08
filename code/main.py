@@ -20,7 +20,6 @@ from utils.gen_utils import get_labels, get_test_graphs, get_test_nodes, get_tru
 from utils.graph_utils import get_edge_index_set
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args
-from utils.plot_utils import plot_mask_density
 
 
 def main_syn(args):
@@ -38,6 +37,7 @@ def main_syn(args):
         data = build_syndata(args)
         torch.save(data, data_filename)
 
+    data = data.to(device)
     args = get_data_args(data, args)
 
     ### Create, Train, Save, Load GNN model ###
@@ -137,8 +137,12 @@ def main_mutag(args):
         torch.save(data, data_filename)
 
     ### Crucial step: converting Pytorch Data object to networkx Graph object with features: adj, feat, ...
+<<<<<<< HEAD
     graph = data_to_graph(data)
     args = get_data_args(data, args)
+=======
+    data = data_to_graph(data)
+>>>>>>> parent of 4ed2ee9... gnnexplainer hyperparams
 
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)

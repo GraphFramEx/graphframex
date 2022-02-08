@@ -40,15 +40,22 @@ def train_node_classification(model, data, device, args):
         loss.backward()
         optimizer.step()
 
+<<<<<<< HEAD
     """matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
+=======
+>>>>>>> parent of 4ed2ee9... gnnexplainer hyperparams
     plt.figure()
+    plt.plot(range(args.num_epochs // 10), val_err)
     plt.plot(range(args.num_epochs // 10), train_err)
+<<<<<<< HEAD
     plt.plot(range(args.num_epochs // 10), val_err, "-", lw=1)
     plt.legend(["train", "val"])
     plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
     plt.close()
     matplotlib.style.use("default")"""
+=======
+>>>>>>> parent of 4ed2ee9... gnnexplainer hyperparams
 
 
 def train_graph_classification(model, data, device, args, mask_nodes=True):

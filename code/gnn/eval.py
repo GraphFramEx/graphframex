@@ -8,7 +8,7 @@ from utils.gen_utils import from_adj_to_edge_index, get_labels
 
 
 def gnn_scores_nc(model, data):
-    ypred = model(data.x, data.edge_index).cpu().detach().numpy()
+    ypred = model(data.x, data.edge_index)
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 

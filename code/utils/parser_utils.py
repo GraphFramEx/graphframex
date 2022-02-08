@@ -2,32 +2,27 @@ import argparse
 
 
 def get_data_args(data, args):
-    if eval(args.explain_graph):
-        if args.dataset == "mutag":
-            args.num_classes = 2
-            args.input_dim = 7
-    else:
-        args.num_classes = data.num_classes
-        args.input_dim = data.x.size(1)
-        if args.num_top_edges == -1:
-            if args.dataset == "syn1":
-                args.num_top_edges = 6
-                args.num_basis = 300
-            elif args.dataset == "syn2":
-                args.num_top_edges = 6
-                args.num_basis = 0
-            elif args.dataset == "syn3":
-                args.num_top_edges = 12
-                args.num_basis = 300
-            elif args.dataset == "syn4":
-                args.num_top_edges = 6
-                args.num_basis = 511
-            elif args.dataset == "syn5":
-                args.num_top_edges = 12
-                args.num_basis = 511
-            elif args.dataset == "syn6":
-                args.num_top_edges = 5
-                args.num_basis = 300
+    args.num_classes = data.num_classes
+    args.input_dim = data.x.size(1)
+    if args.num_top_edges == -1:
+        if args.dataset == "syn1":
+            args.num_top_edges = 6
+            args.num_basis = 300
+        elif args.dataset == "syn2":
+            args.num_top_edges = 6
+            args.num_basis = 0
+        elif args.dataset == "syn3":
+            args.num_top_edges = 12
+            args.num_basis = 300
+        elif args.dataset == "syn4":
+            args.num_top_edges = 6
+            args.num_basis = 511
+        elif args.dataset == "syn5":
+            args.num_top_edges = 12
+            args.num_basis = 511
+        elif args.dataset == "syn6":
+            args.num_top_edges = 5
+            args.num_basis = 300
     return args
 
 
@@ -42,13 +37,13 @@ def arg_parse():
     # Computing power
     parser.add_argument("--cuda", dest="cuda", help="CUDA.")
 
-    # saving data, model, figures
+    # saving data
     parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default="data")
-    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
-    parser.add_argument("--fig_save_dir", help="Directory where figures are saved", type=str, default="figures")
-
-    # dataset
     parser.add_argument("--dataset", type=str)
+
+    # saving model
+    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
+
     # build ba-shape graphs
     parser.add_argument("--num_basis", help="number of nodes in graph", type=int)
     parser.add_argument("--num_shapes", help="number of houses", type=int)
