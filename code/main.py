@@ -137,7 +137,7 @@ def main_mutag(args):
         torch.save(data, data_filename)
 
     ### Crucial step: converting Pytorch Data object to networkx Graph object with features: adj, feat, ...
-    data = data_to_graph(data)
+    graph = data_to_graph(data)
     args = get_data_args(data, args)
 
     ### Create, Train, Save, Load GNN model ###
@@ -163,10 +163,9 @@ def main_mutag(args):
             args=args,
             device=device,
         )
-        train_graph_classification(model, data, device, args)
+        train_graph_classification(model, graph, device, args)
         model.eval()
-        print("data", data)
-        results_train, results_test = gnn_scores_gc(model, data, args, device)
+        results_train, results_test = gnn_scores_gc(model, graph, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)
 
     ckpt = load_ckpt(model_filename, device)
@@ -177,23 +176,6 @@ def main_mutag(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
-    data2 = GraphSampler(
-        data,
-        normalize=False,
-        max_num_nodes=args.max_nodes,
-        features=args.feature_type,
-    )
-    edge_index = get_edge_index_set(data2)
-    ypreds = gnn_preds_gc(model, data2, edge_index, args, device, max_num_examples=None)
-    preds = get_labels(ypreds)
-    labels = get_true_labels_gc(data2)
-
-    result = {
-        "prec": metrics.precision_score(labels, preds, average="macro"),
-        "recall": metrics.recall_score(labels, preds, average="macro"),
-        "acc": metrics.accuracy_score(labels, preds),
-    }
-    print("result", result)
 
     test_data = get_test_graphs(data, args)
     edge_masks, Time = compute_edge_masks_gc(model, test_data, device, args)
@@ -224,8 +206,7 @@ def main_mutag(args):
     edge_masks = transform_mask(edge_masks, args)
 
     ### Fidelity ###
-    edge_index = get_edge_index_set(test_data)
-    related_preds = eval_related_pred_gc(model, test_data, edge_index, edge_masks, device, args)
+    related_preds = eval_related_pred_gc(model, test_data, edge_masks, device, args)
     fidelity = eval_fidelity(related_preds)
     print("__fidelity:" + json.dumps(fidelity))
 

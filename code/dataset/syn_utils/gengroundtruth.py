@@ -3,7 +3,7 @@ import os
 import networkx as nx
 import numpy as np
 from dataset.syn_utils.synthetic_structsim import bottle, cycle, grid, house
-from explainer.method import node_attr_to_edge
+from explainer.node_explainer import node_attr_to_edge
 
 
 # Only compares common nodes in the predicted and groundtruth graphs

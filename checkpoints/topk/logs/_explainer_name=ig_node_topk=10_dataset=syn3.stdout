@@ -1,0 +1,15 @@
+Git hash:
+24e85ca7b1c40cdc6b2cae289b9116272baf37af
+/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/bin/python
+---Beginning program ---
+__gnn_train_scores:  {'prec': 1.0, 'recall': 1.0, 'acc': 1.0}
+__gnn_test_scores:  {'prec': 1.0, 'recall': 1.0, 'acc': 1.0}
+mask has nan:  False
+max(edge_masks) 0.12389568234780657
+min(edge_masks) -3.2631931919432726
+__infos:{"dataset": "syn3", "explainer": "ig_node", "number_of_edges": 5080, "mask_sparsity_init": 0.0004921259842519365, "non_zero_values_init": 5077.5, "threshold": -1, "num_test_nodes": 100, "groundtruth target": true, "time": 0.1941}
+transformation done
+__accuracy:{"recall": 0.0, "precision": 0.0, "f1_score": 0.0, "ged": -1.0, "auc": 0.49901107594936717}
+__pred:{"ori_probs": 0.995582640171051, "unimportant_probs": 0.9956874251365662, "important_probs": 0.9772085547447205}
+__fidelity:{"fidelity_acc+": 0.0, "fidelity_acc-": 0.0, "fidelity_prob+": -0.00010485530219739303, "fidelity_prob-": 0.01837414689362049, "mask_sparsity": 0.9980315566062927, "expl_edges": 10.0}
+JOB_FINISHED

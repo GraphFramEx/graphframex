@@ -1,0 +1,12 @@
+Git hash:
+f847f39af5ecb7bb9e6032afd54b04e7c0de0e9e
+/cluster/home/kamara/explain/bin/python
+---Beginning program ---
+__gnn_train_scores:  {'prec': 0.9726618937048503, 'recall': 0.9727047146401986, 'acc': 0.9810924369747899}
+__gnn_test_scores:  {'prec': 0.963063063063063, 'recall': 0.9782608695652174, 'acc': 0.9714285714285714}
+__infos:{"dataset": "syn1", "explainer": "pagerank", "num_test_nodes": 200, "groundtruth target": true, "time": 0.0214}
+__accuracy:{"recall": 0.8641666666666667, "precision": 0.8641666666666667, "f1_score": 0.8641666666666667, "ged": 2.435, "auc": 0.9998853099072719}
+__pred:{"ori_probs": 0.8171724677085876, "unimportant_probs": 0.16635555028915405, "important_probs": 0.8171724677085876}
+__fidelity:{"sparsity": 0.7, "normalize": true, "hard_mask": true, "fidelity_acc+": 0.835, "fidelity_acc-": 0.0, "fidelity_prob+": 0.6508170366287231, "fidelity_prob-": 0.0}
+__fidelity_sub:{"sparsity": 0.7, "normalize": true, "hard_mask": true, "fidelity_acc+": 0.835, "fidelity_acc-": 0.0, "fidelity_prob+": 0.6508168578147888, "fidelity_prob-": 0.0}
+JOB_FINISHED

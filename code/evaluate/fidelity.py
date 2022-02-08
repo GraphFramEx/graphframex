@@ -61,31 +61,48 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
     return related_preds
 
 
-def eval_related_pred_gc(model, dataset, edge_index_set, edge_masks_set, device, args):
+def eval_related_pred_gc(model, dataset, edge_masks, device, args):
+    related_preds = []
 
-    mask_sparsity = get_sparsity(edge_masks_set)
-    expl_edges = get_size(edge_masks_set)
+    for i in range(len(dataset)):
+        data = dataset[i].to(device)
+        edge_mask = torch.Tensor(edge_masks[i])
+        mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
 
-    ori_ypred = gnn_preds_gc(model, dataset, edge_index_set, args, device)
-    ori_yprob = get_proba(ori_ypred)
+        ori_ypred = model(data.x, data.edge_index).cpu().detach().numpy()
+        ori_yprob = get_proba(ori_ypred)
 
-    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges(edge_masks_set, edge_index_set, device)
+        indices = np.where(edge_mask > 0)[0]
+        indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
 
-    masked_ypred = gnn_preds_gc(model, dataset, masked_edge_index_set, args, device)
-    masked_yprob = get_proba(masked_ypred)
+        masked_edge_index = data.edge_index[:, indices].to(device)
+        maskout_edge_index = data.edge_index[:, indices_inv].to(device)
 
-    maskout_ypred = gnn_preds_gc(model, dataset, maskout_edge_index_set, args, device)
-    maskout_yprob = get_proba(maskout_ypred)
+        masked_ypred = model(data.x, masked_edge_index).cpu().detach().numpy()
+        masked_yprob = get_proba(masked_ypred)
 
-    related_preds = {
-        "masked": masked_yprob,
-        "maskout": maskout_yprob,
-        "origin": ori_yprob,
-        "mask_sparsity": mask_sparsity,
-        "expl_edges": expl_edges,
-        "true_label": get_true_labels_gc(dataset),
-        "pred_label": get_labels(ori_ypred),
-    }
+        maskout_ypred = model(data.x, maskout_edge_index).cpu().detach().numpy()
+        maskout_yprob = get_proba(maskout_ypred)
+
+        true_label = data.y
+        pred_label = np.argmax(ori_yprob)
+
+        related_preds.append(
+            {
+                "node_idx": -1,
+                "masked": masked_yprob,
+                "maskout": maskout_yprob,
+                "origin": ori_yprob,
+                "mask_sparsity": mask_sparsity,
+                "expl_edges": (edge_mask != 0).sum(),
+                "true_label": true_label,
+                "pred_label": pred_label,
+            }
+        )
+
+    related_preds = list_to_dict(related_preds)
+    related_preds["mask_sparsity"] = related_preds["mask_sparsity"].mean().item()
+    related_preds["expl_edges"] = related_preds["expl_edges"].mean().item()
     return related_preds
 
 

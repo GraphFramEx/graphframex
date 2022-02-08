@@ -4,11 +4,12 @@ import torch
 from torch.autograd import Variable
 from utils.graph_utils import get_edge_index_set
 
-from explainer.method import *
+from explainer.graph_explainer import *
+from explainer.node_explainer import *
 
 
 def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
-    explain_function = eval("explain_" + args.explainer_name)
+    explain_function = eval("explain_" + args.explainer_name + "_node")
     Time = []
     edge_masks = []
     targets = data.y
@@ -26,14 +27,15 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
 
 def compute_edge_masks_gc(model, test_data, device, args):
     explain_function = eval("explain_" + args.explainer_name + "_graph")
-    edge_index = get_edge_index_set(test_data)
-    edge_masks = []
     Time = []
+    edge_masks = []
 
     for i in range(len(test_data)):
         data = test_data[i]
+        x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
+        edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)
         start_time = time.time()
-        edge_mask = explain_function(model, data, device, args)
+        edge_mask = explain_function(model, x, edge_index, data.y, device, args)
         end_time = time.time()
         duration_seconds = end_time - start_time
         Time.append(duration_seconds)

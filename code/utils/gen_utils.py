@@ -71,7 +71,7 @@ def get_test_nodes(data, model, args):
     return list_test_nodes
 
 
-def get_test_graphs(data, args):
+"""def get_test_graphs(data, args):
     list_test_idx = np.random.randint(0, len(data), args.num_test)
     test_graphs = np.array(data)[list_test_idx]
     test_graphs = GraphSampler(
@@ -80,7 +80,13 @@ def get_test_graphs(data, args):
         max_num_nodes=args.max_nodes,
         features=args.feature_type,
     )
-    return test_graphs
+    return test_graphs"""
+
+
+def get_test_graphs(data, args):
+    list_test_idx = np.random.randint(0, len(data), args.num_test)
+    test_data = [data[index] for index in list_test_idx]
+    return test_data
 
 
 def gen_dataloader(graphs, args, max_nodes=0):

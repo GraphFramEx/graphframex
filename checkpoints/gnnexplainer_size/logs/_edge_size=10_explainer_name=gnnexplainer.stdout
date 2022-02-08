@@ -1,0 +1,15 @@
+Git hash:
+4ed2ee980c5eab2b94ad711e15130dfe1fa0c28f
+/cluster/apps/nss/gcc-8.2.0/python/3.8.5/x86_64/bin/python
+---Beginning program ---
+10
+loading model
+model/syn1/syn1_nc_h20_o20_gcn_3.pth.tar
+=> loading checkpoint 'model/syn1/syn1_nc_h20_o20_gcn_3.pth.tar'
+__gnn_train_scores: {"prec": 0.9701733954451346, "recall": 0.9752747252747253, "acc": 0.9810924369747899}
+__gnn_test_scores: {"prec": 0.9419934640522876, "recall": 0.9728260869565217, "acc": 0.9642857142857143}
+__infos:{"dataset": "syn1", "explainer": "gnnexplainer", "number_of_edges": 4110, "mask_sparsity_init": 0.9534306569343063, "non_zero_values_init": 191.4, "sparsity": -1, "threshold": -1, "topk": -1, "num_test": 100, "groundtruth target": "True", "time": 2.6455}
+__accuracy_top:{"recall": 0.30666666666666664, "precision": 0.315, "f1_score": 0.31045454545454537}
+__accuracy:{"recall": 1.0, "precision": 0.3289400028728593, "f1_score": 0.4441573500781577}
+__fidelity:{"fidelity_acc+": 0.76, "fidelity_acc-": 0.0, "fidelity_prob+": 0.5117431879043579, "fidelity_prob-": 0.0, "mask_sparsity": 0.9534306526184082, "expl_edges": 191.4}
+JOB_FINISHED

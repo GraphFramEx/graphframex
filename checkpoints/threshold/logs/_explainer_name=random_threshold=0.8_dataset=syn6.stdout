@@ -1,0 +1,15 @@
+Git hash:
+24e85ca7b1c40cdc6b2cae289b9116272baf37af
+/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/bin/python
+---Beginning program ---
+__gnn_train_scores:  {'prec': 0.9906542056074766, 'recall': 0.990909090909091, 'acc': 0.9915966386554622}
+__gnn_test_scores:  {'prec': 0.9868421052631579, 'recall': 0.9857142857142858, 'acc': 0.9857142857142858}
+mask has nan:  False
+max(edge_masks) 0.9999971544675222
+min(edge_masks) 1.5806241669968912e-06
+__infos:{"dataset": "syn6", "explainer": "random", "number_of_edges": 3948, "mask_sparsity_init": 0.00025329280648433983, "non_zero_values_init": 3947.0, "threshold": 0.8, "num_test_nodes": 100, "groundtruth target": true, "time": 0.0}
+transformation done
+__accuracy:{"recall": 0.326, "precision": 0.0022954726062758253, "f1_score": 0.004558811285604019, "ged": -1.0, "auc": 0.4871204926358558}
+__pred:{"ori_probs": 0.9494659900665283, "unimportant_probs": 0.777622401714325, "important_probs": 0.39903125166893005}
+__fidelity:{"fidelity_acc+": 0.19, "fidelity_acc-": 0.61, "fidelity_prob+": 0.17184360325336456, "fidelity_prob-": 0.5504347085952759, "mask_sparsity": 0.8003420233726501, "expl_edges": 788.25}
+JOB_FINISHED

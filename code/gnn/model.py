@@ -44,7 +44,6 @@ class GraphConv(nn.Module):
         dropout=0.0,
         device=device,
         bias=True,
-        gpu=True,
         att=False,
     ):
         super(GraphConv, self).__init__()
