@@ -208,7 +208,6 @@ class Graph_Explainer:
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float)
             pred_perturb_torch = self.model(X_perturb_torch, self.edge_index).cpu()
             soft_pred_perturb = np.asarray(softmax(np.asarray(pred_perturb_torch[0].data)))
-
             pred_change = np.max(soft_pred) - soft_pred_perturb[pred_label]
 
             sample.append(pred_change)

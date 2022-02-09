@@ -3,7 +3,7 @@ import random
 import numpy as np
 import pandas as pd
 import torch
-from dataset.mutag_utils import GraphSampler
+from dataset.mutag_utils import GraphSampler, data_to_graph
 from scipy.sparse import csr_matrix
 from scipy.special import softmax
 from torch_geometric.utils import from_scipy_sparse_matrix, k_hop_subgraph, to_scipy_sparse_matrix
@@ -86,6 +86,14 @@ def get_true_labels_gc(dataset):
     labels = []
     for data in dataset:
         labels.append(int(data["label"]))
+    return labels
+
+
+def get_true_labels_gc_batch(dataset):
+    labels = []
+    for batch_idx, data in enumerate(dataset):
+        labels.append(data["label"].long().numpy())
+    labels = np.hstack(labels)
     return labels
 
 

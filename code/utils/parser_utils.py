@@ -46,6 +46,12 @@ def arg_parse():
     parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default="data")
     parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
     parser.add_argument("--fig_save_dir", help="Directory where figures are saved", type=str, default="figures")
+    parser.add_argument(
+        "--draw_graph",
+        help="Draw explanations (subgraph for NC and graph for GC) after training",
+        type=str,
+        default="False",
+    )
 
     # dataset
     parser.add_argument("--dataset", type=str)

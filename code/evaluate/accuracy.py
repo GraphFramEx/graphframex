@@ -5,6 +5,7 @@
 import networkx as nx
 import numpy as np
 import torch
+from utils.plot_utils import plot_expl_nc
 from dataset.syn_utils.gengroundtruth import get_ground_truth
 from utils.gen_utils import list_to_dict
 from evaluate.mask_utils import mask_to_shape
@@ -48,12 +49,9 @@ def get_scores(G1, G2):
 
 def get_accuracy(data, edge_mask, node_idx, args, top_acc):
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
-    # nx.draw(G_true, with_labels=True, font_weight='bold')
     G_expl = get_explanation(data, edge_mask, args, top_acc)
-    # plt.figure()
-    # nx.draw_networkx(G_expl, with_labels=True, font_weight='bold')
-    # plt.show()
-    # plt.clf()
+    if eval(args.draw_graph):
+        plot_expl_nc(G_expl, G_true, node_idx, args)
     recall, precision, f1_score = get_scores(G_expl, G_true)
     # fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
     # auc = metrics.auc(fpr, tpr)

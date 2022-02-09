@@ -10,6 +10,7 @@ from torch import Tensor
 from torch_geometric.data import Data, download_url
 from torch_geometric.data.collate import collate
 from torch_geometric.utils import dense_to_sparse
+from torch_geometric.utils.convert import to_networkx, from_networkx
 
 
 def collate_data(data_list: List[Data]) -> Tuple[Data, Optional[Dict[str, Tensor]]]:
@@ -105,6 +106,8 @@ def build_mutag(args):
         data_example = Data(
             x=torch.from_numpy(one_hot_feature).float(), edge_index=dense_to_sparse(torch.from_numpy(adj))[0], y=label
         )
+        G = to_networkx(data_example)
+        data_example = from_networkx(G.to_undirected(), all)
         data_list.append(data_example)
 
     return data_list

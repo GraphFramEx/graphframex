@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from utils.graph_utils import get_edge_index_set
+from utils.graph_utils import get_edge_index_batch
 from dataset.mutag_utils import prepare_data
 from sklearn import metrics
 from torch.autograd import Variable
@@ -8,7 +8,7 @@ from utils.gen_utils import from_adj_to_edge_index, get_labels
 
 
 def gnn_scores_nc(model, data):
-    ypred = model(data.x, data.edge_index)
+    ypred = model(data.x, data.edge_index).cpu().detach().numpy()
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
@@ -46,6 +46,32 @@ def gnn_preds_gc(model, dataset, edge_index, args, device, max_num_examples=None
         _, indices = torch.max(ypred, 1)
         pred_labels.append(indices.cpu().data.numpy())
         ypreds.append(ypred.cpu().data.numpy())
+    ypreds = np.concatenate(ypreds)
+    return ypreds
+
+
+def gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, max_num_examples=None):
+    model.eval()
+    labels = []
+    pred_labels = []
+    ypreds = []
+    for batch_idx, data in enumerate(dataset):
+        h0 = Variable(data["feats"].float()).to(device)
+        labels.append(data["label"].long().numpy())
+        batch_num_nodes = data["num_nodes"].int().numpy()
+        assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
+
+        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
+        _, indices = torch.max(ypred, 1)
+        pred_labels.append(indices.cpu().data.numpy())
+        ypreds.append(ypred.cpu().data.numpy())
+
+        if max_num_examples is not None:
+            if (batch_idx + 1) * args.batch_size > max_num_examples:
+                break
+
+    labels = np.hstack(labels)
+    pred_labels = np.hstack(pred_labels)
     ypreds = np.concatenate(ypreds)
     return ypreds
 

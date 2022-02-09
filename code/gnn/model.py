@@ -317,7 +317,8 @@ class GcnEncoderGraph(nn.Module):
 
     def forward(self, x, edge_index, batch_num_nodes=None, **kwargs):
         # Encoder Node receives no batch - only one graph
-        if x.ndim < 3:
+        is_batch = x.ndim >= 3
+        if not is_batch:
             x = x.expand(1, -1, -1)
             edge_index = edge_index.expand(1, -1, -1)
         adj = []
