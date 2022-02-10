@@ -141,6 +141,7 @@ def arg_parse():
 
     # explainer params
     parser.add_argument("--explain_graph", help="graph classification or node classification", type=str)
+    parser.add_argument("--hard_mask", help="Soft or hard mask", type=str)
     parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
     parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
     parser.add_argument("--sparsity", help="ratio of edges to remove from mask", type=float, default=-1)
@@ -170,6 +171,7 @@ def arg_parse():
         logdir="log",
         ckptdir="ckpt",
         explain_graph="False",
+        hard_mask="False",
         dataset="syn1",
         num_basis=300,
         num_shapes=150,

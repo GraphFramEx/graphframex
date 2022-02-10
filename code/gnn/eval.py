@@ -50,7 +50,7 @@ def gnn_preds_gc(model, dataset, edge_index, args, device, max_num_examples=None
     return ypreds
 
 
-def gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, max_num_examples=None):
+def gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, max_num_examples=None, **kwargs):
     model.eval()
     labels = []
     pred_labels = []
@@ -60,8 +60,18 @@ def gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, max_num_exa
         labels.append(data["label"].long().numpy())
         batch_num_nodes = data["num_nodes"].int().numpy()
         assign_input = Variable(data["assign_feats"].float(), requires_grad=False).to(device)
-
-        ypred = model(h0, edge_index_set[batch_idx], batch_num_nodes, assign_x=assign_input)
+        if "edge_masks_set" in kwargs:
+            ypred = model(
+                h0,
+                edge_index_set[batch_idx],
+                batch_num_nodes=batch_num_nodes,
+                edge_weights=kwargs["edge_masks_set"][batch_idx],
+                assign_x=assign_input,
+            )
+        else:
+            ypred = model(
+                h0, edge_index_set[batch_idx], batch_num_nodes=batch_num_nodes, edge_weights=None, assign_x=assign_input
+            )
         _, indices = torch.max(ypred, 1)
         pred_labels.append(indices.cpu().data.numpy())
         ypreds.append(ypred.cpu().data.numpy())

@@ -11,7 +11,7 @@ from utils.graph_utils import compute_masked_edges, compute_masked_edges_batch
 from evaluate.mask_utils import get_size, get_sparsity
 
 
-def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
+def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
     related_preds = []
     data = data.to(device)
     ori_ypred = model(data.x, data.edge_index).cpu().detach().numpy()
@@ -24,17 +24,26 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device):
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
 
-        indices = np.where(edge_mask > 0)[0]
-        indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
+        if eval(args.hard_mask):
+            indices = np.where(edge_mask > 0)[0]
+            indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
 
-        masked_edge_index = data.edge_index[:, indices].to(device)
-        maskout_edge_index = data.edge_index[:, indices_inv].to(device)
+            masked_edge_index = data.edge_index[:, indices].to(device)
+            maskout_edge_index = data.edge_index[:, indices_inv].to(device)
 
-        masked_ypred = model(data.x, masked_edge_index).cpu().detach().numpy()
-        masked_yprob = get_proba(masked_ypred)
+            masked_ypred = model(data.x, masked_edge_index).cpu().detach().numpy()
+            masked_yprob = get_proba(masked_ypred)
 
-        maskout_ypred = model(data.x, maskout_edge_index).cpu().detach().numpy()
-        maskout_yprob = get_proba(maskout_ypred)
+            maskout_ypred = model(data.x, maskout_edge_index).cpu().detach().numpy()
+            maskout_yprob = get_proba(maskout_ypred)
+
+        else:
+
+            masked_ypred = model(data.x, data.edge_index, edge_weights=edge_mask).cpu().detach().numpy()
+            masked_yprob = get_proba(masked_ypred)
+
+            maskout_ypred = model(data.x, data.edge_index, edge_weights=1 - edge_mask).cpu().detach().numpy()
+            maskout_yprob = get_proba(maskout_ypred)
 
         ori_probs = ori_yprob[node_idx]
         masked_probs = masked_yprob[node_idx]
@@ -115,13 +124,26 @@ def eval_related_pred_gc_batch(model, dataset, edge_index_set, edge_masks_set, d
     ori_ypred = gnn_preds_gc_batch(model, dataset, edge_index_set, args, device)
     ori_yprob = get_proba(ori_ypred)
 
-    masked_edge_index_set, maskout_edge_index_set = compute_masked_edges_batch(edge_masks_set, edge_index_set, device)
+    if eval(args.hard_mask):
+        masked_edge_index_set, maskout_edge_index_set = compute_masked_edges_batch(
+            edge_masks_set, edge_index_set, device
+        )
 
-    masked_ypred = gnn_preds_gc_batch(model, dataset, masked_edge_index_set, args, device)
-    masked_yprob = get_proba(masked_ypred)
+        masked_ypred = gnn_preds_gc_batch(model, dataset, masked_edge_index_set, args, device)
+        masked_yprob = get_proba(masked_ypred)
 
-    maskout_ypred = gnn_preds_gc_batch(model, dataset, maskout_edge_index_set, args, device)
-    maskout_yprob = get_proba(maskout_ypred)
+        maskout_ypred = gnn_preds_gc_batch(model, dataset, maskout_edge_index_set, args, device)
+        maskout_yprob = get_proba(maskout_ypred)
+
+    else:
+        masked_ypred = gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, edge_masks_set=edge_masks_set)
+        masked_yprob = get_proba(masked_ypred)
+
+        edge_masks_out_set = [[1 - edge_masks[i] for i in range(len(edge_masks))] for edge_masks in edge_masks_set]
+        maskout_ypred = gnn_preds_gc_batch(
+            model, dataset, edge_index_set, args, device, edge_masks_set=edge_masks_out_set
+        )
+        maskout_yprob = get_proba(maskout_ypred)
 
     related_preds = {
         "masked": masked_yprob,

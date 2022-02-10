@@ -17,14 +17,29 @@ def get_explanation(data, edge_mask, args, top_acc):
         edge_mask = mask_to_shape(edge_mask, data.edge_index, args.num_top_edges)
         indices = np.where(edge_mask > 0)[0]
     else:
+        edge_mask = edge_mask.cpu().detach().numpy()
         indices = np.where(edge_mask > 0)[0]
 
     explanation = data.edge_index[:, indices]
+    weights = edge_mask[indices]
     G_expl = nx.Graph()
     G_expl.add_nodes_from(np.unique(explanation.cpu()))
     for i, (u, v) in enumerate(explanation.t().tolist()):
         G_expl.add_edge(u, v)
-    return G_expl
+    k = 0
+    for u, v, d in G_expl.edges(data=True):
+        d["weight"] = weights[k]
+        k += 1
+    G_masked = G_expl.copy()
+    for u, v, d in G_masked.edges(data=True):
+        d["weight"] = (G_expl[u][v]["weight"] + G_expl[v][u]["weight"]) / 2
+
+    labels = data.y[np.unique(explanation.cpu())]
+    k = 0
+    for n, d in G_masked.nodes(data=True):
+        d["label"] = labels[k]
+        k += 1
+    return G_masked
 
 
 def get_scores(G1, G2):
@@ -51,7 +66,7 @@ def get_accuracy(data, edge_mask, node_idx, args, top_acc):
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
     G_expl = get_explanation(data, edge_mask, args, top_acc)
     if eval(args.draw_graph):
-        plot_expl_nc(G_expl, G_true, node_idx, args)
+        plot_expl_nc(G_expl, G_true, role, node_idx, args)
     recall, precision, f1_score = get_scores(G_expl, G_true)
     # fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
     # auc = metrics.auc(fpr, tpr)

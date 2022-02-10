@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn import init
 from torch_geometric.nn import GCNConv
 from zmq import device
-from utils.gen_utils import from_edge_index_to_adj
+from utils.gen_utils import from_edge_index_to_adj, init_weights
 
 
 #### GNN Model #####
@@ -315,16 +315,22 @@ class GcnEncoderGraph(nn.Module):
         # print(output.size())
         return ypred, adj_att_tensor
 
-    def forward(self, x, edge_index, batch_num_nodes=None, **kwargs):
+    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
         # Encoder Node receives no batch - only one graph
         is_batch = x.ndim >= 3
         if not is_batch:
             x = x.expand(1, -1, -1)
             edge_index = edge_index.expand(1, -1, -1)
+            if edge_weights is not None:
+                edge_weights = edge_weights.expand(1, -1)
+
+        if edge_weights is None:
+            edge_weights = init_weights(edge_index)
+
         adj = []
         for i in range(len(x)):
             max_n = x[i].size(0)
-            adj.append(from_edge_index_to_adj(edge_index[i], max_n))
+            adj.append(from_edge_index_to_adj(edge_index[i], torch.FloatTensor(edge_weights[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
         return pred
@@ -392,10 +398,12 @@ class GcnEncoderNode(GcnEncoderGraph):
         pred = self.pred_model(self.embedding_tensor)
         return pred, adj_att
 
-    def forward(self, x, edge_index, batch_num_nodes=None, **kwargs):
+    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
         # Encoder Node receives no batch - only one graph
+        if edge_weights is None:
+            edge_weights = torch.ones(edge_index.size(1))
         max_n = x.size(0)
-        adj = from_edge_index_to_adj(edge_index, max_n).to(self.device)
+        adj = from_edge_index_to_adj(edge_index, edge_weights, max_n).to(self.device)
         pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
         ypred = torch.squeeze(pred, 0)
         return ypred

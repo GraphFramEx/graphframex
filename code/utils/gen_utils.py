@@ -34,8 +34,8 @@ def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
     return x, edge_index, mapping, edge_mask, subset, kwargs
 
 
-def from_edge_index_to_adj(edge_index, max_n):
-    adj = to_scipy_sparse_matrix(edge_index).toarray()
+def from_edge_index_to_adj(edge_index, edge_weights, max_n):
+    adj = to_scipy_sparse_matrix(edge_index, edge_attr=edge_weights).toarray()
     assert len(adj) <= max_n, "The adjacency matrix contains more nodes than the graph!"
     if len(adj) < max_n:
         adj = np.pad(adj, (0, max_n - len(adj)), mode="constant")
@@ -46,6 +46,14 @@ def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
     edges, _ = from_scipy_sparse_matrix(A)
     return torch.LongTensor(edges)
+
+
+def init_weights(edge_index):
+    edge_weights = []
+    for edges in edge_index:
+        edges_w = torch.ones(edges.size(1))
+        edge_weights.append(edges_w)
+    return edge_weights
 
 
 def get_test_nodes(data, model, args):

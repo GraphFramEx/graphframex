@@ -77,7 +77,10 @@ def explain_occlusion_graph(model, x, edge_index, target, device, args, include_
     return edge_mask
 
 
-def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, include_edges=None):
+def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, include_edges=None, **kwargs):
+    if "edge_weights" not in kwargs:
+        kwargs["edge_weights"] = None
+
     explainer = TargetedGNNExplainer(
         model,
         num_hops=args.num_gc_layers,
@@ -87,7 +90,9 @@ def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, inclu
         allow_node_mask=False,
     )
     if eval(args.explain_graph):
-        edge_mask = explainer.explain_graph_with_target(x=x, edge_index=edge_index, target=target)
+        edge_mask = explainer.explain_graph_with_target(
+            x=x, edge_index=edge_index, edge_weights=kwargs["edge_weights"], target=target
+        )
 
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask

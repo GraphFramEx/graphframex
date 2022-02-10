@@ -116,7 +116,7 @@ def main_syn(args):
     print("__accuracy:" + json.dumps(accuracy))
 
     ### Fidelity ###
-    related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device)
+    related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
     fidelity = eval_fidelity(related_preds)
     print("__fidelity:" + json.dumps(fidelity))
 

@@ -49,10 +49,37 @@ def plot_mask_density(edge_mask, args):
 # def plot_explanation(data, edge_masks):
 
 
-def plot_expl_nc(G, G_true, node_idx, args):
-    fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
-    nx.draw(G_true, with_labels=True, font_weight="bold", ax=ax1)
-    nx.draw(G, with_labels=True, font_weight="bold", ax=ax2)
+def plot_expl_nc(G, G_true, role, node_idx, args):
+
+    G = G.to_undirected()
+    edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
+    nodes, labels = zip(*nx.get_node_attributes(G, "label").items())
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
+    nx.draw(
+        G_true.to_undirected(),
+        cmap=plt.get_cmap("tab10"),
+        with_labels=True,
+        node_color=role,
+        font_weight="bold",
+        vmin=0,
+        vmax=3,
+        ax=ax1,
+    )
+    nx.draw(
+        G,
+        cmap=plt.get_cmap("tab10"),
+        with_labels=True,
+        node_color=labels,
+        font_weight="bold",
+        vmin=0,
+        vmax=3,
+        edgelist=edges,
+        edge_color=weights,
+        width=2,
+        edge_cmap=plt.cm.Blues,
+        ax=ax2,
+    )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     check_dir(f"figures/{args.dataset}/")
     plt.savefig(f"figures/{args.dataset}/fig_expl_nc_{args.dataset}_{node_idx}_{date}.png")
