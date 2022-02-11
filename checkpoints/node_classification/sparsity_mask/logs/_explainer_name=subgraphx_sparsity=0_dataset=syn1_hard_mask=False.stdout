@@ -1,0 +1,16 @@
+Git hash:
+a47ec011b92182cf71dab061be8e3240a0a1be55
+/cluster/home/kamara/explain/bin/python
+---Beginning program ---
+10
+model_filename: model/syn1/syn1_nc_h20_o20_gcn_3.pth.tar
+loading model
+model/syn1/syn1_nc_h20_o20_gcn_3.pth.tar
+=> loading checkpoint 'model/syn1/syn1_nc_h20_o20_gcn_3.pth.tar'
+__gnn_train_scores: {"prec": 0.9701733954451346, "recall": 0.9752747252747253, "acc": 0.9810924369747899}
+__gnn_test_scores: {"prec": 0.9419934640522876, "recall": 0.9728260869565217, "acc": 0.9642857142857143}
+__infos:{"dataset": "syn1", "explainer": "subgraphx", "number_of_edges": 4110, "mask_sparsity_init": 0.9973965936739666, "non_zero_values_init": 10.7, "sparsity": 0.0, "threshold": -1, "topk": -1, "num_test": 100, "groundtruth target": "True", "time": 0.55}
+__accuracy_top:{"recall": 0.6350000000000001, "precision": 0.6921666666666667, "f1_score": 0.6608484848484848}
+__accuracy:{"recall": 0.7599999999999999, "precision": 0.8121428571428573, "f1_score": 0.7669397269397268}
+__fidelity:{"fidelity_acc+": 0.68, "fidelity_acc-": 0.32, "fidelity_prob+": 0.4450083076953888, "fidelity_prob-": 0.13580887019634247, "mask_sparsity": 0.9973966479301453, "expl_edges": 10.7}
+JOB_FINISHED

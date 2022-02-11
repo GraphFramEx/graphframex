@@ -9,7 +9,7 @@
     "gpu_model0": "GeForceGTX1080Ti"
   },
   "meta": {
-    "group": "checkpoints",
+    "group": "checkpoints/node_classification",
     "name": "gc_layers",
     "dest-arg": "yes",
     "dest-name": "dest"

@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "code/main.py", line 265, in <module>
+    main_mutag(args)
+  File "code/main.py", line 188, in main_mutag
+    edge_masks_set, Time = compute_edge_masks_gc_batch(model, test_data, device, args)
+  File "/cluster/home/kamara/Explain/code/explainer/genmask.py", line 60, in compute_edge_masks_gc_batch
+    edge_mask = explain_function(model, h0[i], edge_index_set[batch_idx][i], targets[i], device, args)
+  File "/cluster/home/kamara/Explain/code/explainer/graph_explainer.py", line 43, in explain_ig_graph
+    ig_mask = ig.attribute(
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/log/__init__.py", line 35, in wrapper
+    return func(*args, **kwargs)
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/attr/_core/integrated_gradients.py", line 273, in attribute
+    attributions = _batch_attribution(
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/attr/_utils/batching.py", line 78, in _batch_attribution
+    current_attr = attr_method._attribute(
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/attr/_core/integrated_gradients.py", line 350, in _attribute
+    grads = self.gradient_func(
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/_utils/gradient.py", line 99, in compute_gradients
+    outputs = _run_forward(forward_fn, inputs, target_ind, additional_forward_args)
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/_utils/common.py", line 461, in _run_forward
+    return _select_targets(output, target)
+  File "/cluster/home/kamara/.local/lib/python3.8/site-packages/captum/_utils/common.py", line 501, in _select_targets
+    raise AssertionError("Target type %r is not valid." % target)
+AssertionError: Target type 0 is not valid.

@@ -50,6 +50,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
         maskout_probs = maskout_yprob[node_idx]
         true_label = data.y[node_idx].cpu().numpy()
         pred_label = np.argmax(ori_probs)
+
         # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
 
         related_preds.append(

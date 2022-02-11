@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "code/main.py", line 265, in <module>
+    main_mutag(args)
+  File "code/main.py", line 188, in main_mutag
+    edge_masks_set, Time = compute_edge_masks_gc_batch(model, test_data, device, args)
+  File "/cluster/home/kamara/Explain/code/explainer/genmask.py", line 60, in compute_edge_masks_gc_batch
+    edge_mask = explain_function(model, h0[i], edge_index_set[batch_idx][i], targets[i], device, args)
+TypeError: explain_random_graph() missing 1 required positional argument: 'args'

@@ -82,10 +82,10 @@ def plot_expl_nc(G, G_true, role, node_idx, args):
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     check_dir(f"figures/{args.dataset}/")
-    plt.savefig(f"figures/{args.dataset}/fig_expl_nc_{args.dataset}_{node_idx}_{date}.png")
+    plt.savefig(f"figures/{args.dataset}/fig_expl_nc_hard_{args.hard_mask}_{args.dataset}_{node_idx}_{date}.pdf")
 
 
-def plot_expl_gc(data_list, edge_masks, args, num_plots=10):
+def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
     if args.num_test < num_plots:
         num_plots = args.num_test
     fig, axs = plt.subplots(num_plots, 2, figsize=(15, 10 * num_plots), sharey=True)
@@ -134,4 +134,4 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=10):
 
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     check_dir(f"figures/{args.dataset}/")
-    plt.savefig(f"figures/{args.dataset}/fig_expl_nc_{args.dataset}_{date}.png")
+    plt.savefig(f"figures/{args.dataset}/fig_expl_gc_hard_{args.hard_mask}_{args.dataset}_{date}.pdf")

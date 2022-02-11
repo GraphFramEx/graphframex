@@ -43,6 +43,7 @@ def main_syn(args):
 
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
+    print("model_filename:", model_filename)
     if os.path.isfile(model_filename):
         model = GcnEncoderNode(
             args.input_dim,

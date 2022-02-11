@@ -12,6 +12,9 @@ def gnn_scores_nc(model, data):
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
+    data.train_mask = data.train_mask.cpu()
+    data.test_mask = data.test_mask.cpu()
+
     result_train = {
         "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
         "recall": metrics.recall_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),

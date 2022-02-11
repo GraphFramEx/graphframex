@@ -1,0 +1,26 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 5000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification",
+    "name": "test",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": ["True", "False"],
+    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
+    "sparsity": 0.7,
+    "explainer_name": "gnnexplainer"
+  }
+}

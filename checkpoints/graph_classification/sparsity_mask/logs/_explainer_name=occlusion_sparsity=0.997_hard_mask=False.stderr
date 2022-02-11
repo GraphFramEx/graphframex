@@ -1,0 +1,16 @@
+/cluster/apps/nss/gcc-8.2.0/python/3.8.5/x86_64/lib64/python3.8/site-packages/numpy/core/_asarray.py:136: VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray
+  return array(a, dtype, copy=False, order=order, subok=True)
+Traceback (most recent call last):
+  File "code/main.py", line 265, in <module>
+    main_mutag(args)
+  File "code/main.py", line 219, in main_mutag
+    related_preds = eval_related_pred_gc_batch(model, test_data, edge_index_set, edge_masks_set, device, args)
+  File "/cluster/home/kamara/Explain/code/evaluate/fidelity.py", line 140, in eval_related_pred_gc_batch
+    masked_ypred = gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, edge_masks_set=edge_masks_set)
+  File "/cluster/home/kamara/Explain/code/gnn/eval.py", line 67, in gnn_preds_gc_batch
+    ypred = model(
+  File "/cluster/apps/nss/gcc-8.2.0/python/3.8.5/x86_64/lib64/python3.8/site-packages/torch/nn/modules/module.py", line 1051, in _call_impl
+    return forward_call(*input, **kwargs)
+  File "/cluster/home/kamara/Explain/code/gnn/model.py", line 334, in forward
+    print(edge_weights[i].device)
+AttributeError: 'numpy.ndarray' object has no attribute 'device'
