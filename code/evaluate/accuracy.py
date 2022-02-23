@@ -66,7 +66,7 @@ def get_accuracy(data, edge_mask, node_idx, args, top_acc):
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
     G_expl = get_explanation(data, edge_mask, args, top_acc)
     if eval(args.draw_graph):
-        plot_expl_nc(G_expl, G_true, role, node_idx, args)
+        plot_expl_nc(G_expl, G_true, role, node_idx, args, top_acc)
     recall, precision, f1_score = get_scores(G_expl, G_true)
     # fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
     # auc = metrics.auc(fpr, tpr)

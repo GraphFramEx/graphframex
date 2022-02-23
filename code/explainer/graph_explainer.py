@@ -22,7 +22,7 @@ def node_attr_to_edge(edge_index, node_mask):
 
 
 #### Baselines ####
-def explain_random_graph(model, node_idx, x, edge_index, target, device, args, include_edges=None):
+def explain_random_graph(model, x, edge_index, target, device, args, include_edges=None):
     return np.random.uniform(size=edge_index.shape[1])
 
 

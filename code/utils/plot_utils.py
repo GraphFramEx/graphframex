@@ -49,7 +49,7 @@ def plot_mask_density(edge_mask, args):
 # def plot_explanation(data, edge_masks):
 
 
-def plot_expl_nc(G, G_true, role, node_idx, args):
+def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
 
     G = G.to_undirected()
     edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
@@ -82,7 +82,9 @@ def plot_expl_nc(G, G_true, role, node_idx, args):
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     check_dir(f"figures/{args.dataset}/")
-    plt.savefig(f"figures/{args.dataset}/fig_expl_nc_hard_{args.hard_mask}_{args.dataset}_{node_idx}_{date}.pdf")
+    plt.savefig(
+        f"figures/{args.dataset}/fig_expl_nc_hard_top_{top_acc}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf"
+    )
 
 
 def plot_expl_gc(data_list, edge_masks, args, num_plots=5):

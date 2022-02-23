@@ -45,7 +45,7 @@ def gen_explainer_prefix(args):
 def create_data_filename(args):
     subdir = os.path.join(args.data_save_dir, args.dataset)
     os.makedirs(subdir, exist_ok=True)
-    filename = os.path.join(subdir, f"{args.dataset}.pt")
+    filename = os.path.join(subdir, f"{args.dataset}_{args.num_shapes}_{args.width_basis}.pt")
     return filename
 
 

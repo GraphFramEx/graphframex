@@ -1,6 +1,41 @@
 import argparse
 
 
+def get_graph_size_args(args):
+    if not eval(args.explain_graph):
+        if args.dataset == "syn1":
+            args.num_top_edges = 6
+            args.num_shapes = 80
+            args.width_basis = 300
+            args.num_basis = args.width_basis
+        elif args.dataset == "syn2":
+            args.num_top_edges = 6
+            args.num_shapes = 100
+            args.width_basis = 350
+            args.num_basis = args.width_basis * 2
+        elif args.dataset == "syn3":
+            args.num_top_edges = 12
+            args.num_shapes = 80
+            args.width_basis = 300
+            args.num_basis = args.width_basis
+        elif args.dataset == "syn4":
+            args.num_top_edges = 6
+            args.num_shapes = 60
+            args.width_basis = 8
+            args.num_basis = 2 ^ (args.width_basis + 1) - 1
+        elif args.dataset == "syn5":
+            args.num_top_edges = 12
+            args.num_shapes = 80
+            args.width_basis = 8
+            args.num_basis = 2 ^ (args.width_basis + 1) - 1
+        elif args.dataset == "syn6":
+            args.num_top_edges = 5
+            args.num_shapes = 80
+            args.width_basis = 300
+            args.num_basis = args.width_basis
+    return args
+
+
 def get_data_args(data, args):
     if eval(args.explain_graph):
         if args.dataset == "mutag":
@@ -9,25 +44,6 @@ def get_data_args(data, args):
     else:
         args.num_classes = data.num_classes
         args.input_dim = data.x.size(1)
-        if args.num_top_edges == -1:
-            if args.dataset == "syn1":
-                args.num_top_edges = 6
-                args.num_basis = 300
-            elif args.dataset == "syn2":
-                args.num_top_edges = 6
-                args.num_basis = 0
-            elif args.dataset == "syn3":
-                args.num_top_edges = 12
-                args.num_basis = 300
-            elif args.dataset == "syn4":
-                args.num_top_edges = 6
-                args.num_basis = 511
-            elif args.dataset == "syn5":
-                args.num_top_edges = 12
-                args.num_basis = 511
-            elif args.dataset == "syn6":
-                args.num_top_edges = 5
-                args.num_basis = 300
     return args
 
 
@@ -56,7 +72,7 @@ def arg_parse():
     # dataset
     parser.add_argument("--dataset", type=str)
     # build ba-shape graphs
-    parser.add_argument("--num_basis", help="number of nodes in graph", type=int)
+    parser.add_argument("--width_basis", help="width of base graph", type=int)
     parser.add_argument("--num_shapes", help="number of houses", type=int)
 
     parser.add_argument(
@@ -173,7 +189,7 @@ def arg_parse():
         explain_graph="False",
         hard_mask="False",
         dataset="syn1",
-        num_basis=300,
+        width_basis=300,
         num_shapes=150,
         num_test=10,
         opt="adam",  # opt_parser

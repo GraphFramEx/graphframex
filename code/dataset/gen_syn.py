@@ -16,7 +16,9 @@ def build_syndata(args):
     generate_function = "gen_" + args.dataset
 
     G, labels, name = eval(generate_function)(
-        feature_generator=featgen.ConstFeatureGen(np.ones(args.input_dim, dtype=float))
+        nb_shapes=args.num_shapes,
+        width_basis=args.width_basis,
+        feature_generator=featgen.ConstFeatureGen(np.ones(args.input_dim, dtype=float)),
     )
 
     data = from_networkx(G.to_undirected(), all)

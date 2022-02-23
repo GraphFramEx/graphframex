@@ -330,10 +330,7 @@ class GcnEncoderGraph(nn.Module):
         adj = []
         for i in range(len(x)):
             max_n = x[i].size(0)
-            print(edge_index[i].device)
-            print(edge_weights[i].device)
-
-            adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weights[i].cpu()), max_n))
+            adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weights[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
         return pred

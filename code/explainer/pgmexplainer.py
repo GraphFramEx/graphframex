@@ -147,7 +147,7 @@ class Graph_Explainer:
         self.model = model
         self.model.eval()
         self.edge_index = edge_index
-        self.X_feat = X.numpy()
+        self.X_feat = X.cpu().numpy()
         self.device = device
         self.snorm_n = snorm_n
         self.snorm_e = snorm_e

@@ -19,18 +19,18 @@ from gnn.train import train_graph_classification, train_node_classification
 from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
-from utils.parser_utils import arg_parse, get_data_args
+from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
 from utils.plot_utils import plot_expl_gc
 
 
 def main_syn(args):
     np.random.seed(args.seed)
-    print(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ### Generate, Save, Load data ###
     check_dir(args.data_save_dir)
+    args = get_graph_size_args(args)
     data_filename = create_data_filename(args)
     if os.path.isfile(data_filename):
         data = torch.load(data_filename)
@@ -40,7 +40,6 @@ def main_syn(args):
 
     data = data.to(device)
     args = get_data_args(data, args)
-
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
     print("model_filename:", model_filename)
@@ -78,6 +77,7 @@ def main_syn(args):
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explain ###
+
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     # plot_mask_density(edge_masks, args)
