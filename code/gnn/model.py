@@ -316,7 +316,7 @@ class GcnEncoderGraph(nn.Module):
         # print(output.size())
         return ypred, adj_att_tensor
 
-    """def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
+    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
         # Encoder Node receives no batch - only one graph
         is_batch = x.ndim >= 3
         if not is_batch:
@@ -334,9 +334,9 @@ class GcnEncoderGraph(nn.Module):
             adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weights[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
-        return pred"""
+        return pred
 
-    def forward(self, x, adj, batch_num_nodes=None, **kwargs):
+    def forward_adj(self, x, adj, batch_num_nodes=None, **kwargs):
         # mask
         x = x.expand(1, -1, -1)
         adj = adj.expand(1, -1, -1)
