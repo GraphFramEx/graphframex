@@ -19,7 +19,8 @@ def get_edge_index_set_loader(dataset):
         adj = Variable(data["adj"].float(), requires_grad=False)
         edge_index = []
         for a in adj:
-            edge_index.append(from_adj_to_edge_index(a))
+            edges, _ = from_adj_to_edge_index(a)
+            edge_index.append(edges)
         edge_index_set.append(edge_index)
     return edge_index_set
 
@@ -28,7 +29,8 @@ def get_edge_index(dataset):
     edge_index = []
     for data in dataset:
         adj = data["adj"]
-        edge_index.append(from_adj_to_edge_index(adj))
+        edges, _ = from_adj_to_edge_index(adj)
+        edge_index.append(edges)
     return edge_index
 
 
@@ -53,7 +55,8 @@ def get_edge_index_batch(dataset):
         adj = Variable(data["adj"].float(), requires_grad=False)
         edge_index = []
         for a in adj:
-            edge_index.append(from_adj_to_edge_index(a))
+            edges, _ = from_adj_to_edge_index(a)
+            edge_index.append(edges)
         edge_index_set.append(edge_index)
     return edge_index_set
 

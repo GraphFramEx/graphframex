@@ -1,16 +1,18 @@
 import numpy as np
+import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from torch.autograd import Variable
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
+from utils.gen_utils import from_edge_index_to_adj
 
 from explainer.gnnexplainer import TargetedGNNExplainer
 from explainer.pgmexplainer import Graph_Explainer
 from explainer.subgraphx import SubgraphX
 
 
-def model_forward_graph(x, model, edge_index):
-    out = model(x, edge_index)
+def model_forward_graph(edge_mask, model, x, edge_index):
+    out = model(x, edge_index, edge_weights=edge_mask)
     return out
 
 
@@ -26,15 +28,41 @@ def explain_random_graph(model, x, edge_index, target, device, args, include_edg
     return np.random.uniform(size=edge_index.shape[1])
 
 
+"""
 def explain_sa_graph(model, x, edge_index, target, device, args, include_edges=None):
+    print(target)
+    print(x)
+    print(edge_index)
     saliency = Saliency(model_forward_graph)
-    input_mask = x.clone().requires_grad_(True).to(device)
+    input_mask = torch.ones(edge_index.shape[1]).requires_grad_(True).to(device)
+    print(input_mask)
     saliency_mask = saliency.attribute(
-        input_mask, target=target, additional_forward_args=(model, edge_index), abs=False
+        input_mask, target=int(target), additional_forward_args=(model, x, edge_index), abs=False
     )
-    node_attr = saliency_mask.cpu().numpy().sum(axis=1)
-    edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    edge_mask = saliency_mask.cpu().numpy()
+    return edge_mask"""
+
+
+def norm_imp(imp):
+    imp[imp < 0] = 0
+    imp += 1e-16
+    return imp / imp.sum()
+
+
+def explain_sa_graph(model, x, edge_index, target, device, args, include_edges=None):
+    edge_weights = Variable(torch.ones(edge_index.shape[1]), requires_grad=True)
+    x = Variable(x, requires_grad=True)
+    max_n = x.size(0)
+    adj = from_edge_index_to_adj(edge_index, torch.FloatTensor(edge_weights), max_n)
+    adj = Variable(adj, requires_grad=True)
+    pred, _ = model(x, adj)
+    print("pred", pred)
+    # pred = model(x, edge_index, None, edge_weights)
+    pred[0, target].backward()
+    print(adj.grad)
+    # edge_grads = pow(edge_weights.grad, 2).sum(dim=1).cpu().numpy()
+    # edge_mask = norm_imp(edge_grads)
+    return  # edge_mask
 
 
 def explain_ig_graph(model, x, edge_index, target, device, args, include_edges=None):

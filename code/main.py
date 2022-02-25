@@ -140,7 +140,6 @@ def main_mutag(args, batch=True):
 
     ### Crucial step: converting Pytorch Data object to networkx Graph object with features: adj, feat, ...
     args = get_data_args(data, args)
-
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):

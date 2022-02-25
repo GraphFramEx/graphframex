@@ -103,7 +103,8 @@ def evaluate_gc(model, dataset, args, device, name="Validation", max_num_example
 
         edge_index = []
         for a in adj:
-            edge_index.append(from_adj_to_edge_index(a))
+            edges, _ = from_adj_to_edge_index(a)
+            edge_index.append(edges)
 
         ypred = model(h0, edge_index, batch_num_nodes, assign_x=assign_input)
         _, indices = torch.max(ypred, 1)

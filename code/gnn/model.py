@@ -1,11 +1,12 @@
+from importlib_metadata import requires
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 from torch_geometric.nn import GCNConv
 from zmq import device
-from utils.gen_utils import from_edge_index_to_adj, init_weights
-
+from utils.gen_utils import from_adj_to_edge_index, from_edge_index_to_adj, init_weights
+from torch.autograd import Variable
 
 #### GNN Model #####
 class GCN(torch.nn.Module):
@@ -315,7 +316,7 @@ class GcnEncoderGraph(nn.Module):
         # print(output.size())
         return ypred, adj_att_tensor
 
-    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
+    """def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
         # Encoder Node receives no batch - only one graph
         is_batch = x.ndim >= 3
         if not is_batch:
@@ -333,7 +334,59 @@ class GcnEncoderGraph(nn.Module):
             adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weights[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
-        return pred
+        return pred"""
+
+    def forward(self, x, adj, batch_num_nodes=None, **kwargs):
+        # mask
+        x = x.expand(1, -1, -1)
+        adj = adj.expand(1, -1, -1)
+
+        max_num_nodes = adj.size()[1]
+        if batch_num_nodes is not None:
+            self.embedding_mask = self.construct_mask(max_num_nodes, batch_num_nodes)
+        else:
+            self.embedding_mask = None
+
+        # conv
+        x, adj_att = self.conv_first(x, adj)
+        x = self.act(x)
+        if self.bn:
+            x = self.apply_bn(x)
+        out_all = []
+        out, _ = torch.max(x, dim=1)
+        out_all.append(out)
+        adj_att_all = [adj_att]
+        for i in range(self.num_layers - 2):
+            x, adj_att = self.conv_block[i](x, adj)
+            x = self.act(x)
+            if self.bn:
+                x = self.apply_bn(x)
+            out, _ = torch.max(x, dim=1)
+            out_all.append(out)
+            if self.num_aggs == 2:
+                out = torch.sum(x, dim=1)
+                out_all.append(out)
+            adj_att_all.append(adj_att)
+        x, adj_att = self.conv_last(x, adj)
+        adj_att_all.append(adj_att)
+        # x = self.act(x)
+        out, _ = torch.max(x, dim=1)
+        out_all.append(out)
+        if self.num_aggs == 2:
+            out = torch.sum(x, dim=1)
+            out_all.append(out)
+        if self.concat:
+            output = torch.cat(out_all, dim=1)
+        else:
+            output = out
+
+        # adj_att_tensor: [batch_size x num_nodes x num_nodes x num_gc_layers]
+        adj_att_tensor = torch.stack(adj_att_all, dim=3)
+
+        self.embedding_tensor = output
+        ypred = self.pred_model(output)
+        # print(output.size())
+        return ypred, adj_att_tensor
 
     def loss(self, pred, label, type="softmax"):
         # softmax + CE

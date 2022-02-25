@@ -106,8 +106,5 @@ def build_mutag(args):
         data_example = Data(
             x=torch.from_numpy(one_hot_feature).float(), edge_index=dense_to_sparse(torch.from_numpy(adj))[0], y=label
         )
-        G = to_networkx(data_example)
-        data_example = from_networkx(G.to_undirected(), all)
         data_list.append(data_example)
-
     return data_list

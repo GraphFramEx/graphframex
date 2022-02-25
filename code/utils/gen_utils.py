@@ -44,8 +44,8 @@ def from_edge_index_to_adj(edge_index, edge_weights, max_n):
 
 def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
-    edges, _ = from_scipy_sparse_matrix(A)
-    return torch.LongTensor(edges)
+    edges, edge_attr = from_scipy_sparse_matrix(A)
+    return torch.LongTensor(edges), torch.FloatTensor(edge_attr)
 
 
 def init_weights(edge_index):

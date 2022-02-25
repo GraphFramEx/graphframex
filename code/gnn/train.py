@@ -110,7 +110,8 @@ def train_graph_classification(model, data, device, args, mask_nodes=True):
 
             edge_index = []
             for a in adj:
-                edge_index.append(from_adj_to_edge_index(a))
+                edges, _ = from_adj_to_edge_index(a)
+                edge_index.append(edges)
 
             ypred = model(h0, edge_index, batch_num_nodes, assign_x=assign_input)
             # ypred, att_adj = model(h0, adj, batch_num_nodes, assign_x=assign_input)
