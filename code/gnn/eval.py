@@ -1,19 +1,55 @@
 import numpy as np
 import torch
-from utils.graph_utils import get_edge_index_batch
 from dataset.mutag_utils import prepare_data
 from sklearn import metrics
 from torch.autograd import Variable
+from torch_geometric.loader import ClusterData, ClusterLoader, NeighborLoader
+from tqdm import tqdm
 from utils.gen_utils import from_adj_to_edge_index, get_labels
+from utils.graph_utils import get_edge_index_batch
 
 
-def gnn_scores_nc(model, data):
+def evaluate_nc_batch(model, data_loader, args, device):
+    model.eval()
+    total_loss = 0
+    total_examples = 0
+    for batch_idx in range(min(len(data_loader), args.batch_size)):
+        batch = next(iter(data_loader))
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        loss = model.loss(out, batch.y)
+        batch_size = batch.batch_size
+        total_loss += float(loss) * batch_size
+        total_examples += batch_size
+    return total_loss / total_examples
+
+
+def gnn_preds_nc_batch(model, data_loader, device):
+    model.eval()
+    pred_labels = []
+    ypreds = []
+    for batch in tqdm(data_loader):
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        _, indices = torch.max(out, 1)
+        pred_labels.append(indices.cpu().data.numpy())
+        ypreds.append(out.cpu().data.numpy())
+    ypreds = np.concatenate(ypreds)
+    return ypreds
+
+
+def gnn_scores_nc(model, data, args, device):
+    if data.num_nodes > args.sample_size:
+        cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
+        data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)  # , num_workers=args.num_workers)
+        data = next(iter(data_loader))
     ypred = model(data.x, data.edge_index).cpu().detach().numpy()
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
     data.train_mask = data.train_mask.cpu()
     data.test_mask = data.test_mask.cpu()
+    print("lenght of test mask", len(data.test_mask[data.test_mask == True]))
 
     result_train = {
         "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
@@ -24,7 +60,7 @@ def gnn_scores_nc(model, data):
     result_test = {
         "prec": metrics.precision_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
         "recall": metrics.recall_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
-        "acc": metrics.accuracy_score(data.y[data.test_mask], ylabels[data.test_mask]),  # ,
+        "acc": metrics.accuracy_score(data.y[data.test_mask], ylabels[data.test_mask]),
     }
     return result_train, result_test
 

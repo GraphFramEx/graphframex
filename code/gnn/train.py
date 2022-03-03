@@ -1,14 +1,17 @@
-import os
+import json
 import time
 
 import matplotlib
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch_geometric.transforms as T
 import utils.io_utils
 import utils.math_utils
-from dataset.mutag_utils import data_to_graph, prepare_data
+from dataset.mutag_utils import prepare_data
 from torch.autograd import Variable
+from torch_geometric.loader import ClusterData, ClusterLoader
 from utils.gen_utils import from_adj_to_edge_index
 
 from gnn.eval import *
@@ -17,30 +20,66 @@ from gnn.eval import *
 ####### GNN Training #######
 def train_node_classification(model, data, device, args):
 
-    data = data.to(device)
+    # if eval(args.batch):
+    if data.num_nodes > args.sample_size:
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        cluster_data = ClusterData(data, num_parts=data.x.size(0) // 2000, recursive=False)
+        train_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
-    val_err = []
-    train_err = []
+        val_err = []
+        train_err = []
 
-    model.train()
-    for epoch in range(args.num_epochs):
-        optimizer.zero_grad()
+        for epoch in range(args.num_epochs):
+            total_nodes = total_loss = 0
+            model.train()
+            for batch_idx in range(len(train_loader)):
+                batch = next(iter(train_loader))
+                batch = batch.to(device)
+                optimizer.zero_grad()
+                out = model(batch.x, batch.edge_index)
+                loss = model.loss(out[batch.train_mask], batch.y[batch.train_mask])
 
-        out = model(data.x, data.edge_index)
+                loss.backward()
+                optimizer.step()
 
-        loss = model.loss(out[data.train_mask], data.y[data.train_mask])
-        val_loss = model.loss(out[data.val_mask], data.y[data.val_mask])
+                train_nodes = batch.train_mask.sum().item()
+                total_loss += loss.item() * train_nodes
+                total_nodes += train_nodes
 
-        if epoch % 10 == 0:
-            val_err.append(val_loss.item())
-            train_err.append(loss.item())
+            loss = total_loss / total_nodes
 
-        loss.backward()
-        optimizer.step()
+            if epoch % 10 == 0:
+                val_loss = model.loss(out[batch.val_mask], batch.y[batch.val_mask]).item() / batch.val_mask.sum().item()
+                val_err.append(val_loss)
+                train_err.append(loss)
+                print("__logs:" + json.dumps({"val_err": round(val_loss, 4), "train_err": round(loss, 4)}))
 
-    """matplotlib.style.use("seaborn")
+    else:
+
+        data = data.to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+        val_err = []
+        train_err = []
+        model.train()
+        for epoch in range(args.num_epochs):
+            optimizer.zero_grad()
+            out = model(data.x, data.edge_index)
+            loss = model.loss(out[data.train_mask], data.y[data.train_mask])
+            val_loss = model.loss(out[data.val_mask], data.y[data.val_mask])
+
+            if epoch % 10 == 0:
+                val_err.append(val_loss.item())
+                train_err.append(loss.item())
+                print(
+                    "__logs:" + json.dumps({"val_err": round(val_loss.item(), 4), "train_err": round(loss.item(), 4)})
+                )
+
+            loss.backward()
+            optimizer.step()
+
+    matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     plt.figure()
     plt.plot(range(args.num_epochs // 10), train_err)
@@ -48,7 +87,7 @@ def train_node_classification(model, data, device, args):
     plt.legend(["train", "val"])
     plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
     plt.close()
-    matplotlib.style.use("default")"""
+    matplotlib.style.use("default")
 
 
 def train_graph_classification(model, data, device, args, mask_nodes=True):

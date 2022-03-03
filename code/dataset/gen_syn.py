@@ -40,3 +40,20 @@ def build_syndata(args):
     data.test_mask[test_ids] = 1
 
     return data
+
+
+def split_data(data, args):
+    n = data.num_nodes
+    data.train_mask, data.val_mask, data.test_mask = (
+        torch.zeros(n, dtype=torch.bool),
+        torch.zeros(n, dtype=torch.bool),
+        torch.zeros(n, dtype=torch.bool),
+    )
+    train_ids, test_ids = train_test_split(range(n), test_size=args.test_ratio, random_state=args.seed, shuffle=True)
+    train_ids, val_ids = train_test_split(train_ids, test_size=args.val_ratio, random_state=args.seed, shuffle=True)
+
+    data.train_mask[train_ids] = 1
+    data.val_mask[val_ids] = 1
+    data.test_mask[test_ids] = 1
+
+    return data

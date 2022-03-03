@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 
 
 def get_graph_size_args(args):
@@ -42,8 +43,12 @@ def get_data_args(data, args):
             args.num_classes = 2
             args.input_dim = 7
     else:
-        args.num_classes = data.num_classes
-        args.input_dim = data.x.size(1)
+        if args.dataset.startswith("syn"):
+            args.num_classes = data.num_classes
+            args.input_dim = data.x.size(1)
+        else:
+            args.num_classes = len(np.unique(data.y.cpu().numpy()))
+            args.input_dim = data.x.size(1)
     return args
 
 
@@ -74,6 +79,14 @@ def arg_parse():
     # build ba-shape graphs
     parser.add_argument("--width_basis", help="width of base graph", type=int)
     parser.add_argument("--num_shapes", help="number of houses", type=int)
+
+    # sampling
+    parser.add_argument(
+        "--sample_size",
+        dest="sample_size",
+        type=int,
+        help="Number of nodes in each sample (ClusterSampling).",
+    )
 
     parser.add_argument(
         "--max_nodes",
@@ -110,7 +123,7 @@ def arg_parse():
     )
 
     parser.add_argument(
-        "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=1
+        "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=4
     )
     parser.add_argument(
         "--feature_type",
@@ -199,6 +212,7 @@ def arg_parse():
         feature_type="default",
         lr=0.001,
         clip=2.0,
+        sample_size=5000,
         batch_size=20,
         num_epochs=1000,
         train_ratio=0.8,
