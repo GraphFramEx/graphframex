@@ -5,9 +5,11 @@ import random
 import numpy as np
 import torch
 from sklearn import metrics
+from torch_geometric.datasets import AmazonProducts, FacebookPagePage, Flickr, Planetoid, Reddit
+from torch_geometric.loader import ClusterData, ClusterLoader
 
 from dataset.gen_mutag import build_mutag
-from dataset.gen_syn import build_syndata
+from dataset.gen_syn import build_syndata, split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
@@ -22,28 +24,48 @@ from utils.io_utils import check_dir, create_data_filename, create_model_filenam
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
 from utils.plot_utils import plot_expl_gc
 
+TORCH_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts"}
+PLANETOIDS = ["Cora", "CiteSeer", "PubMed"]
 
-def main_syn(args):
+
+def main_nc(args):
     np.random.seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ### Generate, Save, Load data ###
-    check_dir(args.data_save_dir)
-    args = get_graph_size_args(args)
-    data_filename = create_data_filename(args)
-    if os.path.isfile(data_filename):
-        data = torch.load(data_filename)
+
+    if args.dataset.startswith("syn"):
+        check_dir(args.data_save_dir)
+        args = get_graph_size_args(args)
+        data_filename = create_data_filename(args)
+        if os.path.isfile(data_filename):
+            data = torch.load(data_filename)
+        else:
+
+            data = build_syndata(args)
+            torch.save(data, data_filename)
     else:
-        data = build_syndata(args)
-        torch.save(data, data_filename)
+        check_dir(args.data_save_dir)
+        data_dir = os.path.join(args.data_save_dir, args.dataset)
+        check_dir(data_dir)
+        data_filename = f"{data_dir}/processed/data.pt"
+        if not os.path.isfile(data_filename):
+            if args.dataset in PLANETOIDS:
+                Planetoid(args.data_save_dir, name=args.dataset)
+            else:
+                dataset = TORCH_DATA[args.dataset]
+                eval(dataset)(data_dir)
+        data, _ = torch.load(data_filename)
+        data = split_data(data, args)
 
     data = data.to(device)
     args = get_data_args(data, args)
+    print("_data_info: ", data.num_nodes, data.num_edges, args.num_classes)
+    print("_val_data, test_data: ", data.val_mask.sum().item(), data.test_mask.sum().item())
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
-    print("model_filename:", model_filename)
-    if os.path.isfile(model_filename):
+    """if os.path.isfile(model_filename):
         model = GcnEncoderNode(
             args.input_dim,
             args.hidden_dim,
@@ -54,30 +76,35 @@ def main_syn(args):
             device=device,
         )
 
-    else:
-        model = GcnEncoderNode(
-            args.input_dim,
-            args.hidden_dim,
-            args.output_dim,
-            args.num_classes,
-            args.num_gc_layers,
-            args=args,
-            device=device,
-        )
-        train_node_classification(model, data, device, args)
-        model.eval()
-        results_train, results_test = gnn_scores_nc(model, data)
-        save_checkpoint(model_filename, model, args, results_train, results_test)
-
-    ckpt = load_ckpt(model_filename, device)
-    model.load_state_dict(ckpt["model_state"])
+    else:"""
+    model = GcnEncoderNode(
+        args.input_dim,
+        args.hidden_dim,
+        args.output_dim,
+        args.num_classes,
+        args.num_gc_layers,
+        args=args,
+        device=device,
+    )
+    train_node_classification(model, data, device, args)
     model.eval()
+    results_train, results_test = gnn_scores_nc(model, data, args, device)
+    # save_checkpoint(model_filename, model, args, results_train, results_test)
+
+    # ckpt = load_ckpt(model_filename, device)
+    # model.load_state_dict(ckpt["model_state"])
+    # model.eval()
     model.to(device)
-    print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
-    print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
+    # print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
+    # print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
+    print("__gnn_train_scores: " + json.dumps(results_train))
+    print("__gnn_test_scores: " + json.dumps(results_test))
 
     ### Explain ###
-
+    if data.num_nodes > args.sample_size:
+        cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
+        data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)
+        data = next(iter(data_loader))
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     # plot_mask_density(edge_masks, args)
@@ -105,16 +132,18 @@ def main_syn(args):
     }
     print("__infos:" + json.dumps(infos))
 
-    ### Accuracy Top ###
-    accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
-    print("__accuracy_top:" + json.dumps(accuracy_top))
+    if args.dataset.startswith("syn"):
+        ### Accuracy Top ###
+        accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
+        print("__accuracy_top:" + json.dumps(accuracy_top))
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
 
-    ### Accuracy ###
-    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
-    print("__accuracy:" + json.dumps(accuracy))
+    if args.dataset.startswith("syn"):
+        ### Accuracy ###
+        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
+        print("__accuracy:" + json.dumps(accuracy))
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
@@ -263,4 +292,4 @@ if __name__ == "__main__":
     if eval(args.explain_graph):
         main_mutag(args)
     else:
-        main_syn(args)
+        main_nc(args)

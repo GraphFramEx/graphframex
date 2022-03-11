@@ -45,7 +45,7 @@ def from_edge_index_to_adj(edge_index, edge_weights, max_n):
 def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
     edges, edge_attr = from_scipy_sparse_matrix(A)
-    return torch.LongTensor(edges), torch.FloatTensor(edge_attr)
+    return edges, edge_attr
 
 
 def init_weights(edge_index):
@@ -57,14 +57,18 @@ def init_weights(edge_index):
 
 
 def get_test_nodes(data, model, args):
-    if args.true_label:
-        pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
-        list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
+    if args.dataset.startswith("syn"):
+        if args.true_label:
+            pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
+            list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
+        else:
+            list_node_idx = np.arange(data.x.size(0))
+        list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
+        # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
+        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
     else:
-        list_node_idx = np.arange(data.x.size(0))
-    list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
-    # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
-    list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
+        list_test_nodes = np.arange(data.x.size(0))
+        list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
     return list_test_nodes
 
 

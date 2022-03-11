@@ -131,6 +131,8 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
             edge_color=weights,
             width=2,
             edge_cmap=plt.cm.Blues,
+            edge_vmin=0,
+            edge_vmax=1,
             ax=axs[i][1],
         )
 

@@ -26,7 +26,7 @@ def gen_prefix(args):
         name += "_gc"
     else:
         name += "_nc"
-    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim)
+    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_epch" + str(args.num_epochs)
     if not args.bias:
         name += "_nobias"
     if len(args.name_suffix) > 0:
