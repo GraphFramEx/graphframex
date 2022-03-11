@@ -1,4 +1,5 @@
 from importlib_metadata import requires
+from numpy import require
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,15 +9,20 @@ from zmq import device
 from utils.gen_utils import from_adj_to_edge_index, from_edge_index_to_adj, init_weights
 from torch.autograd import Variable
 
+import math
+from torch.nn.parameter import Parameter
+from torch.nn.modules.module import Module
+
 #### GNN Model #####
-class GCN(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes, num_layers, hidden_dim):
+class GCN_0(torch.nn.Module):
+    def __init__(self, num_node_features, num_classes, num_layers, hidden_dim, dropout):
         super().__init__()
-        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim = (
+        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
             num_node_features,
             num_classes,
             num_layers,
             hidden_dim,
+            dropout,
         )
         self.layers = torch.nn.ModuleList()
         current_dim = self.num_node_features
@@ -29,12 +35,85 @@ class GCN(torch.nn.Module):
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
-            x = F.dropout(x, training=self.training)
+            x = F.dropout(x, self.dropout, training=self.training)
         x = self.layers[-1](x, edge_index, edge_weight)
         return F.log_softmax(x, dim=1)
 
+    def loss(self, pred, label):
+        return F.nll_loss(pred, label)
 
-# GCN basic operation
+
+#### Kipf and Welling GCN #####
+
+
+class GraphConvolution(Module):
+    """
+    Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
+    """
+
+    def __init__(self, in_features, out_features, bias=True):
+        super(GraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        if bias:
+            self.bias = Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter("bias", None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        stdv = 1.0 / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+
+    def forward(self, input, edge_index, edge_weight):
+        support = torch.mm(input, self.weight)
+        shape = torch.Size((len(input), len(input)))
+        adj = torch.sparse.FloatTensor(edge_index, edge_weight, shape)
+        output = torch.sparse.mm(adj, support)
+        if self.bias is not None:
+            return output + self.bias
+        else:
+            return output
+
+    def __repr__(self):
+        return self.__class__.__name__ + " (" + str(self.in_features) + " -> " + str(self.out_features) + ")"
+
+
+class GCN(nn.Module):
+    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2):
+        super().__init__()
+        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
+            num_node_features,
+            num_classes,
+            num_layers,
+            hidden_dim,
+            dropout,
+        )
+        self.layers = nn.ModuleList()
+        current_dim = self.num_node_features
+        for l in range(self.num_layers - 1):
+            self.layers.append(GraphConvolution(current_dim, hidden_dim))
+            current_dim = hidden_dim
+        self.layers.append(GraphConvolution(current_dim, self.num_classes))
+
+    def forward(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index, edge_weight)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        x = self.layers[-1](x, edge_index, edge_weight)
+        return F.log_softmax(x, dim=1)
+
+    def loss(self, pred, label):
+        return F.nll_loss(pred, label)
+
+
+### GCN basic operation for Synthetic dataset ###
 class GraphConv(nn.Module):
     def __init__(
         self,
@@ -316,22 +395,22 @@ class GcnEncoderGraph(nn.Module):
         # print(output.size())
         return ypred, adj_att_tensor
 
-    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
+    def forward(self, x, edge_index, batch_num_nodes=None, edge_weight=None, **kwargs):
         # Encoder Node receives no batch - only one graph
         is_batch = x.ndim >= 3
         if not is_batch:
             x = x.expand(1, -1, -1)
             edge_index = edge_index.expand(1, -1, -1)
-            if edge_weights is not None:
-                edge_weights = edge_weights.expand(1, -1)
+            if edge_weight is not None:
+                edge_weight = edge_weight.expand(1, -1)
 
-        if edge_weights is None:
-            edge_weights = init_weights(edge_index)
+        if edge_weight is None:
+            edge_weight = init_weights(edge_index)
 
         adj = []
         for i in range(len(x)):
             max_n = x[i].size(0)
-            adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weights[i]), max_n))
+            adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weight[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
         return pred
@@ -451,12 +530,12 @@ class GcnEncoderNode(GcnEncoderGraph):
         pred = self.pred_model(self.embedding_tensor)
         return pred, adj_att
 
-    def forward(self, x, edge_index, batch_num_nodes=None, edge_weights=None, **kwargs):
+    def forward(self, x, edge_index, batch_num_nodes=None, edge_weight=None, **kwargs):
         # Encoder Node receives no batch - only one graph
-        if edge_weights is None:
-            edge_weights = torch.ones(edge_index.size(1))
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1))
         max_n = x.size(0)
-        adj = from_edge_index_to_adj(edge_index, edge_weights, max_n).to(self.device)
+        adj = from_edge_index_to_adj(edge_index, edge_weight, max_n).to(self.device)
         pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
         ypred = torch.squeeze(pred, 0)
         return ypred

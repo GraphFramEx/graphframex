@@ -7,17 +7,20 @@ import torch
 from sklearn import metrics
 from torch_geometric.datasets import AmazonProducts, FacebookPagePage, Flickr, Planetoid, Reddit
 from torch_geometric.loader import ClusterData, ClusterLoader
+import torch.nn.functional as F
 
 from dataset.gen_mutag import build_mutag
-from dataset.gen_syn import build_syndata, split_data
+from dataset.gen_syn import build_syndata
+from dataset.gen_planetoids import load_data_planetoids
+from dataset.data_utils import split_data, preprocess_planetoid
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
-from gnn.eval import gnn_scores_gc, gnn_scores_nc
-from gnn.model import GcnEncoderGraph, GcnEncoderNode
-from gnn.train import train_graph_classification, train_node_classification
+from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
+from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
+from gnn.train import train_graph_classification, train_node_classification, train_planetoids
 from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
@@ -25,39 +28,102 @@ from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
 from utils.plot_utils import plot_expl_gc
 
 TORCH_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts"}
-PLANETOIDS = ["Cora", "CiteSeer", "PubMed"]
+PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 
 
-def main_nc(args):
+def main_planetoids(args):
+
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    check_dir(args.data_save_dir)
+    data_dir = os.path.join(args.data_save_dir, args.dataset)
+    check_dir(data_dir)
+    data_filename = f"{data_dir}/processed/data.pt"
+    if not os.path.isfile(data_filename):
+        if args.dataset in PLANETOIDS:
+            Planetoid(args.data_save_dir, name=args.dataset)
+        else:
+            dataset = TORCH_DATA[args.dataset]
+            eval(dataset)(data_dir)
+
+    data = load_data_planetoids(data_filename)
+
+    model_filename = create_model_filename(args)
+    if os.path.isfile(model_filename):
+        model = GCN(
+            num_node_features=data.x.shape[1],
+            hidden_dim=args.hidden_dim,
+            num_classes=data.y.max().item() + 1,
+            dropout=args.dropout,
+        ).to(device)
+    else:
+        model = GCN(
+            num_node_features=data.x.shape[1],
+            hidden_dim=args.hidden_dim,
+            num_classes=data.y.max().item() + 1,
+            dropout=args.dropout,
+        ).to(device)
+
+        train_planetoids(model, data, device, args)
+        results_train, results_test = {}, {}
+        save_checkpoint(model_filename, model, args, results_train, results_test)
+
+    ckpt = load_ckpt(model_filename, device)
+    model.load_state_dict(ckpt["model_state"])
+    model.eval()
+
+    ### Explainer ###
+    list_test_nodes = get_test_nodes(data, model, args)
+    edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+
+    ### Mask normalisation and cleaning ###
+    edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
+    edge_masks = clean_masks(edge_masks)
+    edge_masks = normalize_all_masks(edge_masks)
+
+    infos = {
+        "dataset": args.dataset,
+        "explainer": args.explainer_name,
+        "number_of_edges": data.edge_index.size(1),
+        "mask_sparsity_init": get_sparsity(edge_masks),
+        "non_zero_values_init": get_size(edge_masks),
+        "sparsity": args.sparsity,
+        "threshold": args.threshold,
+        "topk": args.topk,
+        "num_test": args.num_test,
+        "groundtruth target": args.true_label,
+        "time": float(format(np.mean(Time), ".4f")),
+    }
+    print("__infos:" + json.dumps(infos))
+
+    ### Mask transformation ###
+    edge_masks = transform_mask(edge_masks, args)
+
+    ### Fidelity ###
+    related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
+    fidelity = eval_fidelity(related_preds)
+    print("__fidelity:" + json.dumps(fidelity))
+
+
+def main_syn(args):
     np.random.seed(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ### Generate, Save, Load data ###
-
-    if args.dataset.startswith("syn"):
-        check_dir(args.data_save_dir)
-        args = get_graph_size_args(args)
-        data_filename = create_data_filename(args)
-        if os.path.isfile(data_filename):
-            data = torch.load(data_filename)
-        else:
-
-            data = build_syndata(args)
-            torch.save(data, data_filename)
+    check_dir(args.data_save_dir)
+    args = get_graph_size_args(args)
+    data_filename = create_data_filename(args)
+    if os.path.isfile(data_filename):
+        data = torch.load(data_filename)
     else:
-        check_dir(args.data_save_dir)
-        data_dir = os.path.join(args.data_save_dir, args.dataset)
-        check_dir(data_dir)
-        data_filename = f"{data_dir}/processed/data.pt"
-        if not os.path.isfile(data_filename):
-            if args.dataset in PLANETOIDS:
-                Planetoid(args.data_save_dir, name=args.dataset)
-            else:
-                dataset = TORCH_DATA[args.dataset]
-                eval(dataset)(data_dir)
-        data, _ = torch.load(data_filename)
-        data = split_data(data, args)
+
+        data = build_syndata(args)
+        torch.save(data, data_filename)
 
     data = data.to(device)
     args = get_data_args(data, args)
@@ -65,7 +131,7 @@ def main_nc(args):
     print("_val_data, test_data: ", data.val_mask.sum().item(), data.test_mask.sum().item())
     ### Create, Train, Save, Load GNN model ###
     model_filename = create_model_filename(args)
-    """if os.path.isfile(model_filename):
+    if os.path.isfile(model_filename):
         model = GcnEncoderNode(
             args.input_dim,
             args.hidden_dim,
@@ -76,40 +142,41 @@ def main_nc(args):
             device=device,
         )
 
-    else:"""
-    model = GcnEncoderNode(
-        args.input_dim,
-        args.hidden_dim,
-        args.output_dim,
-        args.num_classes,
-        args.num_gc_layers,
-        args=args,
-        device=device,
-    )
-    train_node_classification(model, data, device, args)
-    model.eval()
-    results_train, results_test = gnn_scores_nc(model, data, args, device)
-    # save_checkpoint(model_filename, model, args, results_train, results_test)
+    else:
+        model = GcnEncoderNode(
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
+            device=device,
+        )
+        train_node_classification(model, data, device, args)
+        model.eval()
+        output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+        loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
+        acc_test = gnn_accuracy(output[data.test_mask], data.y[data.test_mask])
+        print("Test set results:", "loss= {:.4f}".format(loss_test.item()), "accuracy= {:.4f}".format(acc_test.item()))
 
-    # ckpt = load_ckpt(model_filename, device)
-    # model.load_state_dict(ckpt["model_state"])
-    # model.eval()
+        results_train, results_test = gnn_scores_nc(model, data, args, device)
+        save_checkpoint(model_filename, model, args, results_train, results_test)
+
+    ckpt = load_ckpt(model_filename, device)
+    model.load_state_dict(ckpt["model_state"])
+    model.eval()
     model.to(device)
-    # print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
-    # print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
-    print("__gnn_train_scores: " + json.dumps(results_train))
-    print("__gnn_test_scores: " + json.dumps(results_test))
+    print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
+    print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
+    # print("__gnn_train_scores: " + json.dumps(results_train))
+    # print("__gnn_test_scores: " + json.dumps(results_test))
 
     ### Explain ###
-    if data.num_nodes > args.sample_size:
-        cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
-        data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)
-        data = next(iter(data_loader))
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     # plot_mask_density(edge_masks, args)
 
-    ### Mask transformation ###
+    ### Mask normalisation and cleaning ###
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
     edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
     edge_masks = clean_masks(edge_masks)
@@ -132,18 +199,16 @@ def main_nc(args):
     }
     print("__infos:" + json.dumps(infos))
 
-    if args.dataset.startswith("syn"):
-        ### Accuracy Top ###
-        accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
-        print("__accuracy_top:" + json.dumps(accuracy_top))
+    ### Accuracy Top ###
+    accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
+    print("__accuracy_top:" + json.dumps(accuracy_top))
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
 
-    if args.dataset.startswith("syn"):
-        ### Accuracy ###
-        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
-        print("__accuracy:" + json.dumps(accuracy))
+    ### Accuracy ###
+    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
+    print("__accuracy:" + json.dumps(accuracy))
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
@@ -291,5 +356,10 @@ if __name__ == "__main__":
     args = arg_parse()
     if eval(args.explain_graph):
         main_mutag(args)
+    elif args.dataset.startswith("syn"):
+        main_syn(args)
+    elif args.dataset in PLANETOIDS.keys():
+        args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 16, 200, 0.01, 5e-4, 0.5
+        main_planetoids(args)
     else:
-        main_nc(args)
+        pass

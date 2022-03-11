@@ -168,8 +168,8 @@ def explain_occlusion_node(model, node_idx, x, edge_index, target, device, args,
 
 
 def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
-    if "edge_weights" not in kwargs:
-        kwargs["edge_weights"] = None
+    if "edge_weight" not in kwargs:
+        kwargs["edge_weight"] = None
     explainer = TargetedGNNExplainer(
         model,
         num_hops=args.num_gc_layers,
@@ -179,7 +179,7 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, ar
         allow_node_mask=False,
     )
     edge_mask = explainer.explain_node_with_target(
-        node_idx, x=x, edge_index=edge_index, edge_weights=kwargs["edge_weights"], target=target
+        node_idx, x=x, edge_index=edge_index, edge_weight=kwargs["edge_weight"], target=target
     )
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask

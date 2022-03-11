@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 from dataset.mutag_utils import GraphSampler, data_to_graph
 from scipy.sparse import csr_matrix
+import scipy.sparse as sp
 from scipy.special import softmax
 from torch_geometric.utils import from_scipy_sparse_matrix, k_hop_subgraph, to_scipy_sparse_matrix
 
@@ -34,8 +35,8 @@ def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
     return x, edge_index, mapping, edge_mask, subset, kwargs
 
 
-def from_edge_index_to_adj(edge_index, edge_weights, max_n):
-    adj = to_scipy_sparse_matrix(edge_index, edge_attr=edge_weights).toarray()
+def from_edge_index_to_adj(edge_index, edge_weight, max_n):
+    adj = to_scipy_sparse_matrix(edge_index, edge_attr=edge_weight).toarray()
     assert len(adj) <= max_n, "The adjacency matrix contains more nodes than the graph!"
     if len(adj) < max_n:
         adj = np.pad(adj, (0, max_n - len(adj)), mode="constant")
@@ -44,8 +45,20 @@ def from_edge_index_to_adj(edge_index, edge_weights, max_n):
 
 def from_adj_to_edge_index(adj):
     A = csr_matrix(adj)
-    edges, edge_attr = from_scipy_sparse_matrix(A)
-    return edges, edge_attr
+    edges, edge_weight = from_scipy_sparse_matrix(A)
+    return edges, edge_weight
+
+
+def from_edge_index_to_sparse_adj(edge_index, edge_weight, max_n):
+    adj = sp.coo_matrix((edge_weight, (edge_index[0, :], edge_index[1, :])), shape=(max_n, max_n), dtype=np.float32)
+    return adj
+
+
+def from_sparse_adj_to_edge_index(adj):
+    adj = adj.tocoo().astype(np.float32)
+    edge_index = torch.from_numpy(np.vstack((adj.row, adj.col)).astype(np.int64))
+    edge_weight = torch.from_numpy(adj.data)
+    return edge_index, edge_weight
 
 
 def init_weights(edge_index):

@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import torch.nn.functional as F
 import torch_geometric.transforms as T
 import utils.io_utils
@@ -18,6 +19,61 @@ from gnn.eval import *
 
 
 ####### GNN Training #######
+
+
+def train_planetoids(model, data, device, args):
+
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    data.to(device)
+
+    # Train model
+    t_total = time.time()
+    for epoch in range(args.num_epochs):
+        t = time.time()
+        model.train()
+        optimizer.zero_grad()
+        output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+        # output = model(features, data.edge_index, data.edge_weight)
+
+        loss_train = F.nll_loss(output[data.train_mask], data.y[data.train_mask])
+        # loss_train = F.cross_entropy(output[idx_train], labels[idx_train])
+
+        acc_train = gnn_accuracy(output[data.train_mask], data.y[data.train_mask])
+        loss_train.backward()
+        optimizer.step()
+
+        if not eval(args.fastmode):
+            # Evaluate validation set performance separately,
+            # deactivates dropout during validation run.
+            model.eval()
+            output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+            # output = model(features, data.edge_index, data.edge_weight)
+
+        loss_val = F.nll_loss(output[data.val_mask], data.y[data.val_mask])
+        # loss_val = F.cross_entropy(output[idx_val], labels[idx_val])
+        acc_val = gnn_accuracy(output[data.val_mask], data.y[data.val_mask])
+        print(
+            "Epoch: {:04d}".format(epoch + 1),
+            "loss_train: {:.4f}".format(loss_train.item()),
+            "acc_train: {:.4f}".format(acc_train.item()),
+            "loss_val: {:.4f}".format(loss_val.item()),
+            "acc_val: {:.4f}".format(acc_val.item()),
+            "time: {:.4f}s".format(time.time() - t),
+        )
+
+    print("Optimization Finished!")
+    print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
+
+    def test():
+        model.eval()
+        output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+        loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
+        acc_test = gnn_accuracy(output[data.test_mask], data.y[data.test_mask])
+        print("Test set results:", "loss= {:.4f}".format(loss_test.item()), "accuracy= {:.4f}".format(acc_test.item()))
+
+    test()
+
+
 def train_node_classification(model, data, device, args):
 
     # if eval(args.batch):
@@ -62,12 +118,24 @@ def train_node_classification(model, data, device, args):
 
         val_err = []
         train_err = []
-        model.train()
+
         for epoch in range(args.num_epochs):
+            t = time.time()
+            model.train()
             optimizer.zero_grad()
-            out = model(data.x, data.edge_index)
+            out = model(data.x, data.edge_index, edge_weight=data.edge_weight)
             loss = model.loss(out[data.train_mask], data.y[data.train_mask])
+            acc_train = gnn_accuracy(out[data.train_mask], data.y[data.train_mask])
             val_loss = model.loss(out[data.val_mask], data.y[data.val_mask])
+            acc_val = gnn_accuracy(out[data.val_mask], data.y[data.val_mask])
+            print(
+                "Epoch: {:04d}".format(epoch + 1),
+                "loss_train: {:.4f}".format(loss.item()),
+                "acc_train: {:.4f}".format(acc_train.item()),
+                "loss_val: {:.4f}".format(val_loss.item()),
+                "acc_val: {:.4f}".format(acc_val.item()),
+                "time: {:.4f}s".format(time.time() - t),
+            )
 
             if epoch % 10 == 0:
                 val_err.append(val_loss.item())

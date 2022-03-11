@@ -9,6 +9,13 @@ from utils.gen_utils import from_adj_to_edge_index, get_labels
 from utils.graph_utils import get_edge_index_batch
 
 
+def gnn_accuracy(output, labels):
+    preds = output.max(1)[1].type_as(labels)
+    correct = preds.eq(labels).double()
+    correct = correct.sum()
+    return correct / len(labels)
+
+
 def evaluate_nc_batch(model, data_loader, args, device):
     model.eval()
     total_loss = 0
@@ -43,7 +50,7 @@ def gnn_scores_nc(model, data, args, device):
         cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
         data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)  # , num_workers=args.num_workers)
         data = next(iter(data_loader))
-    ypred = model(data.x, data.edge_index).cpu().detach().numpy()
+    ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
@@ -104,12 +111,12 @@ def gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, max_num_exa
                 h0,
                 edge_index_set[batch_idx],
                 batch_num_nodes=batch_num_nodes,
-                edge_weights=kwargs["edge_masks_set"][batch_idx],
+                edge_weight=kwargs["edge_masks_set"][batch_idx],
                 assign_x=assign_input,
             )
         else:
             ypred = model(
-                h0, edge_index_set[batch_idx], batch_num_nodes=batch_num_nodes, edge_weights=None, assign_x=assign_input
+                h0, edge_index_set[batch_idx], batch_num_nodes=batch_num_nodes, edge_weight=None, assign_x=assign_input
             )
         _, indices = torch.max(ypred, 1)
         pred_labels.append(indices.cpu().data.numpy())

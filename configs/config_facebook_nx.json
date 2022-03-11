@@ -1,0 +1,38 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 8000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification/facebook",
+    "name": "gridsearch_facebook_nx_v1.0.0",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": "False",
+    "dataset": "facebook",
+    "num_epochs": 200,
+    "lr": [0.0005, 0.0008, 0.001, 0.003],
+    "num_gc_layer": [3, 4, 5],
+    "hidden_dim": {
+      "20": { "output_dim": [20] },
+      "30": { "output_dim": [30] },
+      "40": { "output_dim": [40] },
+      "50": { "output_dim": [50] },
+      "60": { "output_dim": [60] },
+      "70": { "output_dim": [70] },
+      "80": { "output_dim": [80] }
+    },
+    "sparsity": 0,
+    "explainer_name": "gnnexplainer"
+  }
+}

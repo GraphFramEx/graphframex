@@ -125,6 +125,15 @@ def arg_parse():
     parser.add_argument(
         "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=4
     )
+
+    parser.add_argument(
+        "--fastmode",
+        dest="fastmode",
+        type=str,
+        help="Evaluate val set performance separately, deactivate dropout during val run",
+        default="False",
+    )
+
     parser.add_argument(
         "--feature_type",
         dest="feature_type",
@@ -210,21 +219,21 @@ def arg_parse():
         max_nodes=100,
         cuda="1",
         feature_type="default",
-        lr=0.001,
+        lr=0.01,
         clip=2.0,
-        sample_size=5000,
+        sample_size=10e5,
         batch_size=20,
-        num_epochs=1000,
+        num_epochs=200,
         train_ratio=0.8,
         val_ratio=0.15,
         test_ratio=0.1,
         input_dim=1,
-        hidden_dim=20,
-        output_dim=20,
+        hidden_dim=16,
+        output_dim=16,
         num_classes=4,
-        num_gc_layers=3,
-        dropout=0.0,
-        weight_decay=0.005,
+        num_gc_layers=1,
+        dropout=0.5,
+        weight_decay=5e-4,
         method="base",
         name_suffix="",
         edge_ent=1,
