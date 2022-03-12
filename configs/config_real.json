@@ -9,8 +9,8 @@
     "mem": 5000
   },
   "meta": {
-    "group": "checkpoints/node_classification/planetoid",
-    "name": "sparsity",
+    "group": "checkpoints/node_classification/real",
+    "name": "sparsity_hard_mask",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -18,8 +18,8 @@
     "data_save_dir": "data",
     "num_test": 100,
     "explain_graph": "False",
-    "hard_mask": ["True", "False"],
-    "dataset": ["Cora", "PubMed", "CiteSeer"],
+    "hard_mask": "True",
+    "dataset": ["cora", "pubmed", "citeseer", "facebook"],
     "sparsity": [0, 0.7, 0.99, 0.997],
     "explainer_name": [
       "random",
