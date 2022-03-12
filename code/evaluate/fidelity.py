@@ -10,7 +10,6 @@ from utils.gen_utils import get_true_labels_gc_batch, list_to_dict, get_true_lab
 from utils.graph_utils import compute_masked_edges, compute_masked_edges_batch
 from evaluate.mask_utils import get_size, get_sparsity
 
-
 def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
     related_preds = []
     data = data.to(device)
