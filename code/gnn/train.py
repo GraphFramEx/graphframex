@@ -21,7 +21,7 @@ from gnn.eval import *
 ####### GNN Training #######
 
 
-def train_planetoids(model, data, device, args):
+def train_real(model, data, device, args):
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     data.to(device)

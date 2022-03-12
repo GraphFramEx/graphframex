@@ -20,35 +20,3 @@ def split_data(data, args):
 
     return data
 
-
-def preprocess_planetoid(data):
-    edges = data.edge_index.T
-    adj = sp.coo_matrix(
-        (np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])), shape=(data.num_nodes, data.num_nodes), dtype=np.float32
-    )
-    # build symmetric adjacency matrix
-    adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
-
-    features = data.x
-    features = normalize(features)
-    adj = normalize(adj + sp.eye(adj.shape[0]))
-
-    features = torch.FloatTensor(np.array(features))
-    labels = torch.LongTensor(data.y)
-    data.x = features
-
-    sparse_mx = adj.tocoo().astype(np.float32)
-    data.edge_index = torch.from_numpy(np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
-    data.edge_weight = torch.from_numpy(sparse_mx.data)
-
-    return data
-
-
-def normalize(mx):
-    """Row-normalize sparse matrix"""
-    rowsum = np.array(mx.sum(1))
-    r_inv = np.power(rowsum, -1).flatten()
-    r_inv[np.isinf(r_inv)] = 0.0
-    r_mat_inv = sp.diags(r_inv)
-    mx = r_mat_inv.dot(mx)
-    return mx

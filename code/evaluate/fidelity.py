@@ -23,6 +23,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
 
+
         if eval(args.hard_mask):
             indices = np.where(edge_mask > 0)[0]
             indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
@@ -38,10 +39,10 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
 
         else:
 
-            masked_ypred = model(data.x, data.edge_index, edge_weight=edge_mask).cpu().detach().numpy()
+            masked_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight*edge_mask).cpu().detach().numpy()
             masked_yprob = get_proba(masked_ypred)
 
-            maskout_ypred = model(data.x, data.edge_index, edge_weight=1 - edge_mask).cpu().detach().numpy()
+            maskout_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight*(1-edge_mask)).cpu().detach().numpy()
             maskout_yprob = get_proba(maskout_ypred)
 
         ori_probs = ori_yprob[node_idx]

@@ -46,10 +46,13 @@ def gnn_preds_nc_batch(model, data_loader, device):
 
 
 def gnn_scores_nc(model, data, args, device):
+    model.eval()
+
     if data.num_nodes > args.sample_size:
         cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
         data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)  # , num_workers=args.num_workers)
         data = next(iter(data_loader))
+
     ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()

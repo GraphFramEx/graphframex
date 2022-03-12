@@ -11,8 +11,8 @@ import torch.nn.functional as F
 
 from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
-from dataset.gen_planetoids import load_data_planetoids
-from dataset.data_utils import split_data, preprocess_planetoid
+from dataset.gen_planetoids import load_data_real
+from dataset.data_utils import split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
@@ -20,18 +20,18 @@ from evaluate.mask_utils import clean_masks, get_size, get_sparsity, normalize_a
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
-from gnn.train import train_graph_classification, train_node_classification, train_planetoids
+from gnn.train import train_graph_classification, train_node_classification, train_real
 from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
 from utils.plot_utils import plot_expl_gc
 
-TORCH_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts"}
+REAL_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid"}
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 
 
-def main_planetoids(args):
+def main_real(args):
 
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -44,13 +44,16 @@ def main_planetoids(args):
     check_dir(data_dir)
     data_filename = f"{data_dir}/processed/data.pt"
     if not os.path.isfile(data_filename):
-        if args.dataset in PLANETOIDS:
-            Planetoid(args.data_save_dir, name=args.dataset)
+        if REAL_DATA[args.dataset] == "Planetoid":
+            Planetoid(args.data_save_dir, name=PLANETOIDS[args.dataset])
+            origin_dir = os.path.join(args.data_save_dir, PLANETOIDS[args.dataset])
+            os.rename(origin_dir, data_dir)
         else:
-            dataset = TORCH_DATA[args.dataset]
-            eval(dataset)(data_dir)
+            eval(REAL_DATA[args.dataset])(data_dir)
 
-    data = load_data_planetoids(data_filename)
+    data = load_data_real(data_filename)
+    if args.dataset == "facebook":
+        data = split_data(data, args)
 
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
@@ -59,6 +62,7 @@ def main_planetoids(args):
             hidden_dim=args.hidden_dim,
             num_classes=data.y.max().item() + 1,
             dropout=args.dropout,
+            num_layers=args.num_gc_layers,
         ).to(device)
     else:
         model = GCN(
@@ -66,15 +70,19 @@ def main_planetoids(args):
             hidden_dim=args.hidden_dim,
             num_classes=data.y.max().item() + 1,
             dropout=args.dropout,
+            num_layers=args.num_gc_layers,
         ).to(device)
 
-        train_planetoids(model, data, device, args)
-        results_train, results_test = {}, {}
+        train_real(model, data, device, args)
+        results_train, results_test = gnn_scores_nc(model, data, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)
 
     ckpt = load_ckpt(model_filename, device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
+    model.to(device)
+    print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
+    print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
@@ -107,6 +115,8 @@ def main_planetoids(args):
     related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
     fidelity = eval_fidelity(related_preds)
     print("__fidelity:" + json.dumps(fidelity))
+
+    #print("__preds:", related_preds['origin'], related_preds['masked'], related_preds['maskout'])
 
 
 def main_syn(args):
@@ -359,7 +369,13 @@ if __name__ == "__main__":
     elif args.dataset.startswith("syn"):
         main_syn(args)
     elif args.dataset in PLANETOIDS.keys():
-        args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 16, 200, 0.01, 5e-4, 0.5
-        main_planetoids(args)
+        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
+        main_real(args)
+    elif args.dataset == "facebook":
+        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
+        main_real(args)
+    elif args.dataset == "flickr":
+        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0
+        main_real(args)
     else:
         pass

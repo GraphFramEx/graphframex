@@ -231,7 +231,7 @@ def arg_parse():
         hidden_dim=16,
         output_dim=16,
         num_classes=4,
-        num_gc_layers=1,
+        num_gc_layers=2,
         dropout=0.5,
         weight_decay=5e-4,
         method="base",

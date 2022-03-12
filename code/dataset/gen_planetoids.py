@@ -13,13 +13,13 @@ import torch
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 
 
-def load_data_planetoids(data_filename):
+def load_data_real(data_filename):
     data, _ = torch.load(data_filename)
-    data = preprocess_planetoid(data)
+    data = preprocess_real(data)
     return data
 
 
-def preprocess_planetoid(data):
+def preprocess_real(data):
     adj = from_edge_index_to_sparse_adj(data.edge_index, np.ones(data.edge_index.shape[1]), data.num_nodes)
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)

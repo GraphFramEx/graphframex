@@ -456,7 +456,7 @@ class TargetedGNNExplainer(GNNExplainer):
         return_type: str = "log_prob",
         feat_mask_type: str = "feature",
         allow_edge_mask: bool = True,
-        allow_node_mask: bool = False,
+        allow_node_mask: bool = True,
         log: bool = True,
         **kwargs,
     ):
@@ -544,9 +544,9 @@ class TargetedGNNExplainer(GNNExplainer):
             else:
                 h = x
             out = self.model(
-                x=h.requires_grad_(False),
+                x=h,
                 edge_index=edge_index,
-                edge_weight=self.edge_mask.sigmoid().requires_grad_(False),
+                edge_weight=self.edge_mask.sigmoid(),
                 batch=batch,
             )
             if self.return_type == "regression":
@@ -672,5 +672,5 @@ class TargetedGNNExplainer(GNNExplainer):
 
         self.__clear_masks__()
 
-        # return node_feat_mask, edge_mask
-        return edge_mask
+        return node_feat_mask, edge_mask
+        #return edge_mask
