@@ -22,7 +22,7 @@ from gnn.eval import *
 
 
 def train_real(model, data, device, args):
-
+    model = model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     data.to(device)
 

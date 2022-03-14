@@ -16,9 +16,10 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     for node_idx in list_test_nodes:
         x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
         edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)
+        edge_weight = data.edge_weight.to(device)
         start_time = time.time()
         edge_mask = explain_function(
-            model, node_idx, x, edge_index, targets[node_idx], device, args, edge_weight=data.edge_weight
+            model, node_idx, x, edge_index, targets[node_idx], device, args, edge_weight=edge_weight
         )
         end_time = time.time()
         duration_seconds = end_time - start_time

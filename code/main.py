@@ -63,7 +63,8 @@ def main_real(args):
             num_classes=data.y.max().item() + 1,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
-        ).to(device)
+            device=device,
+        )
     else:
         model = GCN(
             num_node_features=data.x.shape[1],
@@ -71,8 +72,8 @@ def main_real(args):
             num_classes=data.y.max().item() + 1,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
-        ).to(device)
-
+            device=device,
+        )
         train_real(model, data, device, args)
         results_train, results_test = gnn_scores_nc(model, data, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)

@@ -51,13 +51,14 @@ class GraphConvolution(Module):
     Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
     """
 
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, device=device):
         super(GraphConvolution, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        self.device = device
+        self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features).to(self.device))
         if bias:
-            self.bias = Parameter(torch.FloatTensor(out_features))
+            self.bias = nn.Parameter(torch.FloatTensor(out_features).to(self.device))
         else:
             self.register_parameter("bias", None)
         self.reset_parameters()
@@ -83,7 +84,7 @@ class GraphConvolution(Module):
 
 
 class GCN(nn.Module):
-    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2):
+    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2, device=device):
         super().__init__()
         self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
             num_node_features,
@@ -92,16 +93,17 @@ class GCN(nn.Module):
             hidden_dim,
             dropout,
         )
+        self.device = device
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GraphConvolution(current_dim, hidden_dim))
+            self.layers.append(GraphConvolution(current_dim, hidden_dim, device=self.device))
             current_dim = hidden_dim
-        self.layers.append(GraphConvolution(current_dim, self.num_classes))
+        self.layers.append(GraphConvolution(current_dim, self.num_classes, device=self.device))
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), requires_grad=True)
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
