@@ -1,6 +1,0 @@
-/cluster/apps/nss/gcc-6.3.0/python/3.7.4/x86_64/lib64/python3.7/site-packages/statsmodels/tools/_testing.py:19: FutureWarning: pandas.util.testing is deprecated. Use the functions in the public API at pandas.testing instead.
-  import pandas.util.testing as tm
-/cluster/home/kamara/.local/lib/python3.7/site-packages/torch_geometric/deprecation.py:13: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
-  warnings.warn(out)
-/cluster/home/kamara/Explain/exp_synthetic/evaluate.py:28: RuntimeWarning: invalid value encountered in true_divide
-  return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
