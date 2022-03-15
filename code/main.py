@@ -37,7 +37,6 @@ def main_real(args):
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("Device:", device)
 
     check_dir(args.data_save_dir)
     data_dir = os.path.join(args.data_save_dir, args.dataset)

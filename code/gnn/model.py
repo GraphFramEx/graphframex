@@ -76,10 +76,6 @@ class GCN(nn.Module):
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
-
-        print('edge_weight device:', edge_weight.get_device())
-        print('x device:', x.get_device())
-        print('edge_index device:', edge_index.get_device())
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
