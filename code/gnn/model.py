@@ -22,7 +22,7 @@ class GraphConvolution(Module):
     Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
     """
 
-    def __init__(self, in_features, out_features, bias=True, device=device):
+    def __init__(self, in_features, out_features, bias=True, device=None):
         super(GraphConvolution, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -41,6 +41,7 @@ class GraphConvolution(Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, input, edge_index, edge_weight):
+        self.weight = self.weight.to(self.device)
         support = torch.mm(input, self.weight)
         shape = torch.Size((len(input), len(input)))
         adj = torch.sparse.FloatTensor(edge_index, edge_weight, shape)
@@ -55,7 +56,7 @@ class GraphConvolution(Module):
 
 
 class GCN(nn.Module):
-    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2, device=device):
+    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2, device=None):
         super().__init__()
         self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
             num_node_features,
@@ -75,6 +76,10 @@ class GCN(nn.Module):
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+
+        print('edge_weight device:', edge_weight.get_device())
+        print('x device:', x.get_device())
+        print('edge_index device:', edge_index.get_device())
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)

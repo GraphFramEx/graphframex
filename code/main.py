@@ -34,10 +34,10 @@ PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 def main_real(args):
 
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Device:", device)
 
     check_dir(args.data_save_dir)
     data_dir = os.path.join(args.data_save_dir, args.dataset)
@@ -54,6 +54,7 @@ def main_real(args):
     data = load_data_real(data_filename)
     if args.dataset == "facebook":
         data = split_data(data, args)
+    data = data.to(device)
 
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
@@ -81,7 +82,6 @@ def main_real(args):
     ckpt = load_ckpt(model_filename, device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
-    model.to(device)
     print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
@@ -104,7 +104,7 @@ def main_real(args):
         "threshold": args.threshold,
         "topk": args.topk,
         "num_test": args.num_test,
-        "groundtruth target": args.true_label,
+        "groundtruth target": args.true_label_as_target,
         "time": float(format(np.mean(Time), ".4f")),
     }
     print("__infos:" + json.dumps(infos))
@@ -208,7 +208,7 @@ def main_syn(args):
         "threshold": args.threshold,
         "topk": args.topk,
         "num_test": args.num_test,
-        "groundtruth target": args.true_label,
+        "groundtruth target": args.true_label_as_target,
         "time": float(format(np.mean(Time), ".4f")),
     }
     print("__infos:" + json.dumps(infos))
@@ -312,7 +312,7 @@ def main_mutag(args, batch=True):
             "threshold": args.threshold,
             "topk": args.topk,
             "num_test": args.num_test,
-            "groundtruth target": args.true_label,
+            "groundtruth target": args.true_label_as_target,
             "time": float(format(np.mean(Time), ".4f")),
         }
         print("__infos:" + json.dumps(infos))
@@ -347,7 +347,7 @@ def main_mutag(args, batch=True):
             "threshold": args.threshold,
             "topk": args.topk,
             "num_test": args.num_test,
-            "groundtruth target": args.true_label,
+            "groundtruth target": args.true_label_as_target,
             "time": float(format(np.mean(Time), ".4f")),
         }
         print("__infos:" + json.dumps(infos))

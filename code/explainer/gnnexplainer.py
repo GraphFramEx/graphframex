@@ -547,7 +547,7 @@ class TargetedGNNExplainer(GNNExplainer):
                 x=h,
                 edge_index=edge_index,
                 edge_weight=self.edge_mask.sigmoid(),
-                batch=batch,
+                batch=batch, 
             )
             if self.return_type == "regression":
                 loss = self.__loss__(-1, out, prediction)

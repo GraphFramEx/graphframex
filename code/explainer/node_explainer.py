@@ -177,6 +177,7 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, ar
         edge_ent=args.edge_ent,
         edge_size=args.edge_size,
         allow_node_mask=False,
+        device=device
     )
     node_feat_mask, edge_mask = explainer.explain_node_with_target(
         node_idx, x=x, edge_index=edge_index, edge_weight=kwargs["edge_weight"], target=target

@@ -71,7 +71,7 @@ def init_weights(edge_index):
 
 def get_test_nodes(data, model, args):
     if args.dataset.startswith("syn"):
-        if args.true_label:
+        if eval(args.true_label_as_target):
             pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
             list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
         else:
@@ -80,8 +80,13 @@ def get_test_nodes(data, model, args):
         # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
         list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
     else:
-        list_test_nodes = np.arange(data.x.size(0))
-        list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
+        if eval(args.true_label_as_target):
+            pred_labels = get_labels(model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy())
+            list_test_nodes = np.where(pred_labels == data.y.cpu().numpy())[0]
+            list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
+        else:
+            list_test_nodes = np.arange(data.x.size(0))
+            list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
     return list_test_nodes
 
 
