@@ -10,7 +10,7 @@
   },
   "meta": {
     "group": "checkpoints/node_classification/real",
-    "name": "sparsity_hard_mask",
+    "name": "sparsity",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -18,7 +18,8 @@
     "data_save_dir": "data",
     "num_test": 100,
     "explain_graph": "False",
-    "hard_mask": "True",
+    "hard_mask": ["True", "False"],
+    "true_label_as_target": ["True", "False"],
     "dataset": ["cora", "pubmed", "citeseer", "facebook"],
     "sparsity": [0, 0.7, 0.99, 0.997],
     "explainer_name": [
