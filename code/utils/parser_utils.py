@@ -211,7 +211,7 @@ def arg_parse():
         ckptdir="ckpt",
         explain_graph="False",
         true_label_as_target="True",
-        hard_mask="False",
+        hard_mask="True",
         dataset="syn1",
         width_basis=300,
         num_shapes=150,

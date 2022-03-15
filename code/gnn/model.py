@@ -14,35 +14,6 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 
 #### GNN Model #####
-class GCN_0(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes, num_layers, hidden_dim, dropout):
-        super().__init__()
-        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
-            num_node_features,
-            num_classes,
-            num_layers,
-            hidden_dim,
-            dropout,
-        )
-        self.layers = torch.nn.ModuleList()
-        current_dim = self.num_node_features
-        for l in range(self.num_layers - 1):
-            self.layers.append(GCNConv(current_dim, hidden_dim))
-            current_dim = hidden_dim
-        self.layers.append(GCNConv(current_dim, self.num_classes))
-
-    def forward(self, x, edge_index, edge_weight=None):
-        for layer in self.layers[:-1]:
-            x = layer(x, edge_index, edge_weight)
-            x = F.relu(x)
-            x = F.dropout(x, self.dropout, training=self.training)
-        x = self.layers[-1](x, edge_index, edge_weight)
-        return F.log_softmax(x, dim=1)
-
-    def loss(self, pred, label):
-        return F.nll_loss(pred, label)
-
-
 #### Kipf and Welling GCN #####
 
 
@@ -113,6 +84,12 @@ class GCN(nn.Module):
 
     def loss(self, pred, label):
         return F.nll_loss(pred, label)
+
+
+
+
+
+
 
 
 ### GCN basic operation for Synthetic dataset ###

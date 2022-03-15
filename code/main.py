@@ -378,5 +378,8 @@ if __name__ == "__main__":
     elif args.dataset == "flickr":
         args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0
         main_real(args)
+    elif args.dataset == "ebay":
+        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0
+        main_real(args)
     else:
         pass
