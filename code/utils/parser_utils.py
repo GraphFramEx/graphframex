@@ -179,6 +179,7 @@ def arg_parse():
 
     # explainer params
     parser.add_argument("--explain_graph", help="graph classification or node classification", type=str)
+    parser.add_argument("--true_label_as_target", help="target is groudtruth label or GNN initial prediction", type=str)
     parser.add_argument("--hard_mask", help="Soft or hard mask", type=str)
     parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
     parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
@@ -209,6 +210,7 @@ def arg_parse():
         logdir="log",
         ckptdir="ckpt",
         explain_graph="False",
+        true_label_as_target="True",
         hard_mask="False",
         dataset="syn1",
         width_basis=300,

@@ -114,7 +114,7 @@ def main_real(args):
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
-    fidelity = eval_fidelity(related_preds)
+    fidelity = eval_fidelity(related_preds, args)
     print("__fidelity:" + json.dumps(fidelity))
 
     #print("__preds:", related_preds['origin'], related_preds['masked'], related_preds['maskout'])

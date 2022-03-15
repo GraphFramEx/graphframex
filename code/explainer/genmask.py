@@ -1,4 +1,5 @@
 import time
+from utils.gen_utils import get_labels
 
 import torch
 from torch.autograd import Variable
@@ -12,7 +13,11 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     explain_function = eval("explain_" + args.explainer_name + "_node")
     Time = []
     edge_masks = []
-    targets = data.y
+    if eval(args.true_label_as_target):
+        targets = data.y
+    else:
+        out = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+        targets = get_labels(out.detach().cpu().numpy())
     for node_idx in list_test_nodes:
         x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
         edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)
