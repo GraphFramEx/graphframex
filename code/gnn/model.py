@@ -280,7 +280,7 @@ class GcnEncoderGraph(nn.Module):
         batch_size = len(batch_num_nodes)
         out_tensor = torch.zeros(batch_size, max_nodes)
         for i, mask in enumerate(packed_masks):
-            out_tensor[i, : batch_num_nodes[i]] = mask
+                out_tensor[i, : batch_num_nodes[i]] = mask
         out = out_tensor.unsqueeze(2).to(self.device)
         return out
 

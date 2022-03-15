@@ -117,7 +117,12 @@ def main_real(args):
     fidelity = eval_fidelity(related_preds, args)
     print("__fidelity:" + json.dumps(fidelity))
 
-    #print("__preds:", related_preds['origin'], related_preds['masked'], related_preds['maskout'])
+
+
+
+
+
+
 
 
 def main_syn(args):
@@ -179,9 +184,7 @@ def main_syn(args):
     model.to(device)
     print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
-    # print("__gnn_train_scores: " + json.dumps(results_train))
-    # print("__gnn_test_scores: " + json.dumps(results_test))
-
+    
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
@@ -223,7 +226,7 @@ def main_syn(args):
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
-    fidelity = eval_fidelity(related_preds)
+    fidelity = eval_fidelity(related_preds, args)
     print("__fidelity:" + json.dumps(fidelity))
 
     return

@@ -13,7 +13,7 @@ from evaluate.mask_utils import get_size, get_sparsity
 def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
     related_preds = []
     data = data.to(device)
-    ori_ypred = model(data.x, data.edge_index, data.edge_weight).cpu().detach().numpy()
+    ori_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
     ori_yprob = get_proba(ori_ypred)
 
     n_test = len(list_node_idx)
