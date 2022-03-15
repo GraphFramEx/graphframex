@@ -19,7 +19,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
     n_test = len(list_node_idx)
 
     for i in range(n_test):
-        edge_mask = torch.Tensor(edge_masks[i]).to(device)
+        edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
 
@@ -38,6 +38,7 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
             maskout_yprob = get_proba(maskout_ypred)
 
         else:
+            edge_mask = edge_mask.to(device)
             masked_weight = data.edge_weight*edge_mask
             masked_ypred = model(data.x, data.edge_index, edge_weight=masked_weight).cpu().detach().numpy()
             masked_yprob = get_proba(masked_ypred)
@@ -45,15 +46,17 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
             maskout_weight = data.edge_weight*(1-edge_mask)
             maskout_ypred = model(data.x, data.edge_index, edge_weight=maskout_weight).cpu().detach().numpy()
             maskout_yprob = get_proba(maskout_ypred)
+            
+            edge_mask = edge_mask.cpu().detach().numpy()
 
         ori_probs = ori_yprob[node_idx]
         masked_probs = masked_yprob[node_idx]
         maskout_probs = maskout_yprob[node_idx]
         true_label = data.y[node_idx].cpu().numpy()
         pred_label = np.argmax(ori_probs)
+       
 
-        # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."
-
+        # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."\
         related_preds.append(
             {
                 "node_idx": node_idx,
@@ -61,12 +64,12 @@ def eval_related_pred_nc(model, data, edge_masks, list_node_idx, device, args):
                 "maskout": maskout_probs,
                 "origin": ori_probs,
                 "mask_sparsity": mask_sparsity,
-                "expl_edges": (edge_mask.cpu() != 0).sum(),
+                "expl_edges": (edge_mask != 0).sum(),
                 "true_label": true_label,
                 "pred_label": pred_label,
             }
         )
-
+        
     related_preds = list_to_dict(related_preds)
     related_preds["mask_sparsity"] = related_preds["mask_sparsity"].mean().item()
     related_preds["expl_edges"] = related_preds["expl_edges"].mean().item()
