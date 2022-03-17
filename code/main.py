@@ -25,7 +25,7 @@ from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
-from utils.plot_utils import plot_expl_gc
+from utils.plot_utils import plot_expl_gc, plot_mask_density, plot_masks_density
 
 REAL_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid"}
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
@@ -87,7 +87,8 @@ def main_real(args):
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
     edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-
+    plot_masks_density(edge_masks[:10], args)
+    
     ### Mask normalisation and cleaning ###
     edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
     edge_masks = clean_masks(edge_masks)

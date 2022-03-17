@@ -45,6 +45,26 @@ def plot_mask_density(edge_mask, args):
     plt.close()
     matplotlib.style.use("default")
 
+def plot_masks_density(edge_masks, args):
+    matplotlib.style.use("seaborn")
+    plt.switch_backend("agg")
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 5)
+
+
+    sns.histplot(np.array(edge_masks).reshape(-1), kde=True, ax=ax)
+
+    plt.xlim(0, 1)
+    plt.title(
+        f"Density of edge mask for {args.explainer_name}, entropy = {args.edge_ent}, mask size = {args.edge_size}"
+    )
+    plt.xlabel("edge importance")
+    print(gen_mask_density_plt_name(args))
+    plt.savefig(gen_mask_density_plt_name(args), dpi=600)
+    plt.close()
+    matplotlib.style.use("default")
+
+
 
 # def plot_explanation(data, edge_masks):
 
