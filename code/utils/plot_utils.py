@@ -51,12 +51,13 @@ def plot_masks_density(edge_masks, args):
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 5)
 
-
-    sns.histplot(np.array(edge_masks).reshape(-1), kde=True, ax=ax)
-
+    edge_values = np.array(edge_masks).reshape(-1)
+    positive_edge_values = edge_values[edge_values>0]
+    sns.histplot(positive_edge_values, kde=True, ax=ax)
     plt.xlim(0, 1)
+    plt.ylim(0, len(positive_edge_values))
     plt.title(
-        f"Density of edge mask for {args.explainer_name}, entropy = {args.edge_ent}, mask size = {args.edge_size}"
+        f"Density of edge mask for {args.explainer_name}, target as true label = {args.true_label_as_target}, hard mask = {args.hard_mask}"
     )
     plt.xlabel("edge importance")
     print(gen_mask_density_plt_name(args))

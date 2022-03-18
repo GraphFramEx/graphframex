@@ -86,8 +86,7 @@ def main_real(args):
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
-    edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-    plot_masks_density(edge_masks[:10], args)
+    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     
     ### Mask normalisation and cleaning ###
     edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
@@ -111,9 +110,11 @@ def main_real(args):
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
+    if eval(args.hard_mask)==False:
+        plot_masks_density(edge_masks[:10], args)
 
     ### Fidelity ###
-    related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
+    related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
     fidelity = eval_fidelity(related_preds, args)
     print("__fidelity:" + json.dumps(fidelity))
 

@@ -6,6 +6,7 @@ from torch.autograd import Variable
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
+from gnn.model import GraphConvolution
 
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.pgmexplainer import Node_Explainer
@@ -32,8 +33,8 @@ def mask_to_directed(edge_mask, edge_index):
     return directed_edge_mask
 
 
-def model_forward_node(x, model, edge_index, node_idx):
-    out = model(x, edge_index)
+def model_forward_node(x, model, edge_index, edge_weight, node_idx):
+    out = model(x, edge_index, edge_weight=edge_weight)
     return out[[node_idx]]
 
 
@@ -47,17 +48,17 @@ def node_attr_to_edge(edge_index, node_mask):
 def get_all_convolution_layers(model):
     layers = []
     for module in model.modules():
-        if isinstance(module, MessagePassing):
+        if isinstance(module, GraphConvolution):
             layers.append(module)
     return layers
 
 
 #### Baselines ####
-def explain_random_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
-    return np.random.uniform(size=edge_index.shape[1])
+def explain_random_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
+    return np.random.uniform(size=edge_index.shape[1]), np.random.uniform(size=(x.shape[0],x.shape[1]))
 
 
-def explain_distance_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_distance_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     data = Data(x=x, edge_index=edge_index)
     g = to_networkx(data)
     length = nx.shortest_path_length(g, target=node_idx)
@@ -68,10 +69,10 @@ def explain_distance_node(model, node_idx, x, edge_index, target, device, args, 
         return 0
 
     edge_sources = edge_index[1].cpu().numpy()
-    return np.array([get_attr(node) for node in edge_sources])
+    return np.array([get_attr(node) for node in edge_sources]), None
 
 
-def explain_pagerank_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_pagerank_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     data = Data(x=x, edge_index=edge_index)
     g = to_networkx(data)
     pagerank = nx.pagerank(g, personalization={node_idx: 1})
@@ -80,22 +81,22 @@ def explain_pagerank_node(model, node_idx, x, edge_index, target, device, args, 
     for node, value in pagerank.items():
         node_attr[node] = value
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_basic_gnnexplainer_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     explainer = GNNExplainer(
         model, num_hops=args.num_gc_layers, epochs=args.num_epochs, edge_ent=args.edge_ent, edge_size=args.edge_size
     )
     _, edge_mask = explainer.explain_node(node_idx, x=x, edge_index=edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask
+    return edge_mask, None
 
 
 #### Methods ####
 
 
-def explain_gradcam_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_gradcam_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     # Captum default implementation of LayerGradCam does not average over nodes for different channels because of
     # different assumptions on tensor shapes
     input_mask = x.clone().requires_grad_(True).to(device)
@@ -103,46 +104,47 @@ def explain_gradcam_node(model, node_idx, x, edge_index, target, device, args, i
     node_attrs = []
     for layer in layers:
         layer_gc = LayerGradCam(model_forward_node, layer)
-        node_attr = layer_gc.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, node_idx))
+        node_attr = layer_gc.attribute(input_mask, target=target, additional_forward_args=(model, edge_index, edge_weight, node_idx))
         node_attr = node_attr.cpu().detach().numpy().ravel()
         node_attrs.append(node_attr)
     node_attr = np.array(node_attrs).mean(axis=0)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_sa_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_sa_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     saliency = Saliency(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
     saliency_mask = saliency.attribute(
-        input_mask, target=target, additional_forward_args=(model, edge_index, node_idx), abs=False
+        input_mask, target=target, additional_forward_args=(model, edge_index, edge_weight, node_idx), abs=False
     )
 
     node_attr = saliency_mask.cpu().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_ig_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_ig_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     ig = IntegratedGradients(model_forward_node)
     input_mask = x.clone().requires_grad_(True).to(device)
     ig_mask = ig.attribute(
         input_mask,
         target=target,
-        additional_forward_args=(model, edge_index, node_idx),
+        additional_forward_args=(model, edge_index, edge_weight, node_idx),
         internal_batch_size=input_mask.shape[0],
     )
 
     node_attr = ig_mask.cpu().detach().numpy().sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_occlusion_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_occlusion_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     depth_limit = args.num_gc_layers + 1
     data = Data(x=x, edge_index=edge_index)
+    data.edge_weight = edge_weight
     if target is None:
-        pred_probs = model(x, edge_index)[node_idx].cpu().detach().numpy()
+        pred_probs = model(x, edge_index, edge_weight)[node_idx].cpu().detach().numpy()
         pred_prob = pred_probs[target]
     else:
         pred_prob = 1
@@ -161,33 +163,32 @@ def explain_occlusion_node(model, node_idx, x, edge_index, target, device, args,
         u, v = list(edge_index_numpy[:, i])
         if (u, v) in subgraph.edges():
             edge_occlusion_mask[i] = False
-            prob = model(data.x, data.edge_index[:, edge_occlusion_mask])[node_idx][target].item()
+            prob = model(data.x, data.edge_index[:, edge_occlusion_mask], data.edge_weight[edge_occlusion_mask])[node_idx][target].item()
             edge_mask[i] = pred_prob - prob
             edge_occlusion_mask[i] = True
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_gnnexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
-    if "edge_weight" not in kwargs:
-        kwargs["edge_weight"] = None
+def explain_gnnexplainer_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     explainer = TargetedGNNExplainer(
         model,
         num_hops=args.num_gc_layers,
         epochs=args.num_epochs,
         edge_ent=args.edge_ent,
         edge_size=args.edge_size,
-        allow_node_mask=False,
+        allow_edge_mask=True,
+        allow_node_mask=True,
         device=device
     )
     node_feat_mask, edge_mask = explainer.explain_node_with_target(
-        node_idx, x=x, edge_index=edge_index, edge_weight=kwargs["edge_weight"], target=target
+        node_idx, x=x, edge_index=edge_index, edge_weight=edge_weight, target=target
     )
     edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask
+    return edge_mask, node_feat_mask
 
 
-def explain_pgmexplainer_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
-    explainer = Node_Explainer(model, edge_index, x, args.num_gc_layers, device=device, print_result=0)
+def explain_pgmexplainer_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
+    explainer = Node_Explainer(model, edge_index, edge_weight, x, args.num_gc_layers, device=device, print_result=0)
     explanation = explainer.explain(
         node_idx, target, num_samples=100, top_node=None, p_threshold=0.05, pred_threshold=0.1
     )
@@ -195,10 +196,10 @@ def explain_pgmexplainer_node(model, node_idx, x, edge_index, target, device, ar
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    return edge_mask, None
 
 
-def explain_subgraphx_node(model, node_idx, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_subgraphx_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False)
-    edge_mask = subgraphx.explain(x, edge_index, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
-    return edge_mask
+    edge_mask = subgraphx.explain(x, edge_index, edge_weight, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
+    return edge_mask, None

@@ -473,6 +473,7 @@ class SubgraphX(object):
         self,
         x: Tensor,
         edge_index: Tensor,
+        edge_weight: Tensor,
         label: int,
         max_nodes: int = 6,
         node_idx: Optional[int] = None,
@@ -480,7 +481,8 @@ class SubgraphX(object):
     ):
         x = x.to(self.device)
         edge_index = edge_index.to(self.device)
-        probs = self.model(x, edge_index).to(self.device)  # .squeeze().softmax(dim=-1)
+        edge_weight = edge_weight.to(self.device)
+        probs = self.model(x, edge_index, edge_weight).to(self.device)  # .squeeze().softmax(dim=-1)
 
         if self.explain_graph:
             if saved_MCTSInfo_list:
@@ -554,7 +556,7 @@ class SubgraphX(object):
         edge_mask = edge_mask.detach().numpy()
         return edge_mask.astype(int)
 
-    def __call__(self, x: Tensor, edge_index: Tensor, **kwargs) -> Tuple[None, List, List[Dict]]:
+    def __call__(self, x: Tensor, edge_index: Tensor, edge_weight: Tensor, **kwargs) -> Tuple[None, List, List[Dict]]:
         r"""explain the GNN behavior for the graph using SubgraphX method
         Args:
             x (:obj:`torch.Tensor`): Node feature matrix with shape
@@ -582,7 +584,7 @@ class SubgraphX(object):
 
         for label_idx, label in enumerate(ex_labels):
             edge_mask = self.explain(
-                x, edge_index, label=label, max_nodes=max_nodes, node_idx=node_idx, saved_MCTSInfo_list=saved_results
+                x, edge_index, edge_weight, label=label, max_nodes=max_nodes, node_idx=node_idx, saved_MCTSInfo_list=saved_results
             )
             edge_masks.append(edge_mask)
 

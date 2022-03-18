@@ -10,7 +10,7 @@
   },
   "meta": {
     "group": "checkpoints/node_classification/real",
-    "name": "sparsity",
+    "name": "sparsity_all",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -28,6 +28,8 @@
       "pagerank",
       "sa",
       "ig",
+      "gradcam",
+      "basic_gnnexplainer",
       "occlusion",
       "gnnexplainer",
       "pgmexplainer",

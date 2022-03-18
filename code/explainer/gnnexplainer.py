@@ -476,16 +476,18 @@ class TargetedGNNExplainer(GNNExplainer):
     def __loss__(self, node_idx, log_logits, target_class):
         loss = -log_logits[node_idx, target_class]
 
-        m = self.edge_mask.sigmoid()
-        loss = loss + self.coeffs["edge_size"] * m.sum()
-        ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
-        loss = loss + self.coeffs["edge_ent"] * ent.mean()
+        if self.allow_edge_mask:
+            m = self.edge_mask.sigmoid()
+            loss = loss + self.coeffs["edge_size"] * m.sum()
+            ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
+            loss = loss + self.coeffs["edge_ent"] * ent.mean()
 
         if self.allow_node_mask:
-            m = self.node_mask.sigmoid()
-            loss = loss + self.coeffs["node_size"] * m.sum()
+            m = self.node_feat_mask.sigmoid()
+            node_feat_reduce = getattr(torch, self.coeffs['node_feat_reduction'])
+            loss = loss + self.coeffs['node_feat_size'] * node_feat_reduce(m)
             ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
-            loss = loss + self.coeffs["node_ent"] * ent.mean()
+            loss = loss + self.coeffs['node_feat_ent'] * ent.mean()
 
         return loss
 
@@ -567,7 +569,7 @@ class TargetedGNNExplainer(GNNExplainer):
         edge_mask = self.edge_mask.detach().sigmoid()
 
         self.__clear_masks__()
-        return edge_mask  # node_feat_mask, edge_mask
+        return node_feat_mask, edge_mask
 
     def explain_node_with_target(self, node_idx, x, edge_index, edge_weight, target, **kwargs):
         r"""Learns and returns a node feature mask and an edge mask that play a
@@ -590,14 +592,14 @@ class TargetedGNNExplainer(GNNExplainer):
         num_edges = edge_index.size(1)
 
         col, row = edge_index
-        node_mask = row.new_empty(num_nodes, dtype=torch.bool)
+        sub_node_mask = row.new_empty(num_nodes, dtype=torch.bool)
         # Only operate on a k-hop subgraph around `node_idx`.
         x, edge_index, mapping, hard_edge_mask, subset, kwargs = self.__subgraph__(node_idx, x, edge_index, **kwargs)
 
-        node_mask.fill_(False)
-        node_mask[subset] = True
-        edge_mask = node_mask[row] & node_mask[col]
-        edge_weight = edge_weight[edge_mask]
+        sub_node_mask.fill_(False)
+        sub_node_mask[subset] = True
+        sub_edge_mask = sub_node_mask[row] & sub_node_mask[col]
+        edge_weight = edge_weight[sub_edge_mask]
 
         # Get the initial prediction.
         # Get the initial prediction.
@@ -667,10 +669,13 @@ class TargetedGNNExplainer(GNNExplainer):
             node_feat_mask = new_mask
         node_feat_mask = node_feat_mask.squeeze()
 
-        edge_mask = self.edge_mask.new_zeros(num_edges)
-        edge_mask[hard_edge_mask] = self.edge_mask.detach().sigmoid()
+        if self.allow_edge_mask:
+            edge_mask = self.edge_mask.new_zeros(num_edges)
+            edge_mask[hard_edge_mask] = self.edge_mask.detach().sigmoid()
+        else:
+            edge_mask = torch.zeros(num_edges)
+            edge_mask[hard_edge_mask] = 1
 
         self.__clear_masks__()
 
         return node_feat_mask, edge_mask
-        #return edge_mask
