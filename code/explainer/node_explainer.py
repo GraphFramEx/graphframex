@@ -55,7 +55,9 @@ def get_all_convolution_layers(model):
 
 #### Baselines ####
 def explain_random_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
-    return np.random.uniform(size=edge_index.shape[1]), np.random.uniform(size=(x.shape[0],x.shape[1]))
+    edge_mask = np.random.uniform(size=edge_index.shape[1])
+    node_feat_mask = np.random.uniform(size=x.shape[1])
+    return edge_mask, node_feat_mask
 
 
 def explain_distance_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
@@ -86,7 +88,7 @@ def explain_pagerank_node(model, node_idx, x, edge_index, edge_weight, target, d
 
 def explain_basic_gnnexplainer_node(model, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     explainer = GNNExplainer(
-        model, num_hops=args.num_gc_layers, epochs=args.num_epochs, edge_ent=args.edge_ent, edge_size=args.edge_size
+        model, num_hops=args.num_gc_layers, epochs=1000, edge_ent=args.edge_ent, edge_size=args.edge_size
     )
     _, edge_mask = explainer.explain_node(node_idx, x=x, edge_index=edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
@@ -173,7 +175,7 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, edge_weight, targe
     explainer = TargetedGNNExplainer(
         model,
         num_hops=args.num_gc_layers,
-        epochs=args.num_epochs,
+        epochs=1000,
         edge_ent=args.edge_ent,
         edge_size=args.edge_size,
         allow_edge_mask=True,
@@ -184,6 +186,7 @@ def explain_gnnexplainer_node(model, node_idx, x, edge_index, edge_weight, targe
         node_idx, x=x, edge_index=edge_index, edge_weight=edge_weight, target=target
     )
     edge_mask = edge_mask.cpu().detach().numpy()
+    node_feat_mask = node_feat_mask.cpu().detach().numpy()
     return edge_mask, node_feat_mask
 
 

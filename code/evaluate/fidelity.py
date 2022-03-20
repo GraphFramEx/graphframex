@@ -24,10 +24,12 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
 
         if node_feat_masks[i] is not None:
-            node_feat_mask = torch.Tensor(node_feat_masks[i])
-            h = data.x * node_feat_mask
+            node_feat_mask = torch.Tensor(node_feat_masks[i]).to(device)
+            x_masked = data.x * node_feat_mask
+            x_maskout = data.x * (1 - node_feat_mask)
         else:
-            h = data.x
+            x_masked = data.x
+            x_maskout = data.x
 
         if eval(args.hard_mask):
             indices = np.where(edge_mask > 0)[0]
@@ -36,20 +38,20 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
             masked_edge_index = data.edge_index[:, indices].to(device)
             maskout_edge_index = data.edge_index[:, indices_inv].to(device)
 
-            masked_ypred = model(h, masked_edge_index).cpu().detach().numpy()
+            masked_ypred = model(x_masked, masked_edge_index).cpu().detach().numpy()
             masked_yprob = get_proba(masked_ypred)
 
-            maskout_ypred = model(h, maskout_edge_index).cpu().detach().numpy()
+            maskout_ypred = model(x_maskout, maskout_edge_index).cpu().detach().numpy()
             maskout_yprob = get_proba(maskout_ypred)
 
         else:
             edge_mask = edge_mask.to(device)
             masked_weight = data.edge_weight*edge_mask
-            masked_ypred = model(h, data.edge_index, edge_weight=masked_weight).cpu().detach().numpy()
+            masked_ypred = model(x_masked, data.edge_index, edge_weight=masked_weight).cpu().detach().numpy()
             masked_yprob = get_proba(masked_ypred)
 
             maskout_weight = data.edge_weight*(1-edge_mask)
-            maskout_ypred = model(h, data.edge_index, edge_weight=maskout_weight).cpu().detach().numpy()
+            maskout_ypred = model(x_maskout, data.edge_index, edge_weight=maskout_weight).cpu().detach().numpy()
             maskout_yprob = get_proba(maskout_ypred)
             
             edge_mask = edge_mask.cpu().detach().numpy()

@@ -122,4 +122,4 @@ def gen_mask_density_plt_name(args):
     save_fig_dir = os.path.join(args.fig_save_dir, args.dataset)
     os.makedirs(save_fig_dir, exist_ok=True)
     date = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return os.path.join(save_fig_dir, args.explainer_name) + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_{date}.png"
+    return os.path.join(save_fig_dir, args.explainer_name) + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_sparsity_{args.sparsity}_{date}.png"

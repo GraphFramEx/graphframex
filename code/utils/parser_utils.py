@@ -235,8 +235,8 @@ def arg_parse():
         weight_decay=5e-4,
         method="base",
         name_suffix="",
-        edge_ent=1,
-        edge_size=0,
+        edge_ent=1.0,
+        edge_size=0.005,
         explainer_name="gnnexplainer",
     )
     return parser.parse_args()

@@ -110,7 +110,7 @@ def main_real(args):
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
-    if eval(args.hard_mask)==False:
+    if (eval(args.hard_mask)==False)&(args.seed==0):
         plot_masks_density(edge_masks[:10], args)
 
     ### Fidelity ###
@@ -372,6 +372,7 @@ if __name__ == "__main__":
     if eval(args.explain_graph):
         main_mutag(args)
     elif args.dataset.startswith("syn"):
+        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 3, 20, 1000, 0.001, 5e-3, 0.0
         main_syn(args)
     elif args.dataset in PLANETOIDS.keys():
         args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
