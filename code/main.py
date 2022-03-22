@@ -188,7 +188,7 @@ def main_syn(args):
     
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
-    edge_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     # plot_mask_density(edge_masks, args)
 
     ### Mask normalisation and cleaning ###

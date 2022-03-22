@@ -25,7 +25,7 @@ from src.params import enumerateParams, generateExt
 basename = os.path.basename
 
 if not os.path.exists("checkpoints"):
-    os.makedirs("/cluster/home/kamara/Explain/checkpoints")
+    os.makedirs("/cluster/home/kamara/checkpoints")
 
 
 def ckpt_default():

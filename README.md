@@ -143,8 +143,10 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 python3 code/main.py --dataset [dataset-name] --explain_graph False --explainer_name [explainer_name]
 ```
 
-- dataset-name: syn1, syn2, syn3, syn4, syn5, syn6
-- explainer_name: random, pagerank, distance, sa_node, ig_node, gnnexplainer, subgraphx, pgmexplainer
+- dataset-name:
+  - synthetic: syn1, syn2, syn3, syn4, syn5, syn6
+  - real-world: Cora, PubMed, CiteSeer, facebook
+- explainer_name: random, pagerank, distance, sa, ig, gnnexplainer, subgraphx, pgmexplainer
 
 ### Graph Classification
 
@@ -205,6 +207,7 @@ You can now play around with the mask threshold in the `GNN-Explainer-Viz-intera
 | Synthetic #3 |      `syn3`       | Random BA graph with grid attachments.                                                                                                 |
 | Synthetic #4 |      `syn4`       | Random Tree with cycle attachments.                                                                                                    |
 | Synthetic #5 |      `syn5`       | Random Tree with grid attachments.                                                                                                     |
+| Synthetic #6 |      `syn6`       | Random BA graph with bottle attachments.                                                                                               |
 | MUTAG        |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
 
 ### Using the explainer on other models

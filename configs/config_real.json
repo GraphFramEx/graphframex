@@ -30,10 +30,11 @@
       "sa",
       "ig",
       "gradcam",
-      "basic_gnnexplainer",
       "occlusion",
+      "basic_gnnexplainer",
       "gnnexplainer",
-      "pgmexplainer"
+      "pgmexplainer",
+      "subgraphx"
     ]
   }
 }
