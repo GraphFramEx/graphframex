@@ -1,0 +1,28 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": ".",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 7000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification/real",
+    "name": "mask_info",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "seed": 10,
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": "False",
+    "true_label_as_target": "True",
+    "dataset": "cora",
+    "sparsity": [0, 0.7, 0.99, 0.997],
+    "explainer_name": ["gradcam", "sa", "pgmexplainer"]
+  }
+}

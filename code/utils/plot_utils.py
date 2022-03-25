@@ -46,18 +46,25 @@ def plot_mask_density(edge_mask, args):
     matplotlib.style.use("default")
 
 def plot_masks_density(edge_masks, args):
+    pal = sns.color_palette("tab10")
     matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 5)
 
-    edge_values = np.array(edge_masks).reshape(-1)
-    positive_edge_values = edge_values[edge_values>0]
-    sns.histplot(positive_edge_values, kde=True, ax=ax)
+    # Plotting avg density
+    # edge_values = np.array(edge_masks).reshape(-1)
+    # positive_edge_values = edge_values[edge_values>0]
+    max_len = 0
+    for i in range(5):
+        mask = edge_masks[i]
+        pos_mask = mask[mask > 0]
+        max_len = max_len if max_len > len(pos_mask) else len(pos_mask)
+        sns.histplot(pos_mask, kde=True, color=pal[i], alpha=0.4, ax=ax)
     plt.xlim(0, 1)
-    plt.ylim(0, len(positive_edge_values))
+    plt.ylim(0, max_len)
     plt.title(
-        f"Density of edge mask for {args.explainer_name}, target as true label = {args.true_label_as_target}, hard mask = {args.hard_mask}"
+        f"Density of 5 edge masks for {args.explainer_name}, target as true label = {args.true_label_as_target}, sparsity = {args.sparsity}"
     )
     plt.xlabel("edge importance")
     print(gen_mask_density_plt_name(args))

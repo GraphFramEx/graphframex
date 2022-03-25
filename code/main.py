@@ -16,7 +16,7 @@ from dataset.data_utils import split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
-from evaluate.mask_utils import clean_masks, get_size, get_sparsity, normalize_all_masks, transform_mask
+from evaluate.mask_utils import clean_masks, get_mask_info, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
@@ -111,7 +111,8 @@ def main_real(args):
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
     if (eval(args.hard_mask)==False)&(args.seed==0):
-        plot_masks_density(edge_masks[:10], args)
+        plot_masks_density(edge_masks, args)
+    print("__mask_info:" + json.dumps(get_mask_info(edge_masks)))
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
