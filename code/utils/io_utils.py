@@ -27,9 +27,10 @@ def gen_prefix(args):
         name += "_gc"
     else:
         name += "_nc"
-    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_epch" + str(args.num_epochs)
+    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_gcn_" + str(args.num_gc_layers) + "_epch" + str(args.num_epochs) + "_lr" + str(args.lr) + "_wd" + str(args.weight_decay) + "_drop" + str(args.dropout)
     if not args.bias:
         name += "_nobias"
+    name+= "_" + str(args.seed)
     if len(args.name_suffix) > 0:
         name += "_" + args.name_suffix
     return name
@@ -63,7 +64,6 @@ def create_model_filename(args, isbest=False, num_epochs=-1):
 
     if isbest:
         filename = os.path.join(filename, "best")
-    filename += f"_gcn_{args.num_gc_layers}"
     return filename + ".pth.tar"
 
 

@@ -5,14 +5,14 @@ import random
 import numpy as np
 import torch
 from sklearn import metrics
-from torch_geometric.datasets import AmazonProducts, FacebookPagePage, Flickr, Planetoid, Reddit
+from torch_geometric.datasets import FacebookPagePage, Planetoid, WikipediaNetwork, PPI, Actor, WebKB
 from torch_geometric.loader import ClusterData, ClusterLoader
 import torch.nn.functional as F
 
 from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
-from dataset.gen_planetoids import load_data_real
-from dataset.data_utils import split_data
+from dataset.gen_real import load_data_real
+from dataset.data_utils import get_split, split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
@@ -27,8 +27,12 @@ from utils.io_utils import check_dir, create_data_filename, create_model_filenam
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
 from utils.plot_utils import plot_expl_gc, plot_mask_density, plot_masks_density
 
-REAL_DATA = {"reddit": "Reddit", "facebook": "FacebookPagePage", "flickr": "Flickr", "amazon": "AmazonProducts", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid"}
+REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid",
+                "chameleon": "WikipediaNetwork", "squirrel": "WikipediaNetwork", 
+                "ppi": "PPI", "actor": "Actor", 
+                "texas": "WebKB", "cornell": "WebKB", "wisconsin": "WebKB"}
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
+WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
 
 
 def main_real(args):
@@ -47,12 +51,20 @@ def main_real(args):
             Planetoid(args.data_save_dir, name=PLANETOIDS[args.dataset])
             origin_dir = os.path.join(args.data_save_dir, PLANETOIDS[args.dataset])
             os.rename(origin_dir, data_dir)
+        elif REAL_DATA[args.dataset] == "WebKB":
+            WebKB(args.data_save_dir, name=WEBKB[args.dataset])
+        elif REAL_DATA[args.dataset] == "WikipediaNetwork":
+            WikipediaNetwork(args.data_save_dir, name=args.dataset)
+            origin_dir = os.path.join(data_dir, "geom_gcn")
+            os.rename(origin_dir, data_dir)
         else:
             eval(REAL_DATA[args.dataset])(data_dir)
 
     data = load_data_real(data_filename)
     if args.dataset == "facebook":
         data = split_data(data, args)
+    if data.train_mask.dim() > 1:
+        data = get_split(data, args)
     data = data.to(device)
 
     model_filename = create_model_filename(args)
@@ -110,7 +122,7 @@ def main_real(args):
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
-    if (eval(args.hard_mask)==False)&(args.seed==0):
+    if (eval(args.hard_mask)==False)&(args.seed==10):
         plot_masks_density(edge_masks, args)
     print("__mask_info:" + json.dumps(get_mask_info(edge_masks)))
 
@@ -375,14 +387,11 @@ if __name__ == "__main__":
     elif args.dataset.startswith("syn"):
         args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 3, 20, 1000, 0.001, 5e-3, 0.0
         main_syn(args)
-    elif args.dataset in PLANETOIDS.keys():
-        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
-        main_real(args)
-    elif args.dataset == "facebook":
-        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
-        main_real(args)
-    elif args.dataset == "flickr":
-        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0
+    elif args.dataset in REAL_DATA.keys():
+        if args.dataset in WEBKB.keys():
+            args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 32, 400, 0.001, 5e-3, 0.2
+        else: 
+            args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
         main_real(args)
     elif args.dataset == "ebay":
         args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0

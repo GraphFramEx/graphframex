@@ -10,7 +10,6 @@ import numpy as np
 import scipy.sparse as sp
 import torch
 
-PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 
 
 def load_data_real(data_filename):

@@ -20,3 +20,10 @@ def split_data(data, args):
 
     return data
 
+def get_split(data, args):
+    k = args.seed%10
+    data.train_mask = data.train_mask[:,k]
+    data.val_mask = data.val_mask[:,k]
+    data.test_mask = data.test_mask[:,k]
+    return data
+
