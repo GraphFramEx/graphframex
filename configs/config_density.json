@@ -10,19 +10,31 @@
   },
   "meta": {
     "group": "checkpoints/node_classification/real",
-    "name": "mask_info",
+    "name": "mask_density_plot",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
     "data_save_dir": "data",
     "seed": 10,
-    "num_test": 100,
+    "num_test": 5,
     "explain_graph": "False",
     "hard_mask": "False",
     "true_label_as_target": "True",
     "dataset": "cora",
     "sparsity": [0, 0.7, 0.99, 0.997],
-    "explainer_name": ["gradcam", "sa", "pgmexplainer"]
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa",
+      "ig",
+      "gradcam",
+      "occlusion",
+      "basic_gnnexplainer",
+      "gnnexplainer",
+      "pgmexplainer",
+      "subgraphx"
+    ]
   }
 }

@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import shutil
 
 import numpy as np
 import torch
@@ -56,7 +57,17 @@ def main_real(args):
         elif REAL_DATA[args.dataset] == "WikipediaNetwork":
             WikipediaNetwork(args.data_save_dir, name=args.dataset)
             origin_dir = os.path.join(data_dir, "geom_gcn")
-            os.rename(origin_dir, data_dir)
+            # fetch all files
+            for folder_name in os.listdir(origin_dir):
+                # construct full file path
+                source =  os.path.join(origin_dir, folder_name)
+                destination = os.path.join(data_dir, folder_name)
+                # move only folder
+                print(f"Moving {source} to {destination}")
+                if os.path.isdir(source):
+                    print('moving folder {} to {}'.format(source, destination))
+                    shutil.move(source, destination)
+            shutil.rmtree(origin_dir, ignore_errors=True)
         else:
             eval(REAL_DATA[args.dataset])(data_dir)
 
