@@ -6,7 +6,7 @@ from torch.autograd import Variable
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
-from gnn.model import GraphConvolution
+from gnn.model import GraphConv, GraphConvolution
 
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.pgmexplainer import Node_Explainer
@@ -45,11 +45,14 @@ def node_attr_to_edge(edge_index, node_mask):
     return edge_mask
 
 
-def get_all_convolution_layers(model):
+def get_all_convolution_layers(model, args):
     layers = []
     for module in model.modules():
-        if isinstance(module, GraphConvolution):
+        if args.dataset.startswith('syn') and isinstance(module, GraphConv):
             layers.append(module)
+        else:
+            if isinstance(module, GraphConvolution):
+                layers.append(module)
     return layers
 
 
@@ -102,7 +105,7 @@ def explain_gradcam_node(model, node_idx, x, edge_index, edge_weight, target, de
     # Captum default implementation of LayerGradCam does not average over nodes for different channels because of
     # different assumptions on tensor shapes
     input_mask = x.clone().requires_grad_(True).to(device)
-    layers = get_all_convolution_layers(model)
+    layers = get_all_convolution_layers(model, args)
     node_attrs = []
     for layer in layers:
         layer_gc = LayerGradCam(model_forward_node, layer)

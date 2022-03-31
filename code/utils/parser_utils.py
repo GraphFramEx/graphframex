@@ -58,7 +58,7 @@ def arg_parse():
 
     parser.add_argument("--dest", type=str, default="/Users/kenzaamara/GithubProjects/Explain")
 
-    parser.add_argument("--seed", help="random seed", type=int, default=10)
+    parser.add_argument("--seed", help="random seed", type=int, default=0)
 
     # Computing power
     parser.add_argument("--cuda", dest="cuda", help="CUDA.")

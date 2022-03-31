@@ -33,6 +33,7 @@ def clean_masks(masks):
     for i in range(len(masks)):
         masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
         masks[i] = np.clip(masks[i], -10, 10)
+        masks[i] = normalize_mask(masks[i])
         masks[i] = np.where(masks[i] < 0.001, 0, masks[i])
     return masks
 
@@ -59,6 +60,8 @@ def get_entropy(masks):
             continue
         ent += entropy(pos_mask)
         k += 1
+    if k == 0:
+        return -1
     return ent / k
 
 def get_avg_max(masks):
@@ -75,6 +78,8 @@ def get_avg_max(masks):
         index = np.argmax(ys)
         max_avg += xs[index] 
         k += 1
+    if k == 0:
+        return -1
     return max_avg / k
 
 def get_mask_info(masks):

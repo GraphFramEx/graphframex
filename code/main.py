@@ -114,7 +114,7 @@ def main_real(args):
     ### Mask normalisation and cleaning ###
     edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
     edge_masks = clean_masks(edge_masks)
-    edge_masks = normalize_all_masks(edge_masks)
+    print("__initial_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
 
     infos = {
         "dataset": args.dataset,
@@ -135,7 +135,7 @@ def main_real(args):
     edge_masks = transform_mask(edge_masks, args)
     if (eval(args.hard_mask)==False)&(args.seed==10):
         plot_masks_density(edge_masks, args)
-    print("__mask_info:" + json.dumps(get_mask_info(edge_masks)))
+    print("__transformed_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
 
     ### Fidelity ###
     related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
@@ -151,8 +151,10 @@ def main_real(args):
 
 
 def main_syn(args):
-    np.random.seed(args.seed)
 
+    np.random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ### Generate, Save, Load data ###
@@ -219,9 +221,7 @@ def main_syn(args):
     # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
     edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
     edge_masks = clean_masks(edge_masks)
-
-    # Normalize edge_masks to have value from 0 to 1
-    edge_masks = normalize_all_masks(edge_masks)
+    print("__initial_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
 
     infos = {
         "dataset": args.dataset,
@@ -244,13 +244,14 @@ def main_syn(args):
 
     ### Mask transformation ###
     edge_masks = transform_mask(edge_masks, args)
+    print("__transformed_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
 
     ### Accuracy ###
     accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
     print("__accuracy:" + json.dumps(accuracy))
 
     ### Fidelity ###
-    related_preds = eval_related_pred_nc(model, data, edge_masks, list_test_nodes, device, args)
+    related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
     fidelity = eval_fidelity(related_preds, args)
     print("__fidelity:" + json.dumps(fidelity))
 
@@ -396,7 +397,7 @@ if __name__ == "__main__":
     if eval(args.explain_graph):
         main_mutag(args)
     elif args.dataset.startswith("syn"):
-        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 3, 20, 1000, 0.001, 5e-3, 0.0
+        args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 3, 20, 20, 1000, 0.001, 5e-3, 0.0
         main_syn(args)
     elif args.dataset in REAL_DATA.keys():
         if args.dataset in WEBKB.keys():

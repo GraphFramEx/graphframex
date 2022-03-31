@@ -510,7 +510,7 @@ class GcnEncoderNode(GcnEncoderGraph):
         pred = self.pred_model(self.embedding_tensor)
         return pred, adj_att
 
-    def forward(self, x, edge_index, batch_num_nodes=None, edge_weight=None, **kwargs):
+    def forward(self, x, edge_index, edge_weight=None, batch_num_nodes=None, **kwargs):
         # Encoder Node receives no batch - only one graph
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1))
