@@ -9,19 +9,20 @@
     "mem": 5000
   },
   "meta": {
-    "group": "checkpoints/node_classification",
-    "name": "gnnexplainer_size",
+    "group": "checkpoints/node_classification/real",
+    "name": "test",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
-    "explain_graph": "False",
     "data_save_dir": "data",
+    "seed": 0,
     "num_test": 100,
-    "dataset": "syn1",
-    "explainer_name": {
-      "gnnexplainer": { "edge_size": [0, 0.005, 0.05, 0.5, 1, 5, 10, 100] },
-      "pagerank": { "edge_size": 0.005 }
-    }
+    "explain_graph": "False",
+    "hard_mask": "True",
+    "true_label_as_target": ["True", "False"],
+    "dataset": "cora",
+    "sparsity": 0.7,
+    "explainer_name": ["random", "pagerank"]
   }
 }

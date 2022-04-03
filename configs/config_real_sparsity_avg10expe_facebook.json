@@ -9,20 +9,20 @@
     "mem": 5000
   },
   "meta": {
-    "group": "checkpoints/node_classification",
-    "name": "topk",
+    "group": "checkpoints/node_classification/real",
+    "name": "sparsity_real_avg10expe_facebook",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
     "data_save_dir": "data",
-    "num_test": 100,
     "seed": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    "num_test": 100,
     "explain_graph": "False",
     "hard_mask": ["True", "False"],
     "true_label_as_target": ["True", "False"],
-    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "topk": [10, 20, 40, 100, 500],
+    "dataset": "facebook",
+    "sparsity": [0, 0.7, 0.99, 0.997],
     "explainer_name": [
       "random",
       "distance",

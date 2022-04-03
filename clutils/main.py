@@ -24,7 +24,7 @@ from src.params import enumerateParams, generateExt
 
 basename = os.path.basename
 
-if not os.path.exists("checkpoints"):
+if not os.path.exists("/cluster/home/kamara/checkpoints"):
     os.makedirs("/cluster/home/kamara/checkpoints")
 
 
@@ -121,7 +121,7 @@ def stool_stress(partition):
     return None
 
 
-sbatch = "bsub "
+sbatch = "bsub -oo jobs.out "
 
 
 parser = argparse.ArgumentParser()
@@ -166,7 +166,7 @@ if args.command == "sweep":
     assert os.path.exists(args.grid), "Config file %s does not exist. Are you in the right repository ?" % args.grid
     config = json.load(open(args.grid))
     if "pwd" not in config:
-        config["pwd"] = "."  # os.getcwd()
+        config["pwd"] =  "." # os.getcwd()
 
     if "meta" in config:
         group = config["meta"]["group"]
@@ -176,7 +176,7 @@ if args.command == "sweep":
     else:
         group = args.group
         name = args.name
-    ckpt_root = ckpt_default()
+    ckpt_root = config["ckpt_root"]
     group_root = join(ckpt_root, group)
 
     if "machine" in config:

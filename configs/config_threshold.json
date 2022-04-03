@@ -1,7 +1,7 @@
 {
   "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
-  "ckpt_root": ".",
+  "ckpt_root": "/cluster/home/kamara/",
   "version": "1.0.0",
   "machine": {
     "time": 600,
