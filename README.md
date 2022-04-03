@@ -59,35 +59,8 @@ pip install tensorboardx
 
 ## Datasets
 
-1. The processed raw data for datasets `syn1`, `syn2`, `syn3`, `syn4`, `syn5`, `syn6` is available in the `data/` folder.
-2. Dataset `MUTAG` will be automatically downloaded when training models.
-
-The data directory is arranged as
-
-```
-.
-├── mutag
-│   ├── mutag.pt
-│   └── raw_data
-│       ├── MUTAG_A.txt
-│       ├── MUTAG_edge_labels.txt
-│       ├── MUTAG_graph_indicator.txt
-│       ├── MUTAG_graph_labels.txt
-│       ├── MUTAG_node_labels.txt
-│       └── README.txt
-├── syn1
-│   └── syn1.pt
-├── syn2
-│   └── syn2.pt
-├── syn3
-│   └── syn3.pt
-├── syn4
-│   └── syn4.pt
-├── syn5
-│   └── syn5.pt
-└── syn6
-    └── syn6.pt
-```
+1. The processed raw data for datasets `syn1`, `syn2`, `syn3`, `syn4`, `syn5`, `syn6` is available in the `data/syn` folder.
+2. The processed raw data for datasets `cora`, `citeseer`, `pubmed`, `cornell`, `texas`, `wisconsin`, `chameleon`, `squirrel`, `actor` will be automatically downloaded when training models.
 
 ## Trained GNN models
 
@@ -99,7 +72,13 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 .
 ├── dataset
 │   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── data_utils.cpython-38.pyc
+│   │   ├── gen_planetoids.cpython-38.pyc
+│   │   └── gen_syn.cpython-38.pyc
+│   ├── data_utils.py
 │   ├── gen_mutag.py
+│   ├── gen_real.py
 │   ├── gen_syn.py
 │   ├── mutag_utils.py
 │   └── syn_utils
@@ -108,6 +87,10 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 │       ├── gengroundtruth.py
 │       └── synthetic_structsim.py
 ├── evaluate
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── accuracy.cpython-38.pyc
+│   │   └── fidelity.cpython-38.pyc
 │   ├── accuracy.py
 │   ├── fidelity.py
 │   └── mask_utils.py
@@ -127,12 +110,14 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 │   └── train.py
 ├── main.py
 └── utils
+    ├── __init__.py
     ├── gen_utils.py
     ├── graph_utils.py
     ├── io_utils.py
     ├── math_utils.py
     ├── parser_utils.py
     └── plot_utils.py
+
 ```
 
 ## Demo
@@ -145,8 +130,8 @@ python3 code/main.py --dataset [dataset-name] --explain_graph False --explainer_
 
 - dataset-name:
   - synthetic: syn1, syn2, syn3, syn4, syn5, syn6
-  - real-world: Cora, PubMed, CiteSeer, facebook
-- explainer_name: random, pagerank, distance, sa, ig, gnnexplainer, subgraphx, pgmexplainer
+  - real-world: cora, pubmed, citeseer, facebook, chameleon, squirrel, texas, wisconsin, cornell, actor
+- explainer_name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer
 
 ### Graph Classification
 
@@ -200,15 +185,25 @@ You can now play around with the mask threshold in the `GNN-Explainer-Viz-intera
 
 #### Included experiments
 
-| Name         | `EXPERIMENT_NAME` | Description                                                                                                                            |
-| ------------ | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Synthetic #1 |      `syn1`       | Random BA graph with House attachments.                                                                                                |
-| Synthetic #2 |      `syn2`       | Random BA graph with community features.                                                                                               |
-| Synthetic #3 |      `syn3`       | Random BA graph with grid attachments.                                                                                                 |
-| Synthetic #4 |      `syn4`       | Random Tree with cycle attachments.                                                                                                    |
-| Synthetic #5 |      `syn5`       | Random Tree with grid attachments.                                                                                                     |
-| Synthetic #6 |      `syn6`       | Random BA graph with bottle attachments.                                                                                               |
-| MUTAG        |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+| Name             | `EXPERIMENT_NAME` | Description                                                                                                                            |
+| ---------------- | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Synthetic #1     |      `syn1`       | Random BA graph with House attachments.                                                                                                |
+| Synthetic #2     |      `syn2`       | Random BA graph with community features.                                                                                               |
+| Synthetic #3     |      `syn3`       | Random BA graph with grid attachments.                                                                                                 |
+| Synthetic #4     |      `syn4`       | Random Tree with cycle attachments.                                                                                                    |
+| Synthetic #5     |      `syn5`       | Random Tree with grid attachments.                                                                                                     |
+| Synthetic #6     |      `syn6`       | Random BA graph with bottle attachments.                                                                                               |
+| MUTAG            |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+| Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
+| Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
+| Citeseer         |    `citeseer`     | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
+| FacebookPagePage |    `facebook`     |                                                                                                                                        |
+| Chameleon        |    `chameleon`    |                                                                                                                                        |
+| Squirrel         |    `squirrel`     |                                                                                                                                        |
+| Texas            |      `texas`      |                                                                                                                                        |
+| Wisconsin        |    `wisconsin`    |                                                                                                                                        |
+| Cornell          |     `cornell`     |                                                                                                                                        |
+| Actor            |      `actor`      |                                                                                                                                        |
 
 ### Using the explainer on other models
 
