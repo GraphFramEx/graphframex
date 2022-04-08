@@ -20,7 +20,7 @@ def check_dir(save_dirs):
             os.makedirs(save_dirs)
 
 
-def gen_prefix(args):
+def gen_prefix(args, **kwargs):
     """Generate label prefix for a graph model."""
     name = args.dataset
     if eval(args.explain_graph):
@@ -33,6 +33,8 @@ def gen_prefix(args):
     name+= "_" + str(args.seed)
     if len(args.name_suffix) > 0:
         name += "_" + args.name_suffix
+    if 'suffix' in kwargs:
+        name += "_" + kwargs.get('suffix')
     return name
 
 
@@ -51,7 +53,7 @@ def create_data_filename(args):
     return filename
 
 
-def create_model_filename(args, isbest=False, num_epochs=-1):
+def create_model_filename(args, isbest=False, num_epochs=-1, **kwargs):
     """
     Args:
         args        :  the arguments parsed in the parser
@@ -60,7 +62,7 @@ def create_model_filename(args, isbest=False, num_epochs=-1):
     """
     subdir = os.path.join(args.model_save_dir, args.dataset)
     os.makedirs(subdir, exist_ok=True)
-    filename = os.path.join(subdir, gen_prefix(args))
+    filename = os.path.join(subdir, gen_prefix(args, **kwargs))
 
     if isbest:
         filename = os.path.join(filename, "best")

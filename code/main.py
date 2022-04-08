@@ -78,12 +78,14 @@ def main_real(args):
         data = get_split(data, args)
     data = data.to(device)
 
+    args.num_classes = data.y.max().item() + 1
+
     model_filename = create_model_filename(args)
     if os.path.isfile(model_filename):
         model = GCN(
             num_node_features=data.x.shape[1],
             hidden_dim=args.hidden_dim,
-            num_classes=data.y.max().item() + 1,
+            num_classes=args.num_classes,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
             device=device,
@@ -92,7 +94,7 @@ def main_real(args):
         model = GCN(
             num_node_features=data.x.shape[1],
             hidden_dim=args.hidden_dim,
-            num_classes=data.y.max().item() + 1,
+            num_classes=args.num_classes,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
             device=device,

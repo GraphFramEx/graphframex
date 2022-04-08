@@ -40,7 +40,10 @@ class GraphConvolution(Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, input, edge_index, edge_weight):
+    def forward(self, input, edge_index, edge_weight=None):
+        print('edge_index.shape', edge_index.size())
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         self.weight = self.weight.to(self.device)
         support = torch.mm(input, self.weight)
         shape = torch.Size((len(input), len(input)))
@@ -80,11 +83,15 @@ class GCN(nn.Module):
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
+        self.embedding_tensor = x
         x = self.layers[-1](x, edge_index, edge_weight)
-        return F.log_softmax(x, dim=1)
+        self.logits = x
+        self.probs = F.softmax(x, dim=1)
+        return self.probs
 
     def loss(self, pred, label):
         return F.nll_loss(pred, label)
+
 
 
 
@@ -320,8 +327,7 @@ class GcnEncoderGraph(nn.Module):
         x_tensor = torch.cat(x_all, dim=2)
         if embedding_mask is not None:
             x_tensor = x_tensor * embedding_mask
-        self.embedding_tensor = x_tensor
-
+        self.embedding_tensor = x_all[-1]
         # adj_att_tensor: [batch_size x num_nodes x num_nodes x num_gc_layers]
         adj_att_tensor = torch.stack(adj_att_all, dim=3)
         return x_tensor, adj_att_tensor
@@ -393,6 +399,8 @@ class GcnEncoderGraph(nn.Module):
             adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weight[i]), max_n))
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
+        self.logits = pred
+        self.probs = F.softmax(pred, dim=1)
         return pred
 
     def forward_adj(self, x, adj, batch_num_nodes=None, **kwargs):
@@ -502,12 +510,12 @@ class GcnEncoderNode(GcnEncoderGraph):
         else:
             embedding_mask = None
         self.adj_atts = []
-        self.embedding_tensor, adj_att = self.gcn_forward(
+        x_tensor, adj_att = self.gcn_forward(
             x, adj, self.conv_first, self.conv_block, self.conv_last, embedding_mask
         )
-        self.embedding_tensor = self.embedding_tensor.to(self.device)
+        x_tensor = x_tensor.to(self.device)
         self.pred_model = self.pred_model.to(self.device)
-        pred = self.pred_model(self.embedding_tensor)
+        pred = self.pred_model(x_tensor)
         return pred, adj_att
 
     def forward(self, x, edge_index, edge_weight=None, batch_num_nodes=None, **kwargs):
@@ -518,6 +526,9 @@ class GcnEncoderNode(GcnEncoderGraph):
         adj = from_edge_index_to_adj(edge_index, edge_weight, max_n).to(self.device)
         pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
         ypred = torch.squeeze(pred, 0)
+        self.logits = ypred
+        self.probs = F.softmax(ypred, dim=1)
+        self.embedding_tensor = torch.squeeze(self.embedding_tensor, 0)
         return ypred
 
     def loss(self, pred, label):
