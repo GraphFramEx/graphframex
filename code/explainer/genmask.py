@@ -18,6 +18,7 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     else:
         out = model(data.x, data.edge_index, edge_weight=data.edge_weight)
         targets = torch.LongTensor(get_labels(out.detach().cpu().numpy())).to(device)
+    t0 = time.time()
     for node_idx in list_test_nodes:
         x = torch.FloatTensor(data.x.cpu().numpy().copy()).to(device)
         edge_index = torch.LongTensor(data.edge_index.cpu().numpy().copy()).to(device)
@@ -31,6 +32,10 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
         Time.append(duration_seconds)
         edge_masks.append(edge_mask)
         node_feat_masks.append(node_feat_mask)
+        t1 = time.time()
+        if t1 - t0 > args.time_limit:
+            break
+    args.num_test_final = len(edge_masks)
     return edge_masks, node_feat_masks, Time
 
 

@@ -302,17 +302,17 @@ class PGExplainer(nn.Module):
             optimizer.step()
             duration += time.perf_counter() - tic
             print(f'Epoch: {epoch} | Loss: {loss}')
-            torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
+            # torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
             self.elayers.to(self.device)
         print(f"training time is {duration:.5}s")
 
     def get_explanation_network(self, data, is_graph_classification=True):
-        if os.path.isfile(self.ckpt_path):
+        """if os.path.isfile(self.ckpt_path):
             print("fetch network parameters from the saved files")
             state_dict = torch.load(self.ckpt_path)
             self.elayers.load_state_dict(state_dict)
-            self.to(self.device)
-        elif is_graph_classification:
+            self.to(self.device)"""
+        if is_graph_classification:
             self.train_GC_explanation_network(data)
         else:
             self.train_NC_explanation_network(data)
@@ -388,7 +388,7 @@ class PGExplainer(nn.Module):
 
             optimizer.step()
             print(f'Epoch: {epoch} | Loss: {loss}')
-            torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
+            # torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
             self.elayers.to(self.device)
 
     def eval_node_probs(self, node_idx: int, x: torch.Tensor,

@@ -128,6 +128,7 @@ def main_real(args):
         "threshold": args.threshold,
         "topk": args.topk,
         "num_test": args.num_test,
+        "num_test_final": args.num_test_final,
         "groundtruth target": args.true_label_as_target,
         "time": float(format(np.mean(Time), ".4f")),
     }

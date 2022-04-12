@@ -156,22 +156,25 @@ def init_weights(edge_index):
 
 def get_test_nodes(data, model, args):
     if args.dataset.startswith("syn"):
-        if eval(args.true_label_as_target):
-            pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
+        pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
+        if args.testing_pred=="correct":
             list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
-        else:
+        if args.testing_pred=="wrong":
+            list_node_idx = np.where(pred_labels != data.y.cpu().numpy())[0]
+        else: # args.testing_pred is "mix"
             list_node_idx = np.arange(data.x.size(0))
         list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
         # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
         list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
     else:
-        if eval(args.true_label_as_target):
-            pred_labels = get_labels(model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy())
-            list_test_nodes = np.where(pred_labels == data.y.cpu().numpy())[0]
-            list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
-        else:
-            list_test_nodes = np.arange(data.x.size(0))
-            list_test_nodes = [x.item() for x in np.random.choice(list_test_nodes, size=args.num_test, replace=False)]
+        pred_labels = get_labels(model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy())
+        if args.testing_pred=="correct":
+            list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
+        if args.testing_pred=="wrong":
+            list_node_idx = np.where(pred_labels != data.y.cpu().numpy())[0]
+        else: # args.testing_pred is "mix"
+            list_node_idx = np.arange(data.x.size(0))
+        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx, size=args.num_test, replace=False)]
     return list_test_nodes
 
 

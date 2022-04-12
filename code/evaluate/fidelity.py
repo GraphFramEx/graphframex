@@ -16,9 +16,7 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
     ori_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
     ori_yprob = get_proba(ori_ypred)
 
-    n_test = len(list_node_idx)
-
-    for i in range(n_test):
+    for i in range(args.num_test_final):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)

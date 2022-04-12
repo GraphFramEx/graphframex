@@ -26,7 +26,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
 from torch_geometric.utils.loop import add_self_loops
 from tqdm import tqdm
-from utils.gen_utils import subgraph
+from utils.gen_utils import from_edge_index_to_adj, subgraph
 
 EPS = 1e-15
 
@@ -394,7 +394,7 @@ class WalkBase(ExplainerBase):
         hooks = []
 
         def register_hook(module: nn.Module):
-            if not list(module.children()) or isinstance(module, MessagePassing):
+            if not list(module.children()) or isinstance(module, MessagePassing) or isinstance(module, GraphConv) or isinstance(module, GraphConvolution):
                 hooks.append(module.register_forward_hook(forward_hook))
 
         def forward_hook(module: nn.Module, input: Tuple[Tensor], output: Tensor):
@@ -406,11 +406,11 @@ class WalkBase(ExplainerBase):
 
         # --- register hooks ---
         self.model.apply(register_hook)
-
         pred = self.model(x, edge_index)
 
         for hook in hooks:
             hook.remove()
+
 
         # --- divide layer sets ---
 
@@ -432,20 +432,17 @@ class WalkBase(ExplainerBase):
             step['module'].append(layer[0])
             step['output'] = layer[2]
 
-
         for walk_step in walk_steps:
             if hasattr(walk_step['module'][0], 'nn') and walk_step['module'][0].nn is not None:
                 # We don't allow any outside nn during message flow process in GINs
                 walk_step['module'] = [walk_step['module'][0]]
-
-
+        
         if split_fc:
             if step['module']:
                 fc_steps.append(step)
             return walk_steps, fc_steps
         else:
             fc_step = step
-
 
         return walk_steps, fc_step
 
@@ -686,7 +683,13 @@ class GNN_LRP(WalkBase):
                         q2 = (p2 + epsilon) * (std_h2 / (p2 + epsilon)).detach()
                         q = q2
                     else:
-                        std_h = GraphSequential(*modules)(h, edge_index)
+                        print('GraphSequential(*modules)', GraphSequential(*modules))
+                        max_n = h.size(0)
+                        adj = from_edge_index_to_adj(edge_index, torch.ones(edge_index.size(1)), max_n).to(self.device)
+                        #pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
+                        #ypred = torch.squeeze(pred, 0)
+                        std_h = GraphSequential(*modules)(h.expand(1, -1, -1), adj.expand(1, -1, -1))
+                        
             
                         print('std_h', std_h)
                         print('h', h.size())
@@ -730,7 +733,6 @@ class GNN_LRP(WalkBase):
         for label in labels:
 
             walk_scores = []
-            print('x', x)
             compute_walk_score()
             walk_scores_tensor_list[label] = torch.stack(walk_scores, dim=0).view(-1, 1)
 

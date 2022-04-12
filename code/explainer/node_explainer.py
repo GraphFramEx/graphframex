@@ -209,7 +209,7 @@ def explain_pgmexplainer_node(model, data, node_idx, x, edge_index, edge_weight,
 
 
 def explain_subgraphx_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
-    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False, rollout= 10, min_atoms = 3, expand_atoms=6, high2low=True,  sample_num=20, reward_method="mc_shapley", subgraph_building_method="zero_filling", local_radius=3)
+    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False, rollout= 20, min_atoms = 3, expand_atoms=7, high2low=True,  sample_num=50, reward_method="mc_shapley", subgraph_building_method="zero_filling", local_radius=3)
     edge_mask = subgraphx.explain(x, edge_index, edge_weight, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
     return edge_mask, None
 
@@ -226,11 +226,6 @@ def explain_gnnlrp_node(model, data, node_idx, x, edge_index, edge_weight, targe
     walks, edge_mask = gnnlrp(x, edge_index, args)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask, None
-
-
-
-
-
 
 
 

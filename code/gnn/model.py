@@ -41,7 +41,6 @@ class GraphConvolution(Module):
             self.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, input, edge_index, edge_weight=None):
-        print('edge_index.shape', edge_index.size())
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         self.weight = self.weight.to(self.device)
@@ -161,6 +160,7 @@ class GraphConv(nn.Module):
         # if self.normalize_embedding:
         # y = F.normalize(y, p=2, dim=2)
         # print(y[0][0])
+        # print('y, adj', y.shape, adj.shape)
         return y, adj
 
 
@@ -524,7 +524,7 @@ class GcnEncoderNode(GcnEncoderGraph):
             edge_weight = torch.ones(edge_index.size(1))
         max_n = x.size(0)
         adj = from_edge_index_to_adj(edge_index, edge_weight, max_n).to(self.device)
-        pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes, **kwargs)
+        pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes=None, **kwargs)
         ypred = torch.squeeze(pred, 0)
         self.logits = ypred
         self.probs = F.softmax(ypred, dim=1)

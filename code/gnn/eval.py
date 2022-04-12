@@ -64,12 +64,14 @@ def gnn_scores_nc(model, data, args, device):
     result_train = {
         "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
         "recall": metrics.recall_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
+        "f1-score": metrics.f1_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
         "acc": metrics.accuracy_score(data.y[data.train_mask], ylabels[data.train_mask]),
     }
 
     result_test = {
         "prec": metrics.precision_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
         "recall": metrics.recall_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
+        "f1-score": metrics.f1_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
         "acc": metrics.accuracy_score(data.y[data.test_mask], ylabels[data.test_mask]),
     }
     return result_train, result_test
