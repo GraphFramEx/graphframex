@@ -126,10 +126,10 @@ def explain_sa_node(model, data, node_idx, x, edge_index, edge_weight, target, d
     saliency_mask = saliency.attribute(
         input_mask, target=target, additional_forward_args=(model, edge_index, edge_weight, node_idx), abs=False
     )
-
-    node_attr = saliency_mask.cpu().numpy().sum(axis=1)
+    node_feat_mask = saliency_mask.cpu().numpy()
+    node_attr = node_feat_mask.sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask, None
+    return edge_mask, node_feat_mask
 
 
 def explain_ig_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
@@ -141,10 +141,10 @@ def explain_ig_node(model, data, node_idx, x, edge_index, edge_weight, target, d
         additional_forward_args=(model, edge_index, edge_weight, node_idx),
         internal_batch_size=input_mask.shape[0],
     )
-
-    node_attr = ig_mask.cpu().detach().numpy().sum(axis=1)
+    node_feat_mask = ig_mask.cpu().detach().numpy()
+    node_attr = node_feat_mask.sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask, None
+    return edge_mask, node_feat_mask
 
 
 def explain_occlusion_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
@@ -245,22 +245,16 @@ def explain_graphsvx_node(model, data, node_idx, x, edge_index, edge_weight, tar
 
 def explain_graphlime_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     graphlime = GraphLIME(data, model, device, args, hop=2, rho=0.1, cached=True)
-    multiclass = True if args.num_classes>2 else False
-    node_feat_mask = graphlime.explain(node_idx, hops=None, num_samples=None, info=False, multiclass=multiclass)
-    node_feat_mask = node_feat_mask.cpu().detach().numpy()
+    node_feat_mask = graphlime.explain(node_idx, hops=None, num_samples=None, info=False, multiclass=False)
     return None, node_feat_mask
 
 def explain_lime_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     graphlime = LIME(data, model, device, args)
     node_feat_mask = graphlime.explain(node_idx, hops=None, num_samples=10, info=False, multiclass=False)
-    print('node_feat_mask', node_feat_mask)
-    print('node_feat_mask shape', node_feat_mask.shape)
     return None, node_feat_mask
 
 def explain_shap_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     ":return: shapley values for features that influence node v's pred"
     shap = SHAP(data, model, device, args)
     node_feat_mask = shap.explain()
-    print('node_feat_mask', node_feat_mask)
-    print('node_feat_mask shape', node_feat_mask.shape)
     return None, node_feat_mask

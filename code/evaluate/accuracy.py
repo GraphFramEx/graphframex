@@ -74,10 +74,9 @@ def get_accuracy(data, edge_mask, node_idx, args, top_acc):
 
 
 def eval_accuracy(data, edge_masks, list_node_idx, args, top_acc=False):
-    n_test = len(list_node_idx)
     scores = []
 
-    for i in range(n_test):
+    for i in range(args.num_test_final):
         edge_mask = torch.Tensor(edge_masks[i])
         node_idx = list_node_idx[i]
         entry = get_accuracy(data, edge_mask, node_idx, args, top_acc)

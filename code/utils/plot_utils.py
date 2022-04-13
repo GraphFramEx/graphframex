@@ -7,7 +7,7 @@ import numpy as np
 import seaborn as sns
 from torch_geometric.utils.convert import to_networkx
 
-from utils.io_utils import check_dir, gen_mask_density_plt_name
+from utils.io_utils import check_dir, gen_feat_importance_plt_name, gen_mask_density_plt_name
 
 def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
                    num_nodes=None, flow='source_to_target'):
@@ -151,25 +151,25 @@ def plot_avg_density(edge_masks, args):
     matplotlib.style.use("default")
 
 
-def plot_mask_density(edge_mask, args):
+def plot_mask_density(mask, args, type="edge"):
     matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 5)
 
-    sns.histplot(edge_mask, kde=True, ax=ax)
+    sns.histplot(mask, kde=True, ax=ax)
 
     plt.xlim(0, 1)
     plt.title(
-        f"Density of edge mask for {args.explainer_name}, entropy = {args.edge_ent}, mask size = {args.edge_size}"
+        f"Density of {type} mask for {args.explainer_name}, entropy = {args.edge_ent}, mask size = {args.edge_size}"
     )
-    plt.xlabel("edge importance")
+    plt.xlabel(f"{type} importance")
     print(gen_mask_density_plt_name(args))
     plt.savefig(gen_mask_density_plt_name(args), dpi=600)
     plt.close()
     matplotlib.style.use("default")
 
-def plot_masks_density(edge_masks, args):
+def plot_masks_density(masks, args, type="edge"):
     pal = sns.color_palette("tab10")
     matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
@@ -181,21 +181,52 @@ def plot_masks_density(edge_masks, args):
     # positive_edge_values = edge_values[edge_values>0]
     max_len = 0
     for i in range(5):
-        mask = edge_masks[i]
+        mask = masks[i]
         pos_mask = mask[mask > 0]
         max_len = max_len if max_len > len(pos_mask) else len(pos_mask)
         sns.histplot(pos_mask, kde=True, color=pal[i], alpha=0.4, ax=ax)
     plt.xlim(0, 1)
     plt.ylim(0, max_len)
     plt.title(
-        f"Density of 5 edge masks for {args.explainer_name}, target as true label = {args.true_label_as_target}, sparsity = {args.sparsity}"
+        f"Density of 5 {type} masks for {args.explainer_name}, target as true label = {args.true_label_as_target}, sparsity = {args.sparsity}"
     )
-    plt.xlabel("edge importance")
-    print(gen_mask_density_plt_name(args))
-    plt.savefig(gen_mask_density_plt_name(args), dpi=600)
+    plt.xlabel(f"{type} importance")
+    print(gen_mask_density_plt_name(args, type))
+    plt.savefig(gen_mask_density_plt_name(args, type), dpi=600)
     plt.close()
     matplotlib.style.use("default")
 
+def plot_feat_importance(node_feat_mask, args):
+    matplotlib.style.use("seaborn")
+    plt.switch_backend("agg")
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 5)
+
+    sns.barplot(range(0,len(node_feat_mask)), node_feat_mask, ax=ax)
+    plt.xlim(0, 1)
+    plt.title(f"Node feature importance for {args.explainer_name}")
+    plt.xlabel("Node feature importance")
+    plt.savefig(gen_feat_importance_plt_name(args), dpi=600)
+    plt.close()
+    matplotlib.style.use("default")
+
+def plot_feat_importance(node_feat_masks, args):
+    pal = sns.color_palette("tab10")
+    matplotlib.style.use("seaborn")
+    plt.switch_backend("agg")
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 5)
+
+    for i in range(5):
+        node_feat_mask = masks[i]
+
+    sns.barplot(range(0,len(node_feat_mask)), node_feat_mask, ax=ax)
+    plt.xlim(0, 1)
+    plt.title(f"Node feature importance for {args.explainer_name}")
+    plt.xlabel("Node feature importance")
+    plt.savefig(gen_feat_importance_plt_name(args), dpi=600)
+    plt.close()
+    matplotlib.style.use("default")
 
 
 # def plot_explanation(data, edge_masks):

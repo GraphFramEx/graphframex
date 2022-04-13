@@ -1,0 +1,42 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": "/cluster/home/kamara/",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 5000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification/real",
+    "name": "sparsity_real_1_testpred",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "seed": 0,
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": ["True", "False"],
+    "true_label_as_target": ["True", "False"],
+    "testing_pred": ["correct", "wrong"],
+    "dataset": ["cora", "facebook", "cornell", "actor", "chameleon"],
+    "topk": [1, 5, 10, 20],
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa",
+      "ig",
+      "gradcam",
+      "occlusion",
+      "basic_gnnexplainer",
+      "gnnexplainer",
+      "pgmexplainer",
+      "pgexplainer",
+      "subgraphx"
+    ]
+  }
+}

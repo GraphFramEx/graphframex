@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import entropy, gaussian_kde
 import matplotlib.pyplot as plt
+import copy
 
 
 def topk_edges_directed(edge_mask, edge_index, num_top_edges):
@@ -95,7 +96,8 @@ def get_mask_info(masks):
 
 def transform_mask(masks, args):
     new_masks = []
-    for mask in masks:
+    for mask_ori in masks:
+        mask = mask_ori.copy()
         if args.topk >= 0:
             unimportant_indices = (-mask).argsort()[args.topk :]
             mask[unimportant_indices] = 0

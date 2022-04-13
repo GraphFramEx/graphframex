@@ -1,0 +1,52 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": "/cluster/home/kamara/",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 5000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification/real/topk",
+    "name": "topk_real_1",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "seed": 0,
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": ["True", "False"],
+    "true_label_as_target": ["True", "False"],
+    "topk_list": "1,5,10,15,20,25,50,100",
+    "dataset": [
+      "cora",
+      "pubmed",
+      "citeseer",
+      "facebook",
+      "cornell",
+      "texas",
+      "wisconsin",
+      "actor",
+      "chameleon",
+      "squirrel"
+    ],
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa",
+      "ig",
+      "gradcam",
+      "occlusion",
+      "basic_gnnexplainer",
+      "gnnexplainer",
+      "pgmexplainer",
+      "pgexplainer",
+      "subgraphx"
+    ]
+  }
+}

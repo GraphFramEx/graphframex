@@ -18,12 +18,12 @@
     "data_save_dir": "data",
     "seed": 0,
     "num_test": 100,
-    "testing_pred": ["wrong", "correct", "mix"],
+    "time_limit": 180,
     "explain_graph": "False",
     "hard_mask": "True",
-    "true_label_as_target": ["True", "False"],
+    "true_label_as_target": "True",
     "dataset": "cora",
-    "sparsity": 0.7,
-    "explainer_name": "subgraph"
+    "sparsity": 0,
+    "explainer_name": ["subgraphx", "pgexplainer"]
   }
 }

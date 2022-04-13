@@ -9,8 +9,8 @@
     "mem": 5000
   },
   "meta": {
-    "group": "checkpoints/node_classification/real",
-    "name": "sparsity_real_1_testpred",
+    "group": "checkpoints/node_classification/syn/topk",
+    "name": "topk_syn_1",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -21,16 +21,14 @@
     "explain_graph": "False",
     "hard_mask": ["True", "False"],
     "true_label_as_target": ["True", "False"],
-    "testing_pred": ["correct", "wrong"],
-    "dataset": ["cora", "facebook", "cornell", "actor", "chameleon"],
-    "sparsity": [0, 0.7, 0.99, 0.997],
+    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
+    "topk_list": "1,5,10,15,20,25,50,100",
     "explainer_name": [
       "random",
       "distance",
       "pagerank",
       "sa",
       "ig",
-      "gradcam",
       "occlusion",
       "basic_gnnexplainer",
       "gnnexplainer",

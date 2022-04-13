@@ -1,7 +1,9 @@
+from hashlib import new
 import json
 import os
 import random
 import shutil
+import pickle
 
 import numpy as np
 import torch
@@ -9,6 +11,7 @@ from sklearn import metrics
 from torch_geometric.datasets import FacebookPagePage, Planetoid, WikipediaNetwork, PPI, Actor, WebKB
 from torch_geometric.loader import ClusterData, ClusterLoader
 import torch.nn.functional as F
+from scipy.special import softmax
 
 from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
@@ -24,9 +27,9 @@ from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification, train_real
 from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
-from utils.io_utils import check_dir, create_data_filename, create_model_filename, load_ckpt, save_checkpoint
+from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
-from utils.plot_utils import plot_expl_gc, plot_mask_density, plot_masks_density
+from utils.plot_utils import plot_expl_gc, plot_feat_importance, plot_mask_density, plot_masks_density
 
 REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid",
                 "chameleon": "WikipediaNetwork", "squirrel": "WikipediaNetwork", 
@@ -111,40 +114,73 @@ def main_real(args):
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
-    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-    
-    ### Mask normalisation and cleaning ###
-    edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
-    edge_masks = clean_masks(edge_masks)
-    print("__initial_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+    mask_filename = create_mask_filename(args)
+    if os.path.isfile(mask_filename):
+        with open(mask_filename, 'rb') as f:
+            w_list = pickle.load(f)
+        edge_masks, node_feat_masks, Time = tuple(w_list)
+    else:
+        edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+        with open(mask_filename, 'wb') as f:
+            pickle.dump([edge_masks, node_feat_masks, Time], f)
+
+    args.E = False if edge_masks[0] is None else True
+    args.NF = False if node_feat_masks[0] is None else True
+    args.num_test_final = len(edge_masks) if args.E else None
 
     infos = {
-        "dataset": args.dataset,
-        "explainer": args.explainer_name,
-        "number_of_edges": data.edge_index.size(1),
-        "mask_sparsity_init": get_sparsity(edge_masks),
-        "non_zero_values_init": get_size(edge_masks),
-        "sparsity": args.sparsity,
-        "threshold": args.threshold,
-        "topk": args.topk,
-        "num_test": args.num_test,
-        "num_test_final": args.num_test_final,
-        "groundtruth target": args.true_label_as_target,
-        "time": float(format(np.mean(Time), ".4f")),
-    }
+            "dataset": args.dataset,
+            "explainer": args.explainer_name,
+            "number_of_edges": data.edge_index.size(1),
+            "num_test": args.num_test,
+            "num_test_final": args.num_test_final,
+            "groundtruth target": args.true_label_as_target,
+            "time": float(format(np.mean(Time), ".4f")),}
+    
+    if args.E:
+        ### Mask normalisation and cleaning ###
+        edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
+        edge_masks = clean_masks(edge_masks)
+        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+
+        infos["edge_mask_sparsity_init"] = get_sparsity(edge_masks)
+        infos["edge_mask_size_init"] = get_size(edge_masks)
+        
+    if args.NF:
+        ### Mask normalisation and cleaning ###
+        node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
+        node_feat_masks = clean_masks(node_feat_masks)
+        print("__initial_node_feat_mask_infos:" + json.dumps(get_mask_info(node_feat_masks)))
+
+        infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
+        infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
+        
+        if (eval(args.hard_mask)==False)&(args.seed==10):
+            plot_masks_density(node_feat_masks, args, type="node_feat")
+            plot_feat_importance(node_feat_masks, args)
+
     print("__infos:" + json.dumps(infos))
 
-    ### Mask transformation ###
-    edge_masks = transform_mask(edge_masks, args)
-    if (eval(args.hard_mask)==False)&(args.seed==10):
-        plot_masks_density(edge_masks, args)
-    print("__transformed_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+    topk_lst = [eval(i) for i in args.topk_list.split(',')]
+    edge_masks_ori = edge_masks.copy()
+    for k in topk_lst:
+        args.topk = k
+        params_transf = {"topk": args.topk}
 
-    ### Fidelity ###
-    related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
-    fidelity = eval_fidelity(related_preds, args)
-    print("__fidelity:" + json.dumps(fidelity))
+        ### Mask transformation ###
+        edge_masks = transform_mask(edge_masks_ori, args)
+        if (eval(args.hard_mask)==False)&(args.seed==10):
+            plot_masks_density(edge_masks, args, type="edge")
+        transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks).items() | params_transf.items())}
+        print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
 
+        ### Fidelity ###
+        related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
+        fidelity = eval_fidelity(related_preds, args)
+        fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
+        print("__fidelity:" + json.dumps(fidelity_scores))
+
+    
 
 
 
@@ -217,46 +253,81 @@ def main_syn(args):
     
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
-    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-    # plot_mask_density(edge_masks, args)
+    mask_filename = create_mask_filename(args)
+    if os.path.isfile(mask_filename):
+        with open(mask_filename, 'rb') as f:
+            w_list = pickle.load(f)
+        edge_masks, node_feat_masks, Time = tuple(w_list)
+    else:
+        edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+        with open(mask_filename, 'wb') as f:
+            pickle.dump([edge_masks, node_feat_masks, Time], f)
 
-    ### Mask normalisation and cleaning ###
-    # Replace Nan by 0, infinite by 0 and all value > 10e2 by 10e2
-    edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
-    edge_masks = clean_masks(edge_masks)
-    print("__initial_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+    args.E = False if edge_masks[0] is None else True
+    args.NF = False if node_feat_masks[0] is None else True
+    args.num_test_final = len(edge_masks) if args.E else None
+
 
     infos = {
-        "dataset": args.dataset,
-        "explainer": args.explainer_name,
-        "number_of_edges": data.edge_index.size(1),
-        "mask_sparsity_init": get_sparsity(edge_masks),
-        "non_zero_values_init": get_size(edge_masks),
-        "sparsity": args.sparsity,
-        "threshold": args.threshold,
-        "topk": args.topk,
-        "num_test": args.num_test,
-        "groundtruth target": args.true_label_as_target,
-        "time": float(format(np.mean(Time), ".4f")),
-    }
+            "dataset": args.dataset,
+            "explainer": args.explainer_name,
+            "number_of_edges": data.edge_index.size(1),
+            "num_test": args.num_test,
+            "num_test_final": args.num_test_final,
+            "groundtruth target": args.true_label_as_target,
+            "time": float(format(np.mean(Time), ".4f")),}
+    
+    if args.E:
+        ### Mask normalisation and cleaning ###
+        edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
+        edge_masks = clean_masks(edge_masks)
+        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+
+        infos["edge_mask_sparsity_init"] = get_sparsity(edge_masks)
+        infos["edge_mask_size_init"] = get_size(edge_masks)
+        
+    if args.NF:
+        ### Mask normalisation and cleaning ###
+        node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
+        node_feat_masks = clean_masks(node_feat_masks)
+        print("__initial_node_feat_mask_infos:" + json.dumps(get_mask_info(node_feat_masks)))
+
+        infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
+        infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
+        
+        if (eval(args.hard_mask)==False)&(args.seed==10):
+            plot_masks_density(node_feat_masks, args, type="node_feat")
+            plot_feat_importance(node_feat_masks, args)
+
     print("__infos:" + json.dumps(infos))
 
     ### Accuracy Top ###
     accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
     print("__accuracy_top:" + json.dumps(accuracy_top))
 
-    ### Mask transformation ###
-    edge_masks = transform_mask(edge_masks, args)
-    print("__transformed_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+    topk_lst = [eval(i) for i in args.topk_list.split(',')]
+    edge_masks_ori = edge_masks.copy()
+    for k in topk_lst:
+        args.topk = k
+        params_transf = {"topk": args.topk}
 
-    ### Accuracy ###
-    accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
-    print("__accuracy:" + json.dumps(accuracy))
+        ### Mask transformation ###
+        edge_masks = transform_mask(edge_masks_ori, args)
+        if (eval(args.hard_mask)==False)&(args.seed==10):
+            plot_masks_density(edge_masks, args, type="edge")
+        transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks).items() | params_transf.items())}
+        print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
 
-    ### Fidelity ###
-    related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
-    fidelity = eval_fidelity(related_preds, args)
-    print("__fidelity:" + json.dumps(fidelity))
+        ### Accuracy ###
+        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
+        accuracy_scores = {key: value for key, value in sorted(accuracy.items() | params_transf.items())}
+        print("__accuracy:" + json.dumps(accuracy_scores))
+
+        ### Fidelity ###
+        related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
+        fidelity = eval_fidelity(related_preds, args)
+        fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
+        print("__fidelity:" + json.dumps(fidelity_scores))
 
     return
 

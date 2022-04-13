@@ -15,44 +15,47 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
     data = data.to(device)
     ori_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
     ori_yprob = get_proba(ori_ypred)
+    
+    num_test = args.num_test_final if args.E else args.num_test
 
-    for i in range(args.num_test_final):
-        edge_mask = torch.Tensor(edge_masks[i])
-        node_idx = list_node_idx[i]
-        mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
+    for i in range(num_test):
 
-        if node_feat_masks[i] is not None:
-            node_feat_mask = torch.Tensor(node_feat_masks[i]).to(device)
-            x_masked = data.x * node_feat_mask
-            x_maskout = data.x * (1 - node_feat_mask)
-        else:
+        if not args.NF:
             x_masked = data.x
             x_maskout = data.x
-
-        if eval(args.hard_mask):
-            indices = np.where(edge_mask > 0)[0]
-            indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
-
-            masked_edge_index = data.edge_index[:, indices].to(device)
-            maskout_edge_index = data.edge_index[:, indices_inv].to(device)
-
-            masked_ypred = model(x_masked, masked_edge_index).cpu().detach().numpy()
-            masked_yprob = get_proba(masked_ypred)
-
-            maskout_ypred = model(x_maskout, maskout_edge_index).cpu().detach().numpy()
-            maskout_yprob = get_proba(maskout_ypred)
+        else:
+            node_feat_mask = torch.Tensor(node_feat_masks[i]).to(device)
+            if node_feat_mask.dim() == 2:
+                x_masked = node_feat_mask
+                x_maskout = (1 - node_feat_mask)
+            else:
+                x_masked = data.x * node_feat_mask
+                x_maskout = data.x * (1 - node_feat_mask)
+        
+        if not args.E:
+            if eval(args.hard_mask):
+                masked_ypred = model(x_masked, data.edge_index).cpu().detach().numpy()
+                maskout_ypred = model(x_maskout, data.edge_index).cpu().detach().numpy()
+            else:
+                masked_ypred = model(x_masked, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
+                maskout_ypred = model(x_maskout, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
 
         else:
-            edge_mask = edge_mask.to(device)
-            masked_weight = data.edge_weight*edge_mask
-            masked_ypred = model(x_masked, data.edge_index, edge_weight=masked_weight).cpu().detach().numpy()
-            masked_yprob = get_proba(masked_ypred)
-
-            maskout_weight = data.edge_weight*(1-edge_mask)
-            maskout_ypred = model(x_maskout, data.edge_index, edge_weight=maskout_weight).cpu().detach().numpy()
-            maskout_yprob = get_proba(maskout_ypred)
-            
+            edge_mask = torch.Tensor(edge_masks[i]).to(device)
+            if eval(args.hard_mask):
+                masked_edge_index = data.edge_index[:, edge_mask > 0].to(device)
+                maskout_edge_index = data.edge_index[:, edge_mask <= 0].to(device)
+                masked_ypred = model(x_masked, masked_edge_index).cpu().detach().numpy()
+                maskout_ypred = model(x_maskout, maskout_edge_index).cpu().detach().numpy()
+            else:
+                masked_ypred = model(x_masked, data.edge_index, edge_weight=data.edge_weight*edge_mask).cpu().detach().numpy()
+                maskout_ypred = model(x_maskout, data.edge_index, edge_weight=data.edge_weight*(1-edge_mask)).cpu().detach().numpy()
             edge_mask = edge_mask.cpu().detach().numpy()
+        
+        
+        node_idx = list_node_idx[i]
+        masked_yprob = get_proba(masked_ypred)
+        maskout_yprob = get_proba(maskout_ypred)
 
         ori_probs = ori_yprob[node_idx]
         masked_probs = masked_yprob[node_idx]
@@ -68,16 +71,12 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
                 "masked": masked_probs,
                 "maskout": maskout_probs,
                 "origin": ori_probs,
-                "mask_sparsity": mask_sparsity,
-                "expl_edges": (edge_mask != 0).sum(),
                 "true_label": true_label,
                 "pred_label": pred_label,
             }
         )
         
     related_preds = list_to_dict(related_preds)
-    related_preds["mask_sparsity"] = related_preds["mask_sparsity"].mean().item()
-    related_preds["expl_edges"] = related_preds["expl_edges"].mean().item()
     return related_preds
 
 
@@ -258,18 +257,14 @@ def eval_fidelity(related_preds, args):
             "fidelity_acc+": fidelity_acc(related_preds),
             "fidelity_acc-": fidelity_acc_inv(related_preds),
             "fidelity_prob+": fidelity_prob(related_preds),
-            "fidelity_prob-": fidelity_prob_inv(related_preds),
-            "mask_sparsity": related_preds["mask_sparsity"],
-            "expl_edges": related_preds["expl_edges"],
+            "fidelity_prob-": fidelity_prob_inv(related_preds)
         }
     else:
         fidelity_scores = {
             "fidelity_gnn_acc+": fidelity_gnn_acc(related_preds),
             "fidelity_gnn_acc-": fidelity_gnn_acc_inv(related_preds),
             "fidelity_gnn_prob+": fidelity_gnn_prob(related_preds),
-            "fidelity_gnn_prob-": fidelity_gnn_prob_inv(related_preds),
-            "mask_sparsity": related_preds["mask_sparsity"],
-            "expl_edges": related_preds["expl_edges"],
+            "fidelity_gnn_prob-": fidelity_gnn_prob_inv(related_preds)
         }
 
     return fidelity_scores
