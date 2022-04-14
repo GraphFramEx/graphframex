@@ -1,7 +1,7 @@
 {
   "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
-  "ckpt_root": "/cluster/home/kamara/",
+  "ckpt_root": "/cluster/work/zhang/kamara/",
   "version": "1.0.0",
   "machine": {
     "time": 600,
@@ -9,8 +9,8 @@
     "mem": 5000
   },
   "meta": {
-    "group": "checkpoints/node_classification/real",
-    "name": "sparsity_real_1_testpred",
+    "group": "checkpoints/node_classification/real/prediction_type",
+    "name": "pred_type_real_1",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -23,7 +23,7 @@
     "true_label_as_target": ["True", "False"],
     "testing_pred": ["correct", "wrong"],
     "dataset": ["cora", "facebook", "cornell", "actor", "chameleon"],
-    "topk": [1, 5, 10, 20],
+    "topk_list": "1,2,5,10,20,100",
     "explainer_name": [
       "random",
       "distance",

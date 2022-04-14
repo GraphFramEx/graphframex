@@ -69,7 +69,7 @@ def create_model_filename(args, isbest=False, num_epochs=-1, **kwargs):
     return filename + ".pth.tar"
 
 def create_mask_filename(args):
-    dir = "/cluster/scratch/kamara/mask"
+    dir = "/cluster/work/zhang/kamara/mask"
     os.makedirs(dir, exist_ok=True)
     subdir = os.path.join(dir, args.dataset)
     os.makedirs(subdir, exist_ok=True)

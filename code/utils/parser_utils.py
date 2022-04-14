@@ -186,7 +186,7 @@ def arg_parse():
     
     parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
     parser.add_argument("--num_test_final", help="number of testing entities (graphs or nodes) in the final set", type=int)
-    parser.add_argument("--time_limit", help="max time for a method to run on testing set", type=int, default=36000)
+    parser.add_argument("--time_limit", help="max time for a method to run on testing set", type=int, default=30000)
     
     parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
     parser.add_argument("--sparsity", help="ratio of edges to remove from mask", type=float, default=-1)

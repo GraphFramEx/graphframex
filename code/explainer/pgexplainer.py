@@ -116,7 +116,7 @@ class PGExplainer(nn.Module):
         'coff_ent': 5e-4            # constrains on smooth and continuous mask
     }
 
-    def __init__(self, model, args, epochs: int = 20, lr: float = 0.003,
+    def __init__(self, model, args, epochs: int = 10, lr: float = 0.005,
                  top_k: int = 6, num_hops: Optional[int] = None, **kwargs,):
         # lr=0.005, 0.003
         super(PGExplainer, self).__init__()
@@ -228,7 +228,7 @@ class PGExplainer(nn.Module):
         feature_dim = embed.shape[1]
         f1 = embed.unsqueeze(1).repeat(1, nodesize, 1).reshape(-1, feature_dim)
         f2 = embed.unsqueeze(0).repeat(nodesize, 1, 1).reshape(-1, feature_dim)
-
+        
         # using the node embedding to calculate the edge weight
         f12self = torch.cat([f1, f2], dim=-1)
         h = f12self.to(self.device)

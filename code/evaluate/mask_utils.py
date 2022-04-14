@@ -36,6 +36,7 @@ def clean_masks(masks):
         masks[i] = np.clip(masks[i], -10, 10)
         masks[i] = normalize_mask(masks[i])
         masks[i] = np.where(masks[i] < 0.001, 0, masks[i])
+    print('masks cleaned')
     return masks
 
 

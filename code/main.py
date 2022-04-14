@@ -115,17 +115,19 @@ def main_real(args):
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
     mask_filename = create_mask_filename(args)
-    if os.path.isfile(mask_filename):
+
+    if (os.path.isfile(mask_filename)) & (args.explainer_name not in ["sa", "ig"]):
         with open(mask_filename, 'rb') as f:
             w_list = pickle.load(f)
         edge_masks, node_feat_masks, Time = tuple(w_list)
     else:
         edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-        with open(mask_filename, 'wb') as f:
-            pickle.dump([edge_masks, node_feat_masks, Time], f)
+        if args.explainer_name not in ["sa", "ig"]:
+            with open(mask_filename, 'wb') as f:
+                pickle.dump([edge_masks, node_feat_masks, Time], f)
 
     args.E = False if edge_masks[0] is None else True
-    args.NF = False if node_feat_masks[0] is None else True
+    args.NF = False if (node_feat_masks[0] is None)|(node_feat_masks[0].size<=1) else True
     args.num_test_final = len(edge_masks) if args.E else None
 
     infos = {
@@ -136,6 +138,7 @@ def main_real(args):
             "num_test_final": args.num_test_final,
             "groundtruth target": args.true_label_as_target,
             "time": float(format(np.mean(Time), ".4f")),}
+
     
     if args.E:
         ### Mask normalisation and cleaning ###
@@ -151,7 +154,7 @@ def main_real(args):
         node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
         node_feat_masks = clean_masks(node_feat_masks)
         print("__initial_node_feat_mask_infos:" + json.dumps(get_mask_info(node_feat_masks)))
-
+        
         infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
         infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
         
@@ -172,7 +175,7 @@ def main_real(args):
         if (eval(args.hard_mask)==False)&(args.seed==10):
             plot_masks_density(edge_masks, args, type="edge")
         transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks).items() | params_transf.items())}
-        print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+        print("__transformed_edge_mask_infos:" + json.dumps(transformed_mask_infos))
 
         ### Fidelity ###
         related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
@@ -264,7 +267,7 @@ def main_syn(args):
             pickle.dump([edge_masks, node_feat_masks, Time], f)
 
     args.E = False if edge_masks[0] is None else True
-    args.NF = False if node_feat_masks[0] is None else True
+    args.NF = False if (node_feat_masks[0] is None)|(node_feat_masks[0].size<=1) else True
     args.num_test_final = len(edge_masks) if args.E else None
 
 
@@ -290,8 +293,7 @@ def main_syn(args):
         ### Mask normalisation and cleaning ###
         node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
         node_feat_masks = clean_masks(node_feat_masks)
-        print("__initial_node_feat_mask_infos:" + json.dumps(get_mask_info(node_feat_masks)))
-
+        
         infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
         infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
         
@@ -475,12 +477,12 @@ if __name__ == "__main__":
         main_syn(args)
     elif args.dataset in REAL_DATA.keys():
         if args.dataset in WEBKB.keys():
-            args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 32, 400, 0.001, 5e-3, 0.2
+            args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 32, 32, 400, 0.001, 5e-3, 0.2
         else: 
-            args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 200, 0.01, 5e-4, 0.5
+            args.num_gc_layers, args.hidden_dim, args.output_dim,  args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 16, 200, 0.01, 5e-4, 0.5
         main_real(args)
     elif args.dataset == "ebay":
-        args.num_gc_layers, args.hidden_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 300, 0.005, 0, 0
+        args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 20, 300, 0.005, 0, 0
         main_real(args)
     else:
         pass

@@ -1,12 +1,12 @@
 {
   "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
-  "ckpt_root": "/cluster/scratch/kamara/",
+  "ckpt_root": "/cluster/work/zhang/kamara/",
   "version": "1.0.0",
   "machine": {
-    "time": 600,
+    "time": "20:00",
     "gpus-per-task": 2,
-    "mem": 5000
+    "mem": 10000
   },
   "meta": {
     "group": "checkpoints/node_classification/real/topk",
@@ -34,19 +34,6 @@
       "chameleon",
       "squirrel"
     ],
-    "explainer_name": [
-      "random",
-      "distance",
-      "pagerank",
-      "sa",
-      "ig",
-      "gradcam",
-      "occlusion",
-      "basic_gnnexplainer",
-      "gnnexplainer",
-      "pgmexplainer",
-      "pgexplainer",
-      "subgraphx"
-    ]
+    "explainer_name": ["sa", "ig"]
   }
 }
