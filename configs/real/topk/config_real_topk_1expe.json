@@ -34,6 +34,19 @@
       "chameleon",
       "squirrel"
     ],
-    "explainer_name": ["sa", "ig"]
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa",
+      "ig",
+      "gradcam",
+      "occlusion",
+      "basic_gnnexplainer",
+      "gnnexplainer",
+      "pgmexplainer",
+      "pgexplainer",
+      "subgraphx"
+    ]
   }
 }
