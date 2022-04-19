@@ -271,7 +271,11 @@ def main_syn(args):
             pickle.dump([edge_masks, node_feat_masks, Time], f)
 
     args.E = False if edge_masks[0] is None else True
-    args.NF = False if (node_feat_masks[0] is None)|(node_feat_masks[0].size<=1) else True
+    args.NF = False if node_feat_masks[0] is None else True
+    if args.NF:
+        if node_feat_masks[0].size<=1:
+            args.NF = False
+            print("No node feature mask")
     args.num_test_final = len(edge_masks) if args.E else None
 
 
