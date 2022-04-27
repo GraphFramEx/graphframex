@@ -2,6 +2,10 @@ import numpy as np
 from scipy.stats import entropy, gaussian_kde
 import matplotlib.pyplot as plt
 import copy
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import connected_components
+from torch_geometric.utils import to_scipy_sparse_matrix
+
 
 
 def topk_edges_directed(edge_mask, edge_index, num_top_edges):
@@ -39,6 +43,15 @@ def clean_masks(masks):
     print('masks cleaned')
     return masks
 
+def get_ratio_connected_components(edge_masks, edge_index):
+    cc_ratio = []
+    for i in range(len(edge_masks)):
+        edge_mask = edge_masks[i]
+        masked_edge_index = edge_index[:, edge_mask > 0]
+        sparse_adj = to_scipy_sparse_matrix(masked_edge_index).toarray()
+        n_components, labels = connected_components(csgraph=sparse_adj, directed=False, return_labels=True)
+        cc_ratio.append((len(labels) - n_components)/(edge_mask != 0).sum())#/len(np.unique(masked_edge_index)))
+    return np.mean(cc_ratio)
 
 def get_sparsity(masks):
     sparsity = 0
@@ -84,8 +97,8 @@ def get_avg_max(masks):
         return -1
     return max_avg / k
 
-def get_mask_info(masks):
-    mask_info = {'mask_size': get_size(masks), 'mask_entropy': get_entropy(masks), 'max_avg': get_avg_max(masks)}
+def get_mask_info(masks, edge_index):
+    mask_info = {'mask_size': get_size(masks), 'mask_entropy': get_entropy(masks), 'max_avg': get_avg_max(masks), 'cc_ratio': get_ratio_connected_components(masks, edge_index)}
     return mask_info
 
 # Edge_masks are normalized; we then select only the edges for which the mask value > threshold
@@ -95,17 +108,17 @@ def get_mask_info(masks):
 # hard or soft
 
 
-def transform_mask(masks, args):
+def transform_mask(masks, param, args):
     new_masks = []
     for mask_ori in masks:
         mask = mask_ori.copy()
-        if args.topk >= 0:
-            unimportant_indices = (-mask).argsort()[args.topk :]
+        if args.strategy == 'topk':
+            unimportant_indices = (-mask).argsort()[param :]
             mask[unimportant_indices] = 0
-        if args.sparsity >= 0:
-            mask = control_sparsity(mask, args.sparsity)
-        if args.threshold >= 0:
-            mask = np.where(mask > args.threshold, mask, 0)
+        if args.strategy == 'sparsity':
+            mask = control_sparsity(mask, param)
+        if args.strategy == 'threshold':
+            mask = np.where(mask > param, mask, 0)
         new_masks.append(mask)
     return np.array(new_masks, dtype=np.float64)
 

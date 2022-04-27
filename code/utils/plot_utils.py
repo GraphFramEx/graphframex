@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import torch
 import matplotlib
 import matplotlib.pyplot as plt
@@ -218,7 +219,7 @@ def plot_feat_importance(node_feat_masks, args):
     fig.set_size_inches(10, 5)
 
     for i in range(5):
-        node_feat_mask = masks[i]
+        node_feat_mask = node_feat_masks[i]
 
     sns.barplot(range(0,len(node_feat_mask)), node_feat_mask, ax=ax)
     plt.xlim(0, 1)
@@ -233,7 +234,6 @@ def plot_feat_importance(node_feat_masks, args):
 
 
 def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
-
     G = G.to_undirected()
     edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
     nodes, labels = zip(*nx.get_node_attributes(G, "label").items())
@@ -242,6 +242,7 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     nx.draw(
         G_true.to_undirected(),
         cmap=plt.get_cmap("tab10"),
+        node_size=1000,
         with_labels=True,
         node_color=role,
         font_weight="bold",
@@ -252,6 +253,7 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     nx.draw(
         G,
         cmap=plt.get_cmap("tab10"),
+        node_size=1000,
         with_labels=True,
         node_color=labels,
         font_weight="bold",
@@ -259,14 +261,15 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
         vmax=3,
         edgelist=edges,
         edge_color=weights,
-        width=2,
-        edge_cmap=plt.cm.Blues,
+        width=4,
+        edge_cmap=plt.cm.Blues, edge_vmin=0, edge_vmax=1,
         ax=ax2,
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-    check_dir(f"figures/{args.dataset}/")
+    dir_name = f"figures/{args.dataset}/node_{node_idx}/{args.explainer_name}/{args.strategy}_{args.param}"
+    check_dir(dir_name)
     plt.savefig(
-        f"figures/{args.dataset}/fig_expl_nc_hard_top_{top_acc}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf"
+        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_sparsity_{args.param}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
     )
 
 

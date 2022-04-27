@@ -110,10 +110,10 @@ EPS = 1e-6
 class PGExplainer(nn.Module):
 
     coeffs = { 
-        't0': 5.0,                   # temperature denominator
-        't1': 1.0,                   # temperature numerator
-        'coff_size': 0.01,           # constrains on mask size
-        'coff_ent': 5e-4            # constrains on smooth and continuous mask
+        't0': 1.0, #5.0,                   # temperature denominator
+        't1': 0.05, #1.0,                   # temperature numerator
+        'coff_size': 0.05, #0.01,           # constrains on mask size - 0.05
+        'coff_ent': 1.0 #5e-4            # constrains on smooth and continuous mask - 1.0
     }
 
     def __init__(self, model, args, epochs: int = 10, lr: float = 0.005,

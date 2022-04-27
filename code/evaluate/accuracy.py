@@ -22,9 +22,10 @@ def get_explanation(data, edge_mask, args, top_acc):
 
     explanation = data.edge_index[:, indices]
     weights = edge_mask[indices]
+    explanation = explanation.cpu().numpy()
     G_expl = nx.Graph()
-    G_expl.add_nodes_from(np.unique(explanation.cpu()))
-    for i, (u, v) in enumerate(explanation.t().tolist()):
+    G_expl.add_nodes_from(np.unique(explanation))
+    for i, (u, v) in enumerate(explanation.T.tolist()):
         G_expl.add_edge(u, v)
     k = 0
     for u, v, d in G_expl.edges(data=True):
@@ -34,7 +35,8 @@ def get_explanation(data, edge_mask, args, top_acc):
     for u, v, d in G_masked.edges(data=True):
         d["weight"] = (G_expl[u][v]["weight"] + G_expl[v][u]["weight"]) / 2
 
-    labels = data.y[np.unique(explanation.cpu())]
+    LABELS = data.y.detach().cpu().numpy()
+    labels = LABELS[np.unique(explanation)]
     k = 0
     for n, d in G_masked.nodes(data=True):
         d["label"] = labels[k]

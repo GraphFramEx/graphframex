@@ -188,10 +188,8 @@ def arg_parse():
     parser.add_argument("--num_test_final", help="number of testing entities (graphs or nodes) in the final set", type=int)
     parser.add_argument("--time_limit", help="max time for a method to run on testing set", type=int, default=30000)
     
-    parser.add_argument("--threshold", help="threshold to select edges in mask", type=float, default=-1)
-    parser.add_argument("--sparsity", help="ratio of edges to remove from mask", type=float, default=-1)
-    parser.add_argument("--topk", help="num top k edges to keep in mask", type=int, default=-1)
-    parser.add_argument("--topk_list", help="list of top k values", type=str, default="")
+    parser.add_argument("--strategy", help="strategy for mask transformation", type=str, default="topk") # ["topk", "sparsity", "threshold"]
+    parser.add_argument("--params_list", help="list of transformation degrees", type=str, default="5,10")
     parser.add_argument("--num_top_edges", help="number of edges to keep in explanation", type=int, default=-1)
     parser.add_argument("--explainer_name", help="explainer", type=str)
 

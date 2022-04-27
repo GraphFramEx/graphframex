@@ -20,7 +20,7 @@ from dataset.data_utils import get_split, split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
-from evaluate.mask_utils import clean_masks, get_mask_info, get_size, get_sparsity, normalize_all_masks, transform_mask
+from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
@@ -148,19 +148,19 @@ def main_real(args):
         ### Mask normalisation and cleaning ###
         edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
         edge_masks = clean_masks(edge_masks)
-        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks, data.edge_index)))
 
         infos["edge_mask_sparsity_init"] = get_sparsity(edge_masks)
         infos["edge_mask_size_init"] = get_size(edge_masks)
+        infos["edge_mask_connected_init"] = get_ratio_connected_components(edge_masks, data.edge_index)
         
     if args.NF:
         ### Mask normalisation and cleaning ###
         node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
         node_feat_masks = clean_masks(node_feat_masks)
-        print("__initial_node_feat_mask_infos:" + json.dumps(get_mask_info(node_feat_masks)))
         
-        infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
-        infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
+        #infos["node_feat_mask_sparsity_init"] = get_sparsity(node_feat_masks)
+        #infos["node_feat_mask_size_init"] = get_size(node_feat_masks)
         
         if (eval(args.hard_mask)==False)&(args.seed==10):
             plot_masks_density(node_feat_masks, args, type="node_feat")
@@ -168,18 +168,9 @@ def main_real(args):
 
     print("__infos:" + json.dumps(infos))
 
-    topk_lst = [eval(i) for i in args.topk_list.split(',')]
-    edge_masks_ori = edge_masks.copy()
-    for k in topk_lst:
-        args.topk = k
-        params_transf = {"topk": args.topk}
 
-        ### Mask transformation ###
-        edge_masks = transform_mask(edge_masks_ori, args)
-        if (eval(args.hard_mask)==False)&(args.seed==10):
-            plot_masks_density(edge_masks, args, type="edge")
-        transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks).items() | params_transf.items())}
-        print("__transformed_edge_mask_infos:" + json.dumps(transformed_mask_infos))
+    if (not args.strategy)|(not args.params_list):
+        print("Masks are not transformed")
 
         ### Fidelity ###
         related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
@@ -187,7 +178,28 @@ def main_real(args):
         fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
         print("__fidelity:" + json.dumps(fidelity_scores))
 
+
+    else: 
+        print("Masks are transformed with strategy: " + args.strategy)
+        params_lst = [eval(i) for i in args.params_list.split(',')]
     
+        edge_masks_ori = edge_masks.copy()
+        for param in params_lst:
+            params_transf = {args.strategy: param}
+
+            ### Mask transformation ###
+            edge_masks = transform_mask(edge_masks_ori, param, args)
+            if (eval(args.hard_mask)==False)&(args.seed==10):
+                plot_masks_density(edge_masks, args, type="edge")
+            transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
+            print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+
+            ### Fidelity ###
+            related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
+            fidelity = eval_fidelity(related_preds, args)
+            fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
+            print("__fidelity:" + json.dumps(fidelity_scores))
+
 
 
 
@@ -292,10 +304,12 @@ def main_syn(args):
         ### Mask normalisation and cleaning ###
         edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
         edge_masks = clean_masks(edge_masks)
-        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks)))
+        print("__initial_edge_mask_infos:" + json.dumps(get_mask_info(edge_masks, data.edge_index)))
 
         infos["edge_mask_sparsity_init"] = get_sparsity(edge_masks)
         infos["edge_mask_size_init"] = get_size(edge_masks)
+        infos["edge_mask_connected_init"] = get_ratio_connected_components(edge_masks, data.edge_index)
+        
         
     if args.NF:
         ### Mask normalisation and cleaning ###
@@ -312,21 +326,12 @@ def main_syn(args):
     print("__infos:" + json.dumps(infos))
 
     ### Accuracy Top ###
-    accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
-    print("__accuracy_top:" + json.dumps(accuracy_top))
+    #accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
+    #print("__accuracy_top:" + json.dumps(accuracy_top))
 
-    topk_lst = [eval(i) for i in args.topk_list.split(',')]
-    edge_masks_ori = edge_masks.copy()
-    for k in topk_lst:
-        args.topk = k
-        params_transf = {"topk": args.topk}
-
-        ### Mask transformation ###
-        edge_masks = transform_mask(edge_masks_ori, args)
-        if (eval(args.hard_mask)==False)&(args.seed==10):
-            plot_masks_density(edge_masks, args, type="edge")
-        transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks).items() | params_transf.items())}
-        print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+    if (not args.strategy)|(not args.params_list):
+        print("Masks are not transformed")
+        args.param = None
 
         ### Accuracy ###
         accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
@@ -338,6 +343,34 @@ def main_syn(args):
         fidelity = eval_fidelity(related_preds, args)
         fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
         print("__fidelity:" + json.dumps(fidelity_scores))
+
+
+    else: 
+        print("Masks are transformed with strategy: " + args.strategy)
+        params_lst = [eval(i) for i in args.params_list.split(',')]
+    
+        edge_masks_ori = edge_masks.copy()
+        for param in params_lst:
+            params_transf = {args.strategy: param}
+            args.param = param
+
+            ### Mask transformation ###
+            edge_masks = transform_mask(edge_masks_ori, param, args)
+            if (eval(args.hard_mask)==False)&(args.seed==10):
+                plot_masks_density(edge_masks, args, type="edge")
+            transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
+            print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+
+            ### Accuracy ###
+            accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
+            accuracy_scores = {key: value for key, value in sorted(accuracy.items() | params_transf.items())}
+            print("__accuracy:" + json.dumps(accuracy_scores))
+
+            ### Fidelity ###
+            related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
+            fidelity = eval_fidelity(related_preds, args)
+            fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
+            print("__fidelity:" + json.dumps(fidelity_scores))
 
     return
 

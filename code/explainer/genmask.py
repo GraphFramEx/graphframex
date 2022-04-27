@@ -34,6 +34,7 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
         node_feat_masks.append(node_feat_mask)
         t1 = time.time()
         if t1 - t0 > args.time_limit:
+            print("Time limit reached")
             break
     args.num_test_final = len(edge_masks)
     return edge_masks, node_feat_masks, Time

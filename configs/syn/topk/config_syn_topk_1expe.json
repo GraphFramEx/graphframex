@@ -1,7 +1,7 @@
 {
   "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
-  "ckpt_root": "/cluster/scratch/kamara/",
+  "ckpt_root": "/cluster/work/zhang/kamara/",
   "version": "1.0.0",
   "machine": {
     "time": 600,
@@ -22,7 +22,7 @@
     "hard_mask": ["True", "False"],
     "true_label_as_target": ["True", "False"],
     "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "topk_list": "1,5,10,15,20,25,50,100",
+    "params_list": "1,5,10,15,20,25,50,100",
     "explainer_name": [
       "random",
       "distance",

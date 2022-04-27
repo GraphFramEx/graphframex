@@ -2,7 +2,6 @@ import networkx as nx
 import numpy as np
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
-from explainer.graphsvx import GraphLIME, GraphSVX, LIME, SHAP
 from gnn.model import GraphConv, GraphConvolution
 from torch.autograd import Variable
 from torch_geometric.data import Data
@@ -11,9 +10,11 @@ from torch_geometric.utils import to_networkx
 
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.gnnlrp import GNN_LRP
+from explainer.graphsvx import LIME, SHAP, GraphLIME, GraphSVX
 from explainer.pgexplainer import PGExplainer
 from explainer.pgmexplainer import Node_Explainer
 from explainer.subgraphx import SubgraphX
+from explainer.zorro import Zorro
 
 
 def balance_mask_undirected(edge_mask, edge_index):
@@ -209,10 +210,25 @@ def explain_pgmexplainer_node(model, data, node_idx, x, edge_index, edge_weight,
 
 
 def explain_subgraphx_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
-    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=False, rollout= 20, min_atoms = 3, expand_atoms=7, high2low=True,  sample_num=50, reward_method="mc_shapley", subgraph_building_method="zero_filling", local_radius=3)
+    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=args.num_gc_layers, explain_graph=False, rollout= 20, min_atoms = 4, expand_atoms=14, high2low=True,  sample_num=50, reward_method="mc_shapley", subgraph_building_method="zero_filling", local_radius=4)
     edge_mask = subgraphx.explain(x, edge_index, edge_weight, max_nodes=args.num_top_edges, label=target, node_idx=node_idx)
     return edge_mask, None
 
+
+def explain_zorro_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
+    zorro = Zorro(model, device, num_hops = args.num_gc_layers)
+    print('explain node', zorro.explain_node(node_idx, x, edge_index))
+    selected_nodes, selected_features, executed_selection = zorro.explain_node(node_idx, x, edge_index)[0]
+    selected_nodes = torch.Tensor(selected_nodes.squeeze())
+    selected_features = torch.Tensor(selected_features.squeeze())
+    print("node_attrs", selected_nodes)
+    print("node_feature_mask", selected_features)
+    print("executed_selection", executed_selection)
+    node_attr = np.array(selected_nodes)
+    edge_mask = node_attr_to_edge(edge_index, node_attr)
+    edge_mask = edge_mask.cpu().detach().numpy()
+    node_feature_mask = node_feature_mask.cpu().detach().numpy()
+    return edge_mask, node_feature_mask
 
 def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     pgexplainer = PGExplainer(model, args, num_hops = args.num_gc_layers)

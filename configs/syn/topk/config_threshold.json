@@ -1,7 +1,7 @@
 {
   "cmd": "python code/main.py",
   "preload": "MKL_THREADING_LAYER=GNU",
-  "ckpt_root": "/cluster/home/kamara/",
+  "ckpt_root": "/cluster/work/zhang/kamara/",
   "version": "1.0.0",
   "machine": {
     "time": 600,
@@ -18,7 +18,8 @@
     "data_save_dir": "data",
     "num_test": 100,
     "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "threshold": [0.5, 0.8, 0.9],
+    "strategy": "threshold",
+    "params_list": "0.5,0.8,0.9",
     "explainer_name": [
       "random",
       "distance",

@@ -165,7 +165,7 @@ def get_test_nodes(data, model, args):
             list_node_idx = np.arange(data.x.size(0))
         list_node_idx_pattern = list_node_idx[list_node_idx > args.num_basis]
         # list_test_nodes = [x.item() for x in list_node_idx_pattern[: args.num_test]]
-        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=args.num_test, replace=False)]
+        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx_pattern, size=min(args.num_test, len(list_node_idx_pattern)), replace=False)]
     else:
         pred_labels = get_labels(model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy())
         if args.testing_pred=="correct":
@@ -174,7 +174,12 @@ def get_test_nodes(data, model, args):
             list_node_idx = np.where(pred_labels != data.y.cpu().numpy())[0]
         else: # args.testing_pred is "mix"
             list_node_idx = np.arange(data.x.size(0))
-        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx, size=args.num_test, replace=False)]
+
+        #### For ebay graph: only explain fraudulent nodes!! ####
+        if args.dataset=="ebay":
+            list_node_idx = np.where(pred_labels != 0)[0] ##only fraudulent nodes are kept!
+        
+        list_test_nodes = [x.item() for x in np.random.choice(list_node_idx, size=min(args.num_test, len(list_node_idx)), replace=False)]
     return list_test_nodes
 
 

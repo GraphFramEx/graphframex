@@ -4,9 +4,9 @@
   "ckpt_root": "/cluster/work/zhang/kamara/",
   "version": "1.0.0",
   "machine": {
-    "time": 600,
+    "time": 6000,
     "gpus-per-task": 2,
-    "mem": 5000
+    "mem": 8000
   },
   "meta": {
     "group": "checkpoints/node_classification/real/prediction_type",
@@ -17,13 +17,14 @@
   "params": {
     "data_save_dir": "data",
     "seed": 0,
-    "num_test": 100,
+    "num_test": 50,
     "explain_graph": "False",
     "hard_mask": ["True", "False"],
     "true_label_as_target": ["True", "False"],
     "testing_pred": ["correct", "wrong"],
     "dataset": ["cora", "facebook", "cornell", "actor", "chameleon"],
-    "topk_list": "1,2,5,10,20,100",
+    "strategy": "topk",
+    "params_list": "1,2,5,10,20,100",
     "explainer_name": [
       "random",
       "distance",
