@@ -10,7 +10,7 @@
   },
   "meta": {
     "group": "checkpoints/node_classification/syn/topk",
-    "name": "topk_syn_1",
+    "name": "topk_syn_10",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
@@ -21,7 +21,7 @@
     "explain_graph": "False",
     "hard_mask": ["True", "False"],
     "true_label_as_target": ["True", "False"],
-    "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
+    "dataset": ["syn1", "syn4", "syn5", "syn6"],
     "params_list": "1,5,10,15,20,25,50,100",
     "explainer_name": [
       "random",

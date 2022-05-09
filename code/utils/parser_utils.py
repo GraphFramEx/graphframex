@@ -190,6 +190,7 @@ def arg_parse():
     
     parser.add_argument("--strategy", help="strategy for mask transformation", type=str, default="topk") # ["topk", "sparsity", "threshold"]
     parser.add_argument("--params_list", help="list of transformation degrees", type=str, default="5,10")
+    parser.add_argument("--directed", help="if directed, choose the topk directed edges; otherwise topk undirected (no double counting)", type=str, default="True")
     parser.add_argument("--num_top_edges", help="number of edges to keep in explanation", type=int, default=-1)
     parser.add_argument("--explainer_name", help="explainer", type=str)
 

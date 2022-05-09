@@ -1,14 +1,14 @@
 import numpy as np
 from scipy.stats import entropy, gaussian_kde
 import matplotlib.pyplot as plt
-import copy
+import torch
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 from torch_geometric.utils import to_scipy_sparse_matrix
 
 
 
-def topk_edges_directed(edge_mask, edge_index, num_top_edges):
+def topk_edges_unique(edge_mask, edge_index, num_top_edges):
     indices = (-edge_mask).argsort()
     top = np.array([], dtype="int")
     i = 0
@@ -40,7 +40,6 @@ def clean_masks(masks):
         masks[i] = np.clip(masks[i], -10, 10)
         masks[i] = normalize_mask(masks[i])
         masks[i] = np.where(masks[i] < 0.001, 0, masks[i])
-    print('masks cleaned')
     return masks
 
 def get_ratio_connected_components(edge_masks, edge_index):
@@ -48,9 +47,14 @@ def get_ratio_connected_components(edge_masks, edge_index):
     for i in range(len(edge_masks)):
         edge_mask = edge_masks[i]
         masked_edge_index = edge_index[:, edge_mask > 0]
-        sparse_adj = to_scipy_sparse_matrix(masked_edge_index).toarray()
+        masked_edge_index = masked_edge_index.cpu().numpy()
+        lst = np.sort(np.unique(masked_edge_index))
+        d = {lst[i]: i for i in range(len(lst))}
+        indexer = np.array([d.get(i, -1) for i in range(masked_edge_index.min(), masked_edge_index.max() + 1)])
+        relabel_masked_edge_index = indexer[(masked_edge_index - masked_edge_index.min())]
+        sparse_adj = to_scipy_sparse_matrix(torch.LongTensor(relabel_masked_edge_index)).toarray()
         n_components, labels = connected_components(csgraph=sparse_adj, directed=False, return_labels=True)
-        cc_ratio.append((len(labels) - n_components)/(edge_mask != 0).sum())#/len(np.unique(masked_edge_index)))
+        cc_ratio.append(n_components / len(labels))
     return np.mean(cc_ratio)
 
 def get_sparsity(masks):
@@ -108,13 +112,17 @@ def get_mask_info(masks, edge_index):
 # hard or soft
 
 
-def transform_mask(masks, param, args):
+def transform_mask(masks, data, param, args):
     new_masks = []
     for mask_ori in masks:
         mask = mask_ori.copy()
         if args.strategy == 'topk':
-            unimportant_indices = (-mask).argsort()[param :]
-            mask[unimportant_indices] = 0
+            if eval(args.directed):
+                unimportant_indices = (-mask).argsort()[param :]
+                mask[unimportant_indices] = 0
+            else:
+                mask = mask_to_shape(mask, data.edge_index, param)
+                #indices = np.where(mask > 0)[0]
         if args.strategy == 'sparsity':
             mask = control_sparsity(mask, param)
         if args.strategy == 'threshold':
@@ -124,9 +132,10 @@ def transform_mask(masks, param, args):
 
 
 def mask_to_shape(mask, edge_index, num_top_edges):
-    indices = topk_edges_directed(mask, edge_index, num_top_edges)
-    new_mask = np.zeros(len(mask))
-    new_mask[indices] = 1
+    indices = topk_edges_unique(mask, edge_index, num_top_edges)
+    unimportant_indices = [i for i in range(len(mask)) if i not in indices]
+    new_mask = mask.copy()
+    new_mask[unimportant_indices] = 0
     return new_mask
 
 

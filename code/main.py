@@ -25,7 +25,7 @@ from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification, train_real
-from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
+from utils.gen_utils import gen_dataloader, get_labels, get_test_graphs, get_test_nodes
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
@@ -112,19 +112,24 @@ def main_real(args):
     print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
 
+
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
     mask_filename = create_mask_filename(args)
 
-    if (os.path.isfile(mask_filename)) & (args.explainer_name not in ["sa", "ig"]):
-        with open(mask_filename, 'rb') as f:
-            w_list = pickle.load(f)
-        edge_masks, node_feat_masks, Time = tuple(w_list)
-    else:
+    if args.dataset.startswith("ebay"):
         edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-        if args.explainer_name not in ["sa", "ig"]:
-            with open(mask_filename, 'wb') as f:
-                pickle.dump([edge_masks, node_feat_masks, Time], f)
+        
+    else:
+        if (os.path.isfile(mask_filename)) & (args.explainer_name not in ["sa", "ig"]):
+            with open(mask_filename, 'rb') as f:
+                w_list = pickle.load(f)
+            edge_masks, node_feat_masks, Time = tuple(w_list)
+        else:
+            edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+            if args.explainer_name not in ["sa", "ig"]:
+                with open(mask_filename, 'wb') as f:
+                    pickle.dump([edge_masks, node_feat_masks, Time], f)
 
     args.E = False if edge_masks[0] is None else True
     args.NF = False if node_feat_masks[0] is None else True
@@ -188,7 +193,7 @@ def main_real(args):
             params_transf = {args.strategy: param}
 
             ### Mask transformation ###
-            edge_masks = transform_mask(edge_masks_ori, param, args)
+            edge_masks = transform_mask(edge_masks_ori, data, param, args)
             if (eval(args.hard_mask)==False)&(args.seed==10):
                 plot_masks_density(edge_masks, args, type="edge")
             transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
@@ -329,9 +334,15 @@ def main_syn(args):
     #accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
     #print("__accuracy_top:" + json.dumps(accuracy_top))
 
-    if (not args.strategy)|(not args.params_list):
+    if (args.strategy not in ["topk", "sparsity", "threshold"])|(eval(args.params_list) is None):
         print("Masks are not transformed")
         args.param = None
+        params_transf = {"strategy": args.strategy, "params_list": args.params_list}
+
+        ### Accuracy Top ###
+        accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
+        accuracy_top_scores = {key: value for key, value in sorted(accuracy_top.items() | params_transf.items())}
+        print("__accuracy_top:" + json.dumps(accuracy_top_scores))
 
         ### Accuracy ###
         accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
@@ -355,7 +366,7 @@ def main_syn(args):
             args.param = param
 
             ### Mask transformation ###
-            edge_masks = transform_mask(edge_masks_ori, param, args)
+            edge_masks = transform_mask(edge_masks_ori, data, param, args)
             if (eval(args.hard_mask)==False)&(args.seed==10):
                 plot_masks_density(edge_masks, args, type="edge")
             transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
