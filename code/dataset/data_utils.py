@@ -17,7 +17,6 @@ def split_data(data, args):
     data.train_mask[train_ids] = 1
     data.val_mask[val_ids] = 1
     data.test_mask[test_ids] = 1
-
     return data
 
 def get_split(data, args):

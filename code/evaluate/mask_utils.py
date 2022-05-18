@@ -47,6 +47,8 @@ def get_ratio_connected_components(edge_masks, edge_index):
     for i in range(len(edge_masks)):
         edge_mask = edge_masks[i]
         masked_edge_index = edge_index[:, edge_mask > 0]
+        if masked_edge_index.size(1) == 0:
+            return None
         masked_edge_index = masked_edge_index.cpu().numpy()
         lst = np.sort(np.unique(masked_edge_index))
         d = {lst[i]: i for i in range(len(lst))}
@@ -134,7 +136,7 @@ def transform_mask(masks, data, param, args):
 def mask_to_shape(mask, edge_index, num_top_edges):
     indices = topk_edges_unique(mask, edge_index, num_top_edges)
     unimportant_indices = [i for i in range(len(mask)) if i not in indices]
-    new_mask = mask.copy()
+    new_mask = mask.clone()
     new_mask[unimportant_indices] = 0
     return new_mask
 

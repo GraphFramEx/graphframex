@@ -237,39 +237,40 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     G = G.to_undirected()
     edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
     nodes, labels = zip(*nx.get_node_attributes(G, "label").items())
-
+    nodes = np.array(nodes)
+    labels = np.array(labels)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
+    index_target_node = np.where(nodes==node_idx)[0][0]
+    dict_color_labels = {0: 'orange', 1: 'green', 2: 'green', 3:'green'}
+    node_labels = [dict_color_labels[l] for l in labels]
+    node_labels[index_target_node] = 'tab:red'
+    pos=nx.spring_layout(G_true, k=0.05, iterations=20),
+    print(pos)
     nx.draw(
         G_true.to_undirected(),
-        cmap=plt.get_cmap("tab10"),
-        node_size=1000,
-        with_labels=True,
-        node_color=role,
-        font_weight="bold",
-        vmin=0,
-        vmax=3,
+        pos=pos,
+        with_labels=False,
+        node_color='green',
+        edge_color="black",
+        width=2,
         ax=ax1,
     )
     nx.draw(
         G,
-        cmap=plt.get_cmap("tab10"),
-        node_size=1000,
-        with_labels=True,
-        node_color=labels,
-        font_weight="bold",
-        vmin=0,
-        vmax=3,
-        edgelist=edges,
-        edge_color=weights,
-        width=4,
-        edge_cmap=plt.cm.Blues, edge_vmin=0, edge_vmax=1,
+        pos=pos,
+        with_labels=False,
+        node_color=node_labels,
+        edge_color="black",
+        width=2,
         ax=ax2,
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-    dir_name = f"figures/{args.dataset}/node_{node_idx}/{args.explainer_name}/{args.strategy}_{args.param}"
+    # dir_name = f"figures/{args.dataset}/node_{node_idx}/{args.explainer_name}/{args.strategy}_{args.param}"
+    dir_name = f"figures/{args.dataset}/node_{node_idx}/{args.explainer_name}/"
     check_dir(dir_name)
     plt.savefig(
-        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_sparsity_{args.param}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
+        ### os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_sparsity_{args.param}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
+        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
     )
 
 
@@ -327,4 +328,65 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
     plt.savefig(f"figures/{args.dataset}/fig_expl_gc_hard_{args.hard_mask}_{args.dataset}_{date}.pdf")
 
 
-    
+def _fruchterman_reingold(
+    A, k=None, pos=None, fixed=None, iterations=50, threshold=1e-4, dim=2, seed=None
+):
+    # Position nodes in adjacency matrix A using Fruchterman-Reingold
+    # Entry point for NetworkX graph is fruchterman_reingold_layout()
+    import numpy as np
+
+    try:
+        nnodes, _ = A.shape
+    except AttributeError as e:
+        msg = "fruchterman_reingold() takes an adjacency matrix as input"
+        raise nx.NetworkXError(msg) from e
+
+    if pos is None:
+        # random initial positions
+        pos = np.asarray(seed.rand(nnodes, dim), dtype=A.dtype)
+    else:
+        # make sure positions are of same type as matrix
+        pos = pos.astype(A.dtype)
+
+    # optimal distance between nodes
+    if k is None:
+        k = np.sqrt(1.0 / nnodes)
+    # the initial "temperature"  is about .1 of domain area (=1x1)
+    # this is the largest step allowed in the dynamics.
+    # We need to calculate this in case our fixed positions force our domain
+    # to be much bigger than 1x1
+    t = max(max(pos.T[0]) - min(pos.T[0]), max(pos.T[1]) - min(pos.T[1])) * 0.1
+    # simple cooling scheme.
+    # linearly step down by dt on each iteration so last iteration is size dt.
+    dt = t / float(iterations + 1)
+    delta = np.zeros((pos.shape[0], pos.shape[0], pos.shape[1]), dtype=A.dtype)
+    # the inscrutable (but fast) version
+    # this is still O(V^2)
+    # could use multilevel methods to speed this up significantly
+    for iteration in range(iterations):
+        # matrix of difference between points
+        delta = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
+        # distance between points
+        distance = np.linalg.norm(delta, axis=-1)
+        # enforce minimum distance of 0.01
+        np.clip(distance, 0.01, None, out=distance)
+        # displacement "force"
+        displacement = np.einsum(
+            "ijk,ij->ik", delta, (k * k / distance ** 2 - A * distance / k)
+        )
+        # ADD THIS LINE - prevent things from flying off into infinity if not connected
+        displacement = displacement - pos / ( k * np.sqrt(nnodes))
+        # update positions
+        length = np.linalg.norm(displacement, axis=-1)
+        length = np.where(length < 0.01, 0.1, length)
+        delta_pos = np.einsum("ij,i->ij", displacement, t / length)
+        if fixed is not None:
+            # don't change positions of fixed nodes
+            delta_pos[fixed] = 0.0
+        pos += delta_pos
+        # cool temperature
+        t -= dt
+        err = np.linalg.norm(delta_pos) / nnodes
+        if err < threshold:
+            break
+    return pos

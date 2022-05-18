@@ -20,7 +20,7 @@ from dataset.data_utils import get_split, split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
-from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
+from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, mask_to_shape, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
@@ -330,47 +330,17 @@ def main_syn(args):
 
     print("__infos:" + json.dumps(infos))
 
-    ### Accuracy Top ###
-    #accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
-    #print("__accuracy_top:" + json.dumps(accuracy_top))
-
-    if (args.strategy not in ["topk", "sparsity", "threshold"])|(eval(args.params_list) is None):
-        print("Masks are not transformed")
-        args.param = None
-        params_transf = {"strategy": args.strategy, "params_list": args.params_list}
-
+    if eval(args.top_acc):
         ### Accuracy Top ###
         accuracy_top = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=True)
-        accuracy_top_scores = {key: value for key, value in sorted(accuracy_top.items() | params_transf.items())}
-        print("__accuracy_top:" + json.dumps(accuracy_top_scores))
-
-        ### Accuracy ###
-        accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
-        accuracy_scores = {key: value for key, value in sorted(accuracy.items() | params_transf.items())}
-        print("__accuracy:" + json.dumps(accuracy_scores))
-
-        ### Fidelity ###
-        related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
-        fidelity = eval_fidelity(related_preds, args)
-        fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
-        print("__fidelity:" + json.dumps(fidelity_scores))
-
-
-    else: 
-        print("Masks are transformed with strategy: " + args.strategy)
-        params_lst = [eval(i) for i in args.params_list.split(',')]
+        print("__accuracy_top:" + json.dumps(accuracy_top))
     
-        edge_masks_ori = edge_masks.copy()
-        for param in params_lst:
-            params_transf = {args.strategy: param}
-            args.param = param
+    else:
 
-            ### Mask transformation ###
-            edge_masks = transform_mask(edge_masks_ori, data, param, args)
-            if (eval(args.hard_mask)==False)&(args.seed==10):
-                plot_masks_density(edge_masks, args, type="edge")
-            transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
-            print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+        if (args.strategy not in ["topk", "sparsity", "threshold"])|(eval(args.params_list) is None):
+            print("Masks are not transformed")
+            args.param = None
+            params_transf = {"strategy": args.strategy, "params_list": args.params_list}
 
             ### Accuracy ###
             accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
@@ -382,6 +352,34 @@ def main_syn(args):
             fidelity = eval_fidelity(related_preds, args)
             fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
             print("__fidelity:" + json.dumps(fidelity_scores))
+
+
+        else: 
+            print("Masks are transformed with strategy: " + args.strategy)
+            params_lst = [eval(i) for i in args.params_list.split(',')]
+        
+            edge_masks_ori = edge_masks.copy()
+            for param in params_lst:
+                params_transf = {args.strategy: param}
+                args.param = param
+
+                ### Mask transformation ###
+                edge_masks = transform_mask(edge_masks_ori, data, param, args)
+                if (eval(args.hard_mask)==False)&(args.seed==10):
+                    plot_masks_density(edge_masks, args, type="edge")
+                transformed_mask_infos = {key: value for key, value in sorted(get_mask_info(edge_masks, data.edge_index).items() | params_transf.items())}
+                print("__transformed_mask_infos:" + json.dumps(transformed_mask_infos))
+
+                ### Accuracy ###
+                accuracy = eval_accuracy(data, edge_masks, list_test_nodes, args, top_acc=False)
+                accuracy_scores = {key: value for key, value in sorted(accuracy.items() | params_transf.items())}
+                print("__accuracy:" + json.dumps(accuracy_scores))
+
+                ### Fidelity ###
+                related_preds = eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_test_nodes, device, args)
+                fidelity = eval_fidelity(related_preds, args)
+                fidelity_scores = {key: value for key, value in sorted(fidelity.items() | params_transf.items())}
+                print("__fidelity:" + json.dumps(fidelity_scores))
 
     return
 
@@ -533,8 +531,8 @@ if __name__ == "__main__":
         else: 
             args.num_gc_layers, args.hidden_dim, args.output_dim,  args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 16, 16, 200, 0.01, 5e-4, 0.5
         main_real(args)
-    elif args.dataset == "ebay":
-        args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 20, 20, 300, 0.005, 0, 0
+    elif args.dataset.startswith("ebay"):
+        args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 2, 32, 32, 500, 0.001, 5e-4, 0.5
         main_real(args)
     else:
         pass
