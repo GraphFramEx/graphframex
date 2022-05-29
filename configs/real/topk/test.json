@@ -1,0 +1,39 @@
+{
+  "cmd": "python code/main.py",
+  "preload": "MKL_THREADING_LAYER=GNU",
+  "ckpt_root": "/cluster/work/zhang/kamara/",
+  "version": "1.0.0",
+  "machine": {
+    "time": 600,
+    "gpus-per-task": 2,
+    "mem": 5000
+  },
+  "meta": {
+    "group": "checkpoints/node_classification/real/topk",
+    "name": "test_pgexplainer",
+    "dest-arg": "yes",
+    "dest-name": "dest"
+  },
+  "params": {
+    "data_save_dir": "data",
+    "seed": 0,
+    "num_test": 100,
+    "explain_graph": "False",
+    "hard_mask": "True",
+    "true_label_as_target": "True",
+    "dataset": [
+      "cora",
+      "pubmed",
+      "citeseer",
+      "facebook",
+      "cornell",
+      "texas",
+      "wisconsin",
+      "actor",
+      "chameleon",
+      "squirrel"
+    ],
+    "params_list": "1,5,10,15,20,25,50,100",
+    "explainer_name": "pgexplainer"
+  }
+}

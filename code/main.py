@@ -117,6 +117,8 @@ def main_real(args):
     list_test_nodes = get_test_nodes(data, model, args)
     mask_filename = create_mask_filename(args)
 
+    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+    """
     if args.dataset.startswith("ebay"):
         edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
         
@@ -130,6 +132,7 @@ def main_real(args):
             if args.explainer_name not in ["sa", "ig"]:
                 with open(mask_filename, 'wb') as f:
                     pickle.dump([edge_masks, node_feat_masks, Time], f)
+    """
 
     args.E = False if edge_masks[0] is None else True
     args.NF = False if node_feat_masks[0] is None else True
@@ -278,15 +281,17 @@ def main_syn(args):
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
     mask_filename = create_mask_filename(args)
-    if os.path.isfile(mask_filename):
+
+    """if os.path.isfile(mask_filename):
         with open(mask_filename, 'rb') as f:
             w_list = pickle.load(f)
         edge_masks, node_feat_masks, Time = tuple(w_list)
     else:
         edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
         with open(mask_filename, 'wb') as f:
-            pickle.dump([edge_masks, node_feat_masks, Time], f)
-
+            pickle.dump([edge_masks, node_feat_masks, Time], f)"""
+    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+    
     args.E = False if edge_masks[0] is None else True
     args.NF = False if node_feat_masks[0] is None else True
     if args.NF:

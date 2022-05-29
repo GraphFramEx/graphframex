@@ -7,6 +7,7 @@ import networkx as nx
 import numpy as np
 import seaborn as sns
 from torch_geometric.utils.convert import to_networkx
+import pandas as pd
 
 from utils.io_utils import check_dir, gen_feat_importance_plt_name, gen_mask_density_plt_name
 
@@ -235,33 +236,58 @@ def plot_feat_importance(node_feat_masks, args):
 
 def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     G = G.to_undirected()
+    if node_idx not in G.nodes():
+        G.add_node(node_idx)
+        G.nodes()[node_idx]["label"] = 1
     edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
     nodes, labels = zip(*nx.get_node_attributes(G, "label").items())
     nodes = np.array(nodes)
     labels = np.array(labels)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
-    index_target_node = np.where(nodes==node_idx)[0][0]
     dict_color_labels = {0: 'orange', 1: 'green', 2: 'green', 3:'green'}
     node_labels = [dict_color_labels[l] for l in labels]
+    index_target_node = np.where(nodes==node_idx)[0][0]
     node_labels[index_target_node] = 'tab:red'
-    pos=nx.spring_layout(G_true, k=0.05, iterations=20),
-    print(pos)
+
+    true_nodes = np.array(G_true.nodes())
+    true_node_labels = ['green']*len(true_nodes)
+    true_node_labels[np.where(true_nodes==node_idx)[0][0]] = 'tab:red'
+    
+    U=nx.compose(G_true, G)
+    #pos=nx.planar_layout(U) #nx.spring_layout(U, k=5, iterations=20, seed=4321)
+    weights = np.array(weights)
+    weights = np.interp(weights, (weights.min(), weights.max()), (4, 7))
+    
     nx.draw(
         G_true.to_undirected(),
-        pos=pos,
+        pos=nx.spring_layout(G_true),
+        node_size=1200,
         with_labels=False,
-        node_color='green',
+        node_color=true_node_labels,
+        edgecolors='black',
         edge_color="black",
-        width=2,
+        width=7,
         ax=ax1,
     )
+
+    df = pd.DataFrame(index=G.nodes(), columns=G.nodes())
+    for row, data in nx.shortest_path_length(G):
+        for col, dist in data.items():
+            df.loc[row,col] = dist
+
+    df = df.fillna(df.max().max())
+
+    layout = nx.kamada_kawai_layout(G, dist=df.to_dict())
+
     nx.draw(
         G,
-        pos=pos,
+        pos=layout,
+        node_size=1200,
         with_labels=False,
         node_color=node_labels,
+        edgecolors='black',
         edge_color="black",
-        width=2,
+        edgelist=edges, width=weights,
         ax=ax2,
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
@@ -270,7 +296,7 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     check_dir(dir_name)
     plt.savefig(
         ### os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_sparsity_{args.param}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
-        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
+        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.png")
     )
 
 

@@ -218,7 +218,7 @@ def arg_parse():
         dataset="syn1",
         width_basis=300,
         num_shapes=150,
-        num_test=10,
+        num_test=5,
         opt="adam",  # opt_parser
         opt_scheduler="none",
         max_nodes=100,

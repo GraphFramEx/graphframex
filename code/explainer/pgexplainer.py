@@ -1,26 +1,33 @@
-import os
-import time
-from math import sqrt
-from typing import List, Optional
+"""
+Description: The implement of PGExplainer model
+<https://arxiv.org/abs/2011.04573>
+"""
 
-import networkx as nx
-import numpy as np
+import tqdm
+import time
 import torch
+import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
+import networkx as nx
+from math import sqrt
+from torch import Tensor
+from textwrap import wrap
 from torch.optim import Adam
-from torch_geometric.data import Batch, Data
-from torch_geometric.nn import MessagePassing
+import torch.nn.functional as F
+from torch_geometric.data import Data
+from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import to_networkx
 from torch_geometric.utils.num_nodes import maybe_num_nodes
-from tqdm import tqdm
-from utils.io_utils import create_model_filename
+from typing import Tuple, List, Dict, Optional
+
+EPS = 1e-6
 
 
-def k_hop_subgraph_with_default_whole_graph(node_idx, num_hops,
-    edge_index, relabel_nodes=False, num_nodes=None, flow='source_to_target'):
+def k_hop_subgraph_with_default_whole_graph(
+        edge_index, node_idx=None, num_hops=3, relabel_nodes=False,
+        num_nodes=None, flow='source_to_target'):
     r"""Computes the :math:`k`-hop subgraph of :obj:`edge_index` around node
-    :attr:`node_idx`. If the node_idx is -1, then return the original graph.
+    :attr:`node_idx`.
     It returns (1) the nodes involved in the subgraph, (2) the filtered
     :obj:`edge_index` connectivity, (3) the mapping from node indices in
     :obj:`node_idx` to their new location, and (4) the edge mask indicating
@@ -28,8 +35,7 @@ def k_hop_subgraph_with_default_whole_graph(node_idx, num_hops,
     Args:
         node_idx (int, list, tuple or :obj:`torch.Tensor`): The central
             node(s).
-        num_hops: (int): The number of hops :math:`k`. when num_hops == -1,
-            the whole graph will be returned.
+        num_hops: (int): The number of hops :math:`k`.
         edge_index (LongTensor): The edge indices.
         relabel_nodes (bool, optional): If set to :obj:`True`, the resulting
             :obj:`edge_index` will be relabeled to hold consecutive indices
@@ -56,7 +62,7 @@ def k_hop_subgraph_with_default_whole_graph(node_idx, num_hops,
 
     inv = None
 
-    if int(node_idx) == -1:
+    if node_idx is None:
         subsets = torch.tensor([0])
         cur_subsets = subsets
         while 1:
@@ -97,56 +103,94 @@ def k_hop_subgraph_with_default_whole_graph(node_idx, num_hops,
         node_idx[subset] = torch.arange(subset.size(0), device=row.device)
         edge_index = node_idx[edge_index]
 
-    return subset, edge_index, inv, edge_mask
+    return subset, edge_index, inv, edge_mask  # subset: key new node idx; value original node idx
 
 
-
-
-EPS = 1e-6
-
-
+def calculate_selected_nodes(data, edge_mask, top_k):
+    threshold = float(edge_mask.reshape(-1).sort(descending=True).values[min(top_k, edge_mask.shape[0]-1)])
+    hard_mask = (edge_mask > threshold).cpu()
+    edge_idx_list = torch.where(hard_mask == 1)[0]
+    selected_nodes = []
+    edge_index = data.edge_index.cpu().numpy()
+    for edge_idx in edge_idx_list:
+        selected_nodes += [edge_index[0][edge_idx], edge_index[1][edge_idx]]
+    selected_nodes = list(set(selected_nodes))
+    return selected_nodes
 
 
 class PGExplainer(nn.Module):
+    r"""
+    An implementation of PGExplainer in
+    `Parameterized Explainer for Graph Neural Network <https://arxiv.org/abs/2011.04573>`_.
 
-    coeffs = { 
-        't0': 1.0, #5.0,                   # temperature denominator
-        't1': 0.05, #1.0,                   # temperature numerator
-        'coff_size': 0.05, #0.01,           # constrains on mask size - 0.05
-        'coff_ent': 1.0 #5e-4            # constrains on smooth and continuous mask - 1.0
-    }
+    Args:
+        model (:class:`torch.nn.Module`): The target model prepared to explain
+        in_channels (:obj:`int`): Number of input channels for the explanation network
+        explain_graph (:obj:`bool`): Whether to explain graph classification model (default: :obj:`True`)
+        epochs (:obj:`int`): Number of epochs to train the explanation network
+        lr (:obj:`float`): Learning rate to train the explanation network
+        coff_size (:obj:`float`): Size regularization to constrain the explanation size
+        coff_ent (:obj:`float`): Entropy regularization to constrain the connectivity of explanation
+        t0 (:obj:`float`): The temperature at the first epoch
+        t1(:obj:`float`): The temperature at the final epoch
+        num_hops (:obj:`int`, :obj:`None`): The number of hops to extract neighborhood of target node
+        (default: :obj:`None`)
 
-    def __init__(self, model, args, epochs: int = 10, lr: float = 0.005,
-                 top_k: int = 6, num_hops: Optional[int] = None, **kwargs,):
-        # lr=0.005, 0.003
+    .. note: For node classification model, the :attr:`explain_graph` flag is False.
+      If :attr:`num_hops` is set to :obj:`None`, it will be automatically calculated by calculating the
+      :class:`torch_geometric.nn.MessagePassing` layers in the :attr:`model`.
+
+    """
+    def __init__(self, model, in_channels: int, device, explain_graph: bool = True, epochs: int = 10,
+                 lr: float = 0.005, coff_size: float = 0.05, coff_ent: float = 1.0,
+                 t0: float = 5.0, t1: float = 1.0, sample_bias: float = 0.0, num_hops: Optional[int] = None):
         super(PGExplainer, self).__init__()
         self.model = model
-        self.lr = lr
+        self.device = device
+        self.model.to(self.device)
+        self.in_channels = in_channels
+        self.explain_graph = explain_graph
+
+        # training parameters for PGExplainer
         self.epochs = epochs
-        self.top_k = top_k
-        self.__num_hops__ = num_hops
-        self.device = model.device
-        self.coeffs.update(kwargs)
+        self.lr = lr
+        self.coff_size = coff_size
+        self.coff_ent = coff_ent
+        self.t0 = t0
+        self.t1 = t1
+        self.sample_bias = sample_bias
 
-        self.coff_size = self.coeffs['coff_size']
-        self.coff_ent = self.coeffs['coff_ent']
+        self.num_hops = self.update_num_hops(num_hops)
         self.init_bias = 0.0
-        self.t0 = self.coeffs['t0']
-        self.t1 =self.coeffs['t1']
 
+        # Explanation model in PGExplainer
         self.elayers = nn.ModuleList()
-        input_feature = args.output_dim * 2
-        self.elayers.append(nn.Sequential(nn.Linear(input_feature, 64), nn.ReLU()))
+        self.elayers.append(nn.Sequential(nn.Linear(in_channels, 64), nn.ReLU()))
         self.elayers.append(nn.Linear(64, 1))
         self.elayers.to(self.device)
-        self.ckpt_path = create_model_filename(args, suffix='PGE_generator')
 
-    def __set_masks__(self, x, edge_index, edge_mask=None, init="normal"):
-        """ Set the weights for message passing """
+    def __set_masks__(self, x: Tensor, edge_index: Tensor, edge_mask: Tensor = None):
+        r""" Set the edge weights before message passing
+
+        Args:
+            x (:obj:`torch.Tensor`): Node feature matrix with shape
+              :obj:`[num_nodes, dim_node_feature]`
+            edge_index (:obj:`torch.Tensor`): Graph connectivity in COO format
+              with shape :obj:`[2, num_edges]`
+            edge_mask (:obj:`torch.Tensor`): Edge weight matrix before message passing
+              (default: :obj:`None`)
+
+        The :attr:`edge_mask` will be randomly initialized when set to :obj:`None`.
+
+        .. note:: When you use the :meth:`~PGExplainer.__set_masks__`,
+          the explain flag for all the :class:`torch_geometric.nn.MessagePassing`
+          modules in :attr:`model` will be assigned with :obj:`True`. In addition,
+          the :attr:`edge_mask` will be assigned to all the modules.
+          Please take :meth:`~PGExplainer.__clear_masks__` to reset.
+        """
         (N, F), E = x.size(), edge_index.size(1)
         std = 0.1
         init_bias = self.init_bias
-        self.node_feat_mask = torch.nn.Parameter(torch.randn(F) * std)
         std = torch.nn.init.calculate_gain('relu') * sqrt(2.0 / (2 * N))
 
         if edge_mask is None:
@@ -161,19 +205,16 @@ class PGExplainer(nn.Module):
                 module.__edge_mask__ = self.edge_mask
 
     def __clear_masks__(self):
-        """ clear the edge weights to None """
+        """ clear the edge weights to None, and set the explain flag to :obj:`False` """
         for module in self.model.modules():
             if isinstance(module, MessagePassing):
                 module.__explain__ = False
                 module.__edge_mask__ = None
-        self.node_feat_masks = None
         self.edge_mask = None
 
-    @property
-    def num_hops(self):
-        """ return the number of layers of GNN model """
-        if self.__num_hops__ is not None:
-            return self.__num_hops__
+    def update_num_hops(self, num_hops: int):
+        if num_hops is not None:
+            return num_hops
 
         k = 0
         for module in self.model.modules():
@@ -187,17 +228,13 @@ class PGExplainer(nn.Module):
                 return module.flow
         return 'source_to_target'
 
-    def __loss__(self, prob, ori_pred):
-        """
-        the pred loss encourages the masked graph with higher probability,
-        the size loss encourage small size edge mask,
-        the entropy loss encourage the mask to be continuous.
-        """
+    def __loss__(self, prob: Tensor, ori_pred: int):
         logit = prob[ori_pred]
         logit = logit + EPS
-        pred_loss = -torch.log(logit)
+        pred_loss = - torch.log(logit)
+
         # size
-        edge_mask = torch.sigmoid(self.mask_sigmoid)
+        edge_mask = self.sparse_mask_values
         size_loss = self.coff_size * torch.sum(edge_mask)
 
         # entropy
@@ -208,134 +245,34 @@ class PGExplainer(nn.Module):
         loss = pred_loss + size_loss + mask_ent_loss
         return loss
 
-    def concrete_sample(self, log_alpha, beta=1.0, training=True):
-        """ Sample from the instantiation of concrete distribution when training
-        \epsilon \sim  U(0,1), \hat{e}_{ij} = \sigma (\frac{\log \epsilon-\log (1-\epsilon)+\omega_{i j}}{\tau})
+    def get_subgraph(self,
+                     node_idx: int,
+                     x: Tensor,
+                     edge_index: Tensor,
+                     y: Optional[Tensor] = None,
+                     **kwargs)\
+            -> Tuple[Tensor, Tensor, Tensor, List, Dict]:
+        r""" extract the subgraph of target node
+
+        Args:
+            node_idx (:obj:`int`): The node index
+            x (:obj:`torch.Tensor`): Node feature matrix with shape
+              :obj:`[num_nodes, dim_node_feature]`
+            edge_index (:obj:`torch.Tensor`): Graph connectivity in COO format
+              with shape :obj:`[2, num_edges]`
+            y (:obj:`torch.Tensor`, :obj:`None`): Node label matrix with shape :obj:`[num_nodes]`
+              (default :obj:`None`)
+            kwargs(:obj:`Dict`, :obj:`None`): Additional parameters
+
+        :rtype: (:class:`torch.Tensor`, :class:`torch.Tensor`, :class:`torch.Tensor`,
+          :obj:`List`, :class:`Dict`)
+
         """
-        if training:
-            random_noise = torch.rand(log_alpha.shape)
-            random_noise = torch.log(random_noise) - torch.log(1.0 - random_noise)
-            gate_inputs = (random_noise.to(log_alpha.device) + log_alpha) / beta
-            gate_inputs = gate_inputs.sigmoid()
-        else:
-            gate_inputs = log_alpha.sigmoid()
-
-        return gate_inputs
-
-    def forward(self, inputs, training=None):
-        x, embed, edge_index, tmp = inputs
-        nodesize = embed.shape[0]
-        feature_dim = embed.shape[1]
-        f1 = embed.unsqueeze(1).repeat(1, nodesize, 1).reshape(-1, feature_dim)
-        f2 = embed.unsqueeze(0).repeat(nodesize, 1, 1).reshape(-1, feature_dim)
-        
-        # using the node embedding to calculate the edge weight
-        f12self = torch.cat([f1, f2], dim=-1)
-        h = f12self.to(self.device)
-        for elayer in self.elayers:
-            h = elayer(h)
-        values = h.reshape(-1)
-        values = self.concrete_sample(values, beta=tmp, training=training)
-        self.mask_sigmoid = values.reshape(nodesize, nodesize)
-
-        # set the symmetric edge weights
-        sym_mask = (self.mask_sigmoid + self.mask_sigmoid.transpose(0, 1)) / 2
-        edge_mask = sym_mask[edge_index[0], edge_index[1]]
-
-        self.__clear_masks__()
-        self.__set_masks__(x, edge_index, edge_mask)
-
-        # the model prediction with edge mask
-        x.to(self.device)
-        edge_index.to(self.device)
-        outputs = self.model(x, edge_index)
-        return self.model.probs.squeeze(), edge_mask
-
-    def get_model_output(self, x, edge_index, edge_mask=None, **kwargs):
-        """ return the model outputs with or without (w/wo) edge mask  """
-        self.model.eval()
-        self.__clear_masks__()
-        if edge_mask is not None:
-            self.__set_masks__(x, edge_index, edge_mask.to(self.device))
-
-        with torch.no_grad():
-            x.to(self.device)
-            edge_index.to(self.device)
-            outputs = self.model(x, edge_index)
-
-        self.__clear_masks__()
-        emb = self.model.embedding_tensor
-        prob = self.model.probs
-        return outputs, prob, emb
-
-    def train_GC_explanation_network(self, dataset):
-        """ train the explantion network for graph classification task """
-        optimizer = Adam(self.elayers.parameters(), lr=self.lr)
-        dataset_indices = list(range(len(dataset)))
-
-        # collect the embedding of nodes
-        emb_dict = {}
-        ori_pred_dict = {}
-        with torch.no_grad():
-            self.model.eval()
-            for gid in tqdm(dataset_indices):
-                data = dataset[gid]
-                _, prob, emb = self.get_model_output(data.x, data.edge_index)
-                emb_dict[gid] = emb.data.cpu()
-                ori_pred_dict[gid] = prob.argmax(-1).data.cpu()
-
-        # train the mask generator
-        duration = 0.0
-        for epoch in range(self.epochs):
-            loss = 0.0
-            tmp = float(self.t0 * np.power(self.t1 / self.t0, epoch / self.epochs))
-            self.elayers.train()
-            optimizer.zero_grad()
-            tic = time.perf_counter()
-            for gid in tqdm(dataset_indices):
-                data = dataset[gid]
-                prob, _ = self.forward((data.x, emb_dict[gid], data.edge_index, tmp), training=True)
-                loss_tmp = self.__loss__(prob, ori_pred_dict[gid])
-                loss_tmp.backward()
-                loss += loss_tmp.item()
-
-            optimizer.step()
-            duration += time.perf_counter() - tic
-            print(f'Epoch: {epoch} | Loss: {loss}')
-            # torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
-            self.elayers.to(self.device)
-        print(f"training time is {duration:.5}s")
-
-    def get_explanation_network(self, data, is_graph_classification=True):
-        """if os.path.isfile(self.ckpt_path):
-            print("fetch network parameters from the saved files")
-            state_dict = torch.load(self.ckpt_path)
-            self.elayers.load_state_dict(state_dict)
-            self.to(self.device)"""
-        if is_graph_classification:
-            self.train_GC_explanation_network(data)
-        else:
-            self.train_NC_explanation_network(data)
-
-    def eval_probs(self, x: torch.Tensor, edge_index: torch.Tensor,
-                   edge_mask: torch.Tensor=None, **kwargs) -> None:
-        outputs = self.get_model_output(x, edge_index, edge_mask=edge_mask)
-        return outputs[1].squeeze()
-
-    def explain_edge_mask(self, x, edge_index, **kwargs):
-        data = Batch.from_data_list([Data(x=x, edge_index=edge_index)])
-        data = data.to(self.device)
-        with torch.no_grad():
-            _, prob, emb = self.get_model_output(data.x, data.edge_index)
-            _, edge_mask = self.forward((data.x, emb, data.edge_index, 1.0), training=False)
-        return edge_mask
-
-    def get_subgraph(self, node_idx, x, edge_index, y, **kwargs):
         num_nodes, num_edges = x.size(0), edge_index.size(1)
         graph = to_networkx(data=Data(x=x, edge_index=edge_index), to_undirected=True)
 
         subset, edge_index, _, edge_mask = k_hop_subgraph_with_default_whole_graph(
-            node_idx, self.num_hops, edge_index, relabel_nodes=True,
+            edge_index, node_idx, self.num_hops, relabel_nodes=True,
             num_nodes=num_nodes, flow=self.__flow__())
 
         mapping = {int(v): k for k, v in enumerate(subset)}
@@ -349,56 +286,196 @@ class PGExplainer(nn.Module):
             elif torch.is_tensor(item) and item.size(0) == num_edges:
                 item = item[edge_mask]
             kwargs[key] = item
-        y = y[subset]
-        return x, edge_index, y, subset, kwargs
+        if y is not None:
+            y = y[subset]
+        return x, edge_index, y, subset, edge_mask, kwargs
 
-    def train_NC_explanation_network(self, data):
-        dataset_indices = torch.where(data.train_mask != 0)[0].tolist()
+    def concrete_sample(self, log_alpha: Tensor, beta: float = 1.0, training: bool = True):
+        r""" Sample from the instantiation of concrete distribution when training """
+        if training:
+            bias = self.sample_bias
+            random_noise = torch.rand(log_alpha.shape) * (1 - 2 * bias) + bias
+            random_noise = torch.log(random_noise) - torch.log(1.0 - random_noise)
+            gate_inputs = (random_noise.to(log_alpha.device) + log_alpha) / beta
+            gate_inputs = gate_inputs.sigmoid()
+        else:
+            gate_inputs = log_alpha.sigmoid()
+
+        return gate_inputs
+
+    def explain_node(self, model, node_idx, x, edge_index, **kwargs):
+        select_edge_index = torch.arange(0, edge_index.shape[1])
+        subgraph_x, subgraph_edge_index, _, subset, subgraph_edge_mask, kwargs = \
+        self.get_subgraph(node_idx, x, edge_index, select_edge_index=select_edge_index)
+        self.select_edge_mask = edge_index.new_empty(edge_index.size(1),
+                                                        device=self.device,
+                                                        dtype=torch.bool)
+        self.select_edge_mask.fill_(False)
+        self.select_edge_mask[select_edge_index] = True
+        self.hard_edge_mask = edge_index.new_empty(subgraph_edge_index.size(1),
+                                                    device=self.device,
+                                                    dtype=torch.bool)
+        self.hard_edge_mask.fill_(True)
+        self.subset = subset
+        self.new_node_idx = torch.where(subset == node_idx)[0]
+
+        subgraph_embed = self.model.get_emb(subgraph_x, subgraph_edge_index) 
+        _, edge_mask = self.explain(subgraph_x,
+                                                        subgraph_edge_index,
+                                                        embed=subgraph_embed,
+                                                        tmp=1.0,
+                                                        training=False,
+                                                        node_idx=self.new_node_idx)
+        subgraph_edge_mask = subgraph_edge_mask.cpu().detach().numpy()
+        subindices = np.where(subgraph_edge_mask>0)[0]
+        edge_mask_full = torch.zeros(len(subgraph_edge_mask))
+        for i in range(len(subindices)):
+            edge_mask_full[subindices[i]] = edge_mask[i]
+        return edge_mask_full
+        
+
+
+    def explain(self,
+                x: Tensor,
+                edge_index: Tensor,
+                embed: Tensor,
+                tmp: float = 1.0,
+                training: bool = False,
+                **kwargs)\
+            -> Tuple[float, Tensor]:
+        r""" explain the GNN behavior for graph with explanation network
+
+        Args:
+            x (:obj:`torch.Tensor`): Node feature matrix with shape
+              :obj:`[num_nodes, dim_node_feature]`
+            edge_index (:obj:`torch.Tensor`): Graph connectivity in COO format
+              with shape :obj:`[2, num_edges]`
+            embed (:obj:`torch.Tensor`): Node embedding matrix with shape :obj:`[num_nodes, dim_embedding]`
+            tmp (:obj`float`): The temperature parameter fed to the sample procedure
+            training (:obj:`bool`): Whether in training procedure or not
+
+        Returns:
+            probs (:obj:`torch.Tensor`): The classification probability for graph with edge mask
+            edge_mask (:obj:`torch.Tensor`): The probability mask for graph edges
+        """
+        node_idx = kwargs.get('node_idx')
+        nodesize = embed.shape[0]
+        col, row = edge_index
+        f1 = embed[col]
+        f2 = embed[row]
+        self_embed = embed[node_idx].repeat(f1.shape[0], 1)
+        f12self = torch.cat([f1, f2, self_embed], dim=-1)
+
+        # using the node embedding to calculate the edge weight
+        h = f12self.to(self.device)
+        for elayer in self.elayers:
+            h = elayer(h)
+        values = h.reshape(-1)
+        values = self.concrete_sample(values, beta=tmp, training=training)
+        self.sparse_mask_values = values
+        mask_sparse = torch.sparse_coo_tensor(
+            edge_index, values, (nodesize, nodesize)
+        )
+        mask_sigmoid = mask_sparse.to_dense()
+        # set the symmetric edge weights
+        sym_mask = (mask_sigmoid + mask_sigmoid.transpose(0, 1)) / 2
+        edge_mask = sym_mask[edge_index[0], edge_index[1]]
+
+        # inverse the weights before sigmoid in MessagePassing Module
+        self.__clear_masks__()
+        self.__set_masks__(x, edge_index, edge_mask)
+
+        # the model prediction with edge mask
+        logits = self.model(x, edge_index)
+        probs = F.softmax(logits, dim=-1)
+
+        self.__clear_masks__()
+        return probs, edge_mask
+
+    def train_explanation_network(self, dataset):
+        r""" training the explanation network by gradient descent(GD) using Adam optimizer """
         optimizer = Adam(self.elayers.parameters(), lr=self.lr)
-
-        # collect the embedding of nodes
-        x_dict = {}
-        edge_index_dict = {}
-        node_idx_dict = {}
-        emb_dict = {}
-        pred_dict = {}
         with torch.no_grad():
+            data = dataset
+            data.to(self.device)
             self.model.eval()
-            for gid in dataset_indices:
-                x, edge_index, y, subset, _ = \
-                    self.get_subgraph(node_idx=gid, x=data.x, edge_index=data.edge_index, y=data.y)
-                _, prob, emb = self.get_model_output(x, edge_index)
-                x_dict[gid] = x
-                edge_index_dict[gid] = edge_index
-                node_idx_dict[gid] = int(torch.where(subset == gid)[0])
-                pred_dict[gid] = prob[node_idx_dict[gid]].argmax(-1).cpu()
-                emb_dict[gid] = emb.data.cpu()
+            explain_node_index_list = torch.where(data.train_mask)[0].tolist()
+            pred_dict = {}
+            logits = self.model(data.x, data.edge_index)
+            for node_idx in tqdm.tqdm(explain_node_index_list):
+                pred_dict[node_idx] = logits[node_idx].argmax(-1).item()
 
-        # train the explanation network
+        # train the mask generator
+        duration = 0.0
         for epoch in range(self.epochs):
             loss = 0.0
             optimizer.zero_grad()
             tmp = float(self.t0 * np.power(self.t1 / self.t0, epoch / self.epochs))
             self.elayers.train()
-            for gid in tqdm(dataset_indices):
-                pred, edge_mask = self.forward((x_dict[gid], emb_dict[gid], edge_index_dict[gid], tmp), training=True)
-                loss_tmp = self.__loss__(pred[node_idx_dict[gid]], pred_dict[gid])
+            tic = time.perf_counter()
+            for iter_idx, node_idx in tqdm.tqdm(enumerate(explain_node_index_list)):
+                with torch.no_grad():
+                    x, edge_index, y, subset, _, _ = \
+                        self.get_subgraph(node_idx=node_idx, x=data.x, edge_index=data.edge_index, y=data.y)
+                    emb = self.model.get_emb(x, edge_index)
+                    new_node_index = int(torch.where(subset == node_idx)[0])
+                pred, edge_mask = self.explain(x, edge_index, emb, tmp, training=True, node_idx=new_node_index)
+                loss_tmp = self.__loss__(pred[new_node_index], pred_dict[node_idx])
                 loss_tmp.backward()
                 loss += loss_tmp.item()
 
             optimizer.step()
-            print(f'Epoch: {epoch} | Loss: {loss}')
-            # torch.save(self.elayers.cpu().state_dict(), self.ckpt_path)
-            self.elayers.to(self.device)
+            duration += time.perf_counter() - tic
+            print(f'Epoch: {epoch} | Loss: {loss/len(explain_node_index_list)}')
+        print(f"training time is {duration:.5}s")
 
-    def eval_node_probs(self, node_idx: int, x: torch.Tensor,
-                        edge_index: torch.Tensor, edge_mask: torch.Tensor, **kwargs):
-        probs = self.eval_probs(x=x, edge_index=edge_index, edge_mask=edge_mask, **kwargs)
-        return probs[node_idx].squeeze()
+    def forward(self,
+                x: Tensor,
+                edge_index: Tensor,
+                **kwargs)\
+            -> Tuple[None, List, List[Dict]]:
+        r""" explain the GNN behavior for graph and calculate the metric values.
+        The interface for the :class:`dig.evaluation.XCollector`.
 
-    def get_node_prediction(self, node_idx: int, x: torch.Tensor, edge_index: torch.Tensor, **kwargs):
-        outputs = self.get_model_output(x, edge_index, edge_mask=None, **kwargs)
-        return outputs[1][node_idx].argmax(dim=-1)
+        Args:
+            x (:obj:`torch.Tensor`): Node feature matrix with shape
+              :obj:`[num_nodes, dim_node_feature]`
+            edge_index (:obj:`torch.Tensor`): Graph connectivity in COO format
+              with shape :obj:`[2, num_edges]`
+            kwargs(:obj:`Dict`):
+              The additional parameters
+                - top_k (:obj:`int`): The number of edges in the final explanation results
 
-    def __repr__(self):
-        return f'{self.__class__.__name__}()'
+        :rtype: (:obj:`None`, List[torch.Tensor], List[Dict])
+        """
+        # set default subgraph with 10 edges
+        top_k = kwargs.get('top_k') if kwargs.get('top_k') is not None else 10
+        x = x.to(self.device)
+        edge_index = edge_index.to(self.device)
+
+        self.__clear_masks__()
+        logits = self.model(x, edge_index)
+        probs = F.softmax(logits, dim=-1)
+        pred_labels = probs.argmax(dim=-1)
+        embed = self.model.get_emb(x, edge_index)
+
+        if self.explain_graph:
+            # original value
+            probs = probs.squeeze()
+            label = pred_labels
+            # masked value
+            _, edge_mask = self.explain(x, edge_index, embed=embed, tmp=1.0, training=False)  
+        else:
+            node_idx = kwargs.get('node_idx')
+            assert kwargs.get('node_idx') is not None, "please input the node_idx"
+            # original value
+            probs = probs.squeeze()[node_idx]
+            label = pred_labels[node_idx]
+            # masked value
+            x, edge_index, _, subset, _ = self.get_subgraph(node_idx, x, edge_index)
+            new_node_idx = torch.where(subset == node_idx)[0]
+            embed = self.model.get_emb(x, edge_index)
+            _, edge_mask = self.explain(x, edge_index, embed, tmp=1.0, training=False, node_idx=new_node_idx)
+        # return variables
+        pred_mask = [edge_mask]
+        return None, pred_mask

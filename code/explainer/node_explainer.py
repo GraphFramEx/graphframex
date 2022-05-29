@@ -1,5 +1,7 @@
+import os 
 import networkx as nx
 import numpy as np
+import random
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from gnn.model import GraphConv, GraphConvolution
@@ -230,10 +232,39 @@ def explain_zorro_node(model, data, node_idx, x, edge_index, edge_weight, target
     node_feature_mask = node_feature_mask.cpu().detach().numpy()
     return edge_mask, node_feature_mask
 
+
+
+"""
 def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     pgexplainer = PGExplainer(model, args, num_hops = args.num_gc_layers)
     pgexplainer.get_explanation_network(data, is_graph_classification=False)
     edge_mask = pgexplainer.explain_edge_mask(x, edge_index)
+    edge_mask = edge_mask.cpu().detach().numpy()
+    return edge_mask, None
+"""
+
+
+def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
+    if args.dataset.startswith("syn"):
+        coef = 3*3
+    else:
+        coef = 3
+    pgexplainer = PGExplainer(model, in_channels = args.hidden_dim * coef, device = device, num_hops = args.num_gc_layers)
+    subdir = os.path.join(args.model_save_dir, args.dataset)
+    pgexplainer_saving_path = os.path.join(subdir, f'pgexplainer_{args.dataset}.pth')
+    if os.path.isfile(pgexplainer_saving_path):
+        print("Load saved PGExplainer model...")
+        state_dict = torch.load(pgexplainer_saving_path)
+        pgexplainer.load_state_dict(state_dict)
+    else:
+        pgexplainer.train_explanation_network(data)
+        print("Save PGExplainer model...")
+        torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
+        state_dict = torch.load(pgexplainer_saving_path)
+        pgexplainer.load_state_dict(state_dict)
+        
+
+    edge_mask = pgexplainer.explain_node(model, node_idx, x, edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask, None
 

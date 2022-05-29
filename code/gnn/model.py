@@ -91,6 +91,15 @@ class GCN(nn.Module):
     def loss(self, pred, label):
         return F.nll_loss(pred, label)
 
+    def get_emb(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index, edge_weight)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        return x
+
 
 
 
@@ -535,3 +544,23 @@ class GcnEncoderNode(GcnEncoderGraph):
         # Transpose if batch dim:
         # pred = torch.transpose(pred, 1, 2)
         return self.celoss(pred, label)
+
+    def get_emb(self, x, edge_index, edge_weight=None, batch_num_nodes=None, **kwargs):
+        # Encoder Node receives no batch - only one graph
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1))
+        max_n = x.size(0)
+        adj = from_edge_index_to_adj(edge_index, edge_weight, max_n).to(self.device)
+        # mask
+        max_num_nodes = adj.size()[1]
+        embedding_mask = None
+        self.adj_atts = []
+        x_tensor, adj_att = self.gcn_forward(
+            x.expand(1, -1, -1), adj.expand(1, -1, -1), self.conv_first, self.conv_block, self.conv_last, embedding_mask
+        )
+        emb = torch.squeeze(x_tensor, 0)
+        return emb
+
+
+
+
