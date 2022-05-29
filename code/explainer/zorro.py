@@ -10,7 +10,7 @@ import time
 
 class Zorro(torch.nn.Module):
 
-    def __init__(self, model, device, num_hops=None, log=True, greedy=True, record_process_time=False, add_noise=False, samples=100):
+    def __init__(self, model, device, num_hops=None, log=True, greedy=True, record_process_time=False, add_noise=False, samples=10):
         super(Zorro, self).__init__()
         self.model = model
         self.log = log

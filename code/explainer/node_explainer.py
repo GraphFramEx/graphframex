@@ -234,16 +234,6 @@ def explain_zorro_node(model, data, node_idx, x, edge_index, edge_weight, target
 
 
 
-"""
-def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
-    pgexplainer = PGExplainer(model, args, num_hops = args.num_gc_layers)
-    pgexplainer.get_explanation_network(data, is_graph_classification=False)
-    edge_mask = pgexplainer.explain_edge_mask(x, edge_index)
-    edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask, None
-"""
-
-
 def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     if args.dataset.startswith("syn"):
         coef = 3*3
