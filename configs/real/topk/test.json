@@ -21,18 +21,7 @@
     "explain_graph": "False",
     "hard_mask": "True",
     "true_label_as_target": "True",
-    "dataset": [
-      "cora",
-      "pubmed",
-      "citeseer",
-      "facebook",
-      "cornell",
-      "texas",
-      "wisconsin",
-      "actor",
-      "chameleon",
-      "squirrel"
-    ],
+    "dataset": ["facebook", "squirrel"],
     "params_list": "1,5,10,15,20,25,50,100",
     "explainer_name": "pgexplainer"
   }

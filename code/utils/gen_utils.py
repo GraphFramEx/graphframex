@@ -17,6 +17,16 @@ def list_to_dict(preds):
         preds_dict[key] = np.array(preds_dict[key])
     return preds_dict
 
+def sample_large_graph(data):
+    if data.num_edges > 50000:
+        print("Too many edges, sampling large graph...")
+        node_idx = random.randint(0, data.num_nodes - 1)
+        x, edge_index, mapping, edge_mask, subset, kwargs = get_subgraph(node_idx, data.x, data.edge_index, num_hops=3)
+        data = data.subgraph(subset)
+        print(f'Sample size: {data.num_nodes} nodes and {data.num_edges} edges')
+    return data
+    
+    
 
 def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
     num_nodes, num_edges = x.size(0), edge_index.size(1)

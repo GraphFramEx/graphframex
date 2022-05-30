@@ -25,19 +25,6 @@
     "dataset": ["cora", "facebook", "cornell", "actor", "chameleon"],
     "strategy": "topk",
     "params_list": "1,2,5,10,15,20,100",
-    "explainer_name": [
-      "random",
-      "distance",
-      "pagerank",
-      "sa",
-      "ig",
-      "gradcam",
-      "occlusion",
-      "basic_gnnexplainer",
-      "gnnexplainer",
-      "pgmexplainer",
-      "pgexplainer",
-      "subgraphx"
-    ]
+    "explainer_name": ["random", "pgexplainer"]
   }
 }

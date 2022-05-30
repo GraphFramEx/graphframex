@@ -1,7 +1,8 @@
-import os 
+import os
+import random
+
 import networkx as nx
 import numpy as np
-import random
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from gnn.model import GraphConv, GraphConvolution
@@ -9,6 +10,7 @@ from torch.autograd import Variable
 from torch_geometric.data import Data
 from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
+from utils.gen_utils import get_subgraph, sample_large_graph
 
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.gnnlrp import GNN_LRP
@@ -220,17 +222,19 @@ def explain_subgraphx_node(model, data, node_idx, x, edge_index, edge_weight, ta
 def explain_zorro_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
     zorro = Zorro(model, device, num_hops = args.num_gc_layers)
     print('explain node', zorro.explain_node(node_idx, x, edge_index))
-    selected_nodes, selected_features, executed_selection = zorro.explain_node(node_idx, x, edge_index)[0]
-    selected_nodes = torch.Tensor(selected_nodes.squeeze())
-    selected_features = torch.Tensor(selected_features.squeeze())
-    print("node_attrs", selected_nodes)
-    print("node_feature_mask", selected_features)
-    print("executed_selection", executed_selection)
-    node_attr = np.array(selected_nodes)
-    edge_mask = node_attr_to_edge(edge_index, node_attr)
-    edge_mask = edge_mask.cpu().detach().numpy()
-    node_feature_mask = node_feature_mask.cpu().detach().numpy()
-    return edge_mask, node_feature_mask
+    explanation = zorro.explain_node(node_idx, x, edge_index, tau=0.85, recursion_depth=3)
+    print('explanation', explanation)
+    #selected_nodes, selected_features, executed_selection = zorro.explain_node(node_idx, x, edge_index, tau=0.85, recursion_depth=4)
+    #selected_nodes = torch.Tensor(selected_nodes.squeeze())
+    #selected_features = torch.Tensor(selected_features.squeeze())
+    #print("node_attrs", selected_nodes)
+    #print("node_feature_mask", selected_features)
+    #print("executed_selection", executed_selection)
+    #node_attr = np.array(selected_nodes)
+    #edge_mask = node_attr_to_edge(edge_index, node_attr)
+    #edge_mask = edge_mask.cpu().detach().numpy()
+    #node_feature_mask = node_feature_mask.cpu().detach().numpy()
+    return #edge_mask, node_feature_mask
 
 
 
@@ -247,13 +251,13 @@ def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, 
         state_dict = torch.load(pgexplainer_saving_path)
         pgexplainer.load_state_dict(state_dict)
     else:
+        data = sample_large_graph(data)
         pgexplainer.train_explanation_network(data)
         print("Save PGExplainer model...")
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
         state_dict = torch.load(pgexplainer_saving_path)
         pgexplainer.load_state_dict(state_dict)
         
-
     edge_mask = pgexplainer.explain_node(model, node_idx, x, edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask, None

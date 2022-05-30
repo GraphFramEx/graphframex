@@ -25,7 +25,7 @@ from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification, train_real
-from utils.gen_utils import gen_dataloader, get_labels, get_test_graphs, get_test_nodes
+from utils.gen_utils import gen_dataloader, get_labels, get_test_graphs, get_test_nodes, sample_large_graph
 from utils.graph_utils import get_edge_index_batch, split_batch
 from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
@@ -116,7 +116,6 @@ def main_real(args):
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
     mask_filename = create_mask_filename(args)
-
     edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
     """
     if args.dataset.startswith("ebay"):

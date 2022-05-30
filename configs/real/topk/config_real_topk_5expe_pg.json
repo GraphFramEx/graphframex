@@ -10,19 +10,18 @@
   },
   "meta": {
     "group": "checkpoints/node_classification/real/topk",
-    "name": "test",
+    "name": "topk_real_5",
     "dest-arg": "yes",
     "dest-name": "dest"
   },
   "params": {
     "data_save_dir": "data",
-    "seed": 0,
-    "num_test": 1,
+    "seed": [0, 1, 2, 3, 4],
+    "num_test": 100,
     "explain_graph": "False",
-    "hard_mask": "False",
-    "true_label_as_target": "True",
+    "hard_mask": ["True", "False"],
+    "true_label_as_target": ["True", "False"],
     "strategy": "topk",
-    "directed": ["True", "False"],
     "params_list": "1,5,10,15,20,25,50,100",
     "dataset": [
       "cora",
@@ -36,19 +35,6 @@
       "chameleon",
       "squirrel"
     ],
-    "explainer_name": [
-      "random",
-      "distance",
-      "pagerank",
-      "sa",
-      "ig",
-      "gradcam",
-      "occlusion",
-      "basic_gnnexplainer",
-      "gnnexplainer",
-      "pgmexplainer",
-      "pgexplainer",
-      "subgraphx"
-    ]
+    "explainer_name": ["random", "pgexplainer"]
   }
 }

@@ -10,7 +10,7 @@ import time
 
 class Zorro(torch.nn.Module):
 
-    def __init__(self, model, device, num_hops=None, log=True, greedy=True, record_process_time=False, add_noise=False, samples=10):
+    def __init__(self, model, device, num_hops=None, log=True, greedy=True, record_process_time=False, add_noise=False, samples=100):
         super(Zorro, self).__init__()
         self.model = model
         self.log = log
@@ -427,7 +427,7 @@ class Zorro(torch.nn.Module):
 
         return minimal_nodes_and_features_sets
 
-    def explain_node(self, node_idx, full_feature_matrix, edge_index, tau=0.15, recursion_depth=np.inf,
+    def explain_node(self, node_idx, full_feature_matrix, edge_index, tau=0.85, recursion_depth=np.inf,
                      save_initial_improve=False):
         r"""Learns and returns a node feature mask and an edge mask that play a
         crucial role to explain the prediction made by the GNN for node

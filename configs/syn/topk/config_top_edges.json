@@ -20,6 +20,18 @@
     "seed": [0, 1, 2, 3, 4],
     "top_acc": "True",
     "dataset": ["syn1", "syn3", "syn4", "syn5", "syn6"],
-    "explainer_name": ["random", "pgexplainer"]
+    "explainer_name": [
+      "random",
+      "distance",
+      "pagerank",
+      "sa",
+      "ig",
+      "occlusion",
+      "basic_gnnexplainer",
+      "gnnexplainer",
+      "pgmexplainer",
+      "pgexplainer",
+      "subgraphx"
+    ]
   }
 }
