@@ -4,30 +4,15 @@
 
 | Explainer            | Paper                                                                               |
 | :------------------- | :---------------------------------------------------------------------------------- |
-| PageRank             | The PageRank Citation Ranking: Bringing Order to the Web                            |
 | Distance             | Shortest Path Distance Approximation using Deep learning Techniques                 |
+| PageRank             | The PageRank Citation Ranking: Bringing Order to the Web                            |
 | SA                   | Explainability Techniques for Graph Convolutional Networks.                         |
 | Grad-CAM             | Explainability Methods for Graph Convolutional Neural Networks.                     |
-| DeepLIFT             | Learning Important Features Through Propagating Activation Differences              |
-| Integrated Gradients | Axiomatic Attribution for Deep Networks                                             |
-| GNNExplainer         | GNNExplainer: Generating Explanations for Graph Neural Networks                     |
-| SubgraphX            | On Explainability of Graph Neural Networks via Subgraph Exploration                 |
-| PGM-Explainer        | PGM-Explainer: Probabilistic Graphical Model Explanations for Graph Neural Networks |
-
-**Graph Classification Tasks**
-
-| Explainer            | Paper                                                                               |
-| :------------------- | :---------------------------------------------------------------------------------- |
-| ReFine               | Towards Multi-Grained Explainability for Graph Neural Networks                      |
-| SA                   | Explainability Techniques for Graph Convolutional Networks.                         |
-| Grad-CAM             | Explainability Methods for Graph Convolutional Neural Networks.                     |
-| DeepLIFT             | Learning Important Features Through Propagating Activation Differences              |
 | Integrated Gradients | Axiomatic Attribution for Deep Networks                                             |
 | GNNExplainer         | GNNExplainer: Generating Explanations for Graph Neural Networks                     |
 | PGExplainer          | Parameterized Explainer for Graph Neural Network                                    |
+| SubgraphX            | On Explainability of Graph Neural Networks via Subgraph Exploration                 |
 | PGM-Explainer        | PGM-Explainer: Probabilistic Graphical Model Explanations for Graph Neural Networks |
-| Screener             | Causal Screening to Interpret Graph Neural Networks                                 |
-| CXPlain              | Cxplain: Causal Explanations for Model Interpretation under Uncertainty             |
 
 ## Installation
 
