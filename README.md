@@ -38,18 +38,12 @@ pip install torch-geometric==2.0.3
 
 ```
 pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
-# For visualization (optional)
-pip install tensorboardx
 ```
 
 ## Datasets
 
 1. The processed raw data for datasets `ba_house`, `ba_community`, `ba_grid`, `tree_cycle`, `tree_grid`, `ba_bottle` is available in the `data/syn` folder.
 2. The processed raw data for datasets `cora`, `citeseer`, `pubmed`, `cornell`, `texas`, `wisconsin`, `chameleon`, `squirrel`, `actor` will be automatically downloaded when training models.
-
-## Trained GNN models
-
-We provide the trained GNNs in `model/` for reproducing the results in our paper.
 
 ## Python code map
 
@@ -131,21 +125,8 @@ To compare the methods, we adopt separately three strategies to cut off the mask
 
 3. Topk
 
-### Baseline explainers
-
-```python
-gnn_explainer = GNNExplainer(device, gnn_path)
-gnn_explainer.explain_graph(test_dataset[0],
-                           epochs=100, lr=1e-2)
-
-screener = Screener(device, gnn_path)
-screener.explain_graph(test_dataset[0])
-```
-
-## Visualization
-
-Visualisation of the GNN model training
-Visualisation of the explanations
+This can be changed by changing the `--strategy` parameter. Choices are [`topk`, `sparsity`,`threshold`]. The default strategy is `topk`.
+You adjust the level of transformation with the `--params_list` parameter. Here, you define the list of transformation values. Default list is `"5,10"`
 
 ### Jupyter Notebook
 
@@ -157,10 +138,7 @@ The default visualizations are provided in `notebook/GNN-Explainer-Viz.ipynb`.
 > jupyter nbextension enable --py widgetsnbextension
 > ```
 
-Tuningthe mask sparsity/threshold/top-k values.
-You can now play around with the mask threshold in the `GNN-Explainer-Viz-interactive.ipynb`.
-
-> TODO: Explain outputs + visualizations + baselines
+Tuning the mask sparsity/threshold/top-k values.
 
 #### Included experiments
 
@@ -176,7 +154,7 @@ You can now play around with the mask threshold in the `GNN-Explainer-Viz-intera
 | Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
 | Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
 | Citeseer         |    `citeseer`     | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| FacebookPagePage |    `facebook`     |                                                                                                                                        |
+| FacebookPagePage |    `facebook`     | Facebook                                                                                                                               |
 | Chameleon        |    `chameleon`    |                                                                                                                                        |
 | Squirrel         |    `squirrel`     |                                                                                                                                        |
 | Texas            |      `texas`      |                                                                                                                                        |
@@ -189,14 +167,6 @@ You can now play around with the mask threshold in the `GNN-Explainer-Viz-intera
 A graph convolutional model is provided. This repo is still being actively developed to support other
 GNN models in the future.
 
-## Changelog
-
-See [CHANGELOG.md](#)
-
 ## Citation
 
 Please cite our paper if you find the repository useful.
-
-```
-@inproceedings{}
-```
