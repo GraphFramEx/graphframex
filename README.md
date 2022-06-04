@@ -93,27 +93,18 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 
 ```
 
-## Demo
-
-### Node Classification
+## Node Classification
 
 ```bash
 python3 code/main.py --dataset [dataset-name] --explain_graph False --explainer_name [explainer_name]
 ```
 
 - dataset-name:
-  - synthetic: ba_house, ba_community, ba_grid, tree_cycle, tree_grid, ba_bottle
+  - synthetic: ba_house, ba_grid, tree_cycle, tree_grid, ba_bottle
   - real-world: cora, pubmed, citeseer, facebook, chameleon, squirrel, texas, wisconsin, cornell, actor
-- explainer_name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer
+- explainer_name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer, pgexplainer
 
-### Graph Classification
-
-```bash
-python3 code/main.py --dataset [dataset-name] --explain_graph True --explainer_name [explainer_name]
-```
-
-- dataset-name: mutag
-- explainer_name: random, sa, ig, gnnexplainer (to complete)
+Note that gradcam is only available for synthetic datasets.
 
 ### Mask transformation
 
@@ -144,12 +135,11 @@ Tuning the mask sparsity/threshold/top-k values.
 
 | Name             | `EXPERIMENT_NAME` | Description                                                                                                                            |
 | ---------------- | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Synthetic #1     |    `ba_house`     | Random BA graph with House attachments.                                                                                                |
-| Synthetic #2     |  `ba_community`   | Random BA graph with community features.                                                                                               |
-| Synthetic #3     |     `ba_grid`     | Random BA graph with grid attachments.                                                                                                 |
-| Synthetic #4     |   `tree_cycle`    | Random Tree with cycle attachments.                                                                                                    |
-| Synthetic #5     |    `tree_grid`    | Random Tree with grid attachments.                                                                                                     |
-| Synthetic #6     |    `ba_bottle`    | Random BA graph with bottle attachments.                                                                                               |
+| Barabasi-House   |    `ba_house`     | Random BA graph with House attachments.                                                                                                |
+| Barabasi-Grid    |     `ba_grid`     | Random BA graph with grid attachments.                                                                                                 |
+| Tree-Cycle       |   `tree_cycle`    | Random Tree with cycle attachments.                                                                                                    |
+| Tree-Grid        |    `tree_grid`    | Random Tree with grid attachments.                                                                                                     |
+| Barabasi-Bottle  |    `ba_bottle`    | Random BA graph with bottle attachments.                                                                                               |
 | MUTAG            |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
 | Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
 | Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
