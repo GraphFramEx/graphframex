@@ -131,3 +131,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Folder
+data/
+model/
+csv/
+configs/
+clutils/
+figures/
