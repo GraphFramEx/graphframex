@@ -57,10 +57,6 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 .
 ├── dataset
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── data_utils.cpython-38.pyc
-│   │   ├── gen_planetoids.cpython-38.pyc
-│   │   └── gen_syn.cpython-38.pyc
 │   ├── data_utils.py
 │   ├── gen_mutag.py
 │   ├── gen_real.py
@@ -73,9 +69,6 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 │       └── synthetic_structsim.py
 ├── evaluate
 │   ├── __init__.py
-│   ├── __pycache__
-│   │   ├── accuracy.cpython-38.pyc
-│   │   └── fidelity.cpython-38.pyc
 │   ├── accuracy.py
 │   ├── fidelity.py
 │   └── mask_utils.py
@@ -86,6 +79,7 @@ We provide the trained GNNs in `model/` for reproducing the results in our paper
 │   ├── graph_explainer.py
 │   ├── node_explainer.py
 │   ├── pgmexplainer.py
+│   ├── pgexplainer.py
 │   ├── shapley.py
 │   └── subgraphx.py
 ├── gnn
