@@ -5,6 +5,15 @@ from sklearn.model_selection import train_test_split
 
 
 def split_data(data, args):
+    """generates train, val, test splits
+
+    Args:
+        data: data object
+        args: arguments from command line
+
+    Returns:
+        data: data object with train, val, test splits
+    """
     n = data.num_nodes
     data.train_mask, data.val_mask, data.test_mask = (
         torch.zeros(n, dtype=torch.bool),
@@ -20,6 +29,7 @@ def split_data(data, args):
     return data
 
 def get_split(data, args):
+    """extract train, val, test splits from a data object in the list"""
     k = args.seed%10
     data.train_mask = data.train_mask[:,k]
     data.val_mask = data.val_mask[:,k]
