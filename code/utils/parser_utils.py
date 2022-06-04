@@ -4,32 +4,32 @@ import numpy as np
 
 def get_graph_size_args(args):
     if not eval(args.explain_graph):
-        if args.dataset == "syn1":
+        if args.dataset == "ba_house":
             args.num_top_edges = 6
             args.num_shapes = 80
             args.width_basis = 300
             args.num_basis = args.width_basis
-        elif args.dataset == "syn2":
+        elif args.dataset == "ba_community":
             args.num_top_edges = 6
             args.num_shapes = 100
             args.width_basis = 350
             args.num_basis = args.width_basis * 2
-        elif args.dataset == "syn3":
+        elif args.dataset == "ba_grid":
             args.num_top_edges = 12
             args.num_shapes = 80
             args.width_basis = 300
             args.num_basis = args.width_basis
-        elif args.dataset == "syn4":
+        elif args.dataset == "tree_cycle":
             args.num_top_edges = 6
             args.num_shapes = 60
             args.width_basis = 8
             args.num_basis = 2 ^ (args.width_basis + 1) - 1
-        elif args.dataset == "syn5":
+        elif args.dataset == "tree_grid":
             args.num_top_edges = 12
             args.num_shapes = 80
             args.width_basis = 8
             args.num_basis = 2 ^ (args.width_basis + 1) - 1
-        elif args.dataset == "syn6":
+        elif args.dataset == "ba_bottle":
             args.num_top_edges = 5
             args.num_shapes = 80
             args.width_basis = 300
@@ -43,7 +43,7 @@ def get_data_args(data, args):
             args.num_classes = 2
             args.input_dim = 7
     else:
-        if args.dataset.startswith("syn"):
+        if args.dataset.startswith(tuple(["ba", "tree"])):
             args.num_classes = data.num_classes
             args.input_dim = data.x.size(1)
         else:
@@ -215,7 +215,7 @@ def arg_parse():
         explain_graph="False",
         true_label_as_target="True",
         hard_mask="True",
-        dataset="syn1",
+        dataset="ba_house",
         width_basis=300,
         num_shapes=150,
         num_test=5,

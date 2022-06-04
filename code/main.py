@@ -526,7 +526,7 @@ if __name__ == "__main__":
     args = arg_parse()
     if eval(args.explain_graph):
         main_mutag(args)
-    elif args.dataset.startswith("syn"):
+    elif args.dataset.startswith(tuple(["ba", "tree"])):
         args.num_gc_layers, args.hidden_dim, args.output_dim, args.num_epochs, args.lr, args.weight_decay, args.dropout = 3, 20, 20, 1000, 0.001, 5e-3, 0.0
         main_syn(args)
     elif args.dataset in REAL_DATA.keys():

@@ -94,7 +94,7 @@ def preprocess_input_graph(G, labels, normalize_adj=False):
 # Generating synthetic graphs
 #
 ###################################
-def gen_syn1(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
+def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     """Synthetic Graph #1:
 
     Start with Barabasi-Albert graph and attach house-shaped subgraphs.
@@ -126,8 +126,8 @@ def gen_syn1(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     name = basis_type + "_" + str(width_basis) + "_" + str(nb_shapes)
     return G, role_id, name
 
-
-def gen_syn2(nb_shapes=100, width_basis=350, feature_generator=None):
+####
+def gen_ba_community(nb_shapes=100, width_basis=350, feature_generator=None):
     """Synthetic Graph #2:
 
     Start with Barabasi-Albert graph and add node features indicative of a community label.
@@ -152,8 +152,8 @@ def gen_syn2(nb_shapes=100, width_basis=350, feature_generator=None):
     mu_2, sigma_2 = np.array([1.0] * 2 + random_mu), np.array([0.5] * 2 + random_sigma)
     feat_gen_G1 = featgen.GaussianFeatureGen(mu=mu_1, sigma=sigma_1)
     feat_gen_G2 = featgen.GaussianFeatureGen(mu=mu_2, sigma=sigma_2)
-    G1, role_id1, name = gen_syn1(feature_generator=feat_gen_G1, m=4)
-    G2, role_id2, name = gen_syn1(feature_generator=feat_gen_G2, m=4)
+    G1, role_id1, name = gen_ba_house(feature_generator=feat_gen_G1, m=4)
+    G2, role_id2, name = gen_ba_house(feature_generator=feat_gen_G2, m=4)
     G1_size = G1.number_of_nodes()
     num_roles = max(role_id1) + 1
     role_id2 = [r + num_roles for r in role_id2]
@@ -174,7 +174,7 @@ def gen_syn2(nb_shapes=100, width_basis=350, feature_generator=None):
     return G, label, name
 
 
-def gen_syn3(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
+def gen_ba_grid(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     """Synthetic Graph #3:
 
     Start with Barabasi-Albert graph and attach grid-shaped subgraphs.
@@ -206,7 +206,7 @@ def gen_syn3(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     return G, role_id, name
 
 
-def gen_syn4(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
+def gen_tree_cycle(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
     """Synthetic Graph #4:
 
     Start with a tree and attach cycle-shaped subgraphs.
@@ -239,7 +239,7 @@ def gen_syn4(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
     return G, role_id, name
 
 
-def gen_syn5(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
+def gen_tree_grid(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
     """Synthetic Graph #5:
 
     Start with a tree and attach grid-shaped subgraphs.
@@ -272,7 +272,7 @@ def gen_syn5(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
     return G, role_id, name
 
 
-def gen_syn6(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
+def gen_ba_bottle(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     """Synthetic Graph #6:
 
     Start with Barabasi-Albert graph and attach bottle-shaped subgraphs.

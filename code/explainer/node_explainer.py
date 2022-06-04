@@ -56,7 +56,7 @@ def node_attr_to_edge(edge_index, node_mask):
 def get_all_convolution_layers(model, args):
     layers = []
     for module in model.modules():
-        if args.dataset.startswith('syn') and isinstance(module, GraphConv):
+        if args.dataset.startswith(tuple(["ba", "tree"])) and isinstance(module, GraphConv):
             layers.append(module)
         else:
             if isinstance(module, GraphConvolution):
@@ -239,7 +239,7 @@ def explain_zorro_node(model, data, node_idx, x, edge_index, edge_weight, target
 
 
 def explain_pgexplainer_node(model, data, node_idx, x, edge_index, edge_weight, target, device, args, include_edges=None):
-    if args.dataset.startswith("syn"):
+    if args.dataset.startswith(tuple(["ba", "tree"])):
         coef = 3*3
     else:
         coef = 3

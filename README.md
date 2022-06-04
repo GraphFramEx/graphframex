@@ -44,7 +44,7 @@ pip install tensorboardx
 
 ## Datasets
 
-1. The processed raw data for datasets `syn1`, `syn2`, `syn3`, `syn4`, `syn5`, `syn6` is available in the `data/syn` folder.
+1. The processed raw data for datasets `ba_house`, `ba_community`, `ba_grid`, `tree_cycle`, `tree_grid`, `ba_bottle` is available in the `data/syn` folder.
 2. The processed raw data for datasets `cora`, `citeseer`, `pubmed`, `cornell`, `texas`, `wisconsin`, `chameleon`, `squirrel`, `actor` will be automatically downloaded when training models.
 
 ## Trained GNN models
@@ -108,7 +108,7 @@ python3 code/main.py --dataset [dataset-name] --explain_graph False --explainer_
 ```
 
 - dataset-name:
-  - synthetic: syn1, syn2, syn3, syn4, syn5, syn6
+  - synthetic: ba_house, ba_community, ba_grid, tree_cycle, tree_grid, ba_bottle
   - real-world: cora, pubmed, citeseer, facebook, chameleon, squirrel, texas, wisconsin, cornell, actor
 - explainer_name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer
 
@@ -166,12 +166,12 @@ You can now play around with the mask threshold in the `GNN-Explainer-Viz-intera
 
 | Name             | `EXPERIMENT_NAME` | Description                                                                                                                            |
 | ---------------- | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Synthetic #1     |      `syn1`       | Random BA graph with House attachments.                                                                                                |
-| Synthetic #2     |      `syn2`       | Random BA graph with community features.                                                                                               |
-| Synthetic #3     |      `syn3`       | Random BA graph with grid attachments.                                                                                                 |
-| Synthetic #4     |      `syn4`       | Random Tree with cycle attachments.                                                                                                    |
-| Synthetic #5     |      `syn5`       | Random Tree with grid attachments.                                                                                                     |
-| Synthetic #6     |      `syn6`       | Random BA graph with bottle attachments.                                                                                               |
+| Synthetic #1     |    `ba_house`     | Random BA graph with House attachments.                                                                                                |
+| Synthetic #2     |  `ba_community`   | Random BA graph with community features.                                                                                               |
+| Synthetic #3     |     `ba_grid`     | Random BA graph with grid attachments.                                                                                                 |
+| Synthetic #4     |   `tree_cycle`    | Random Tree with cycle attachments.                                                                                                    |
+| Synthetic #5     |    `tree_grid`    | Random Tree with grid attachments.                                                                                                     |
+| Synthetic #6     |    `ba_bottle`    | Random BA graph with bottle attachments.                                                                                               |
 | MUTAG            |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
 | Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
 | Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |

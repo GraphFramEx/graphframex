@@ -165,7 +165,7 @@ def init_weights(edge_index):
 
 
 def get_test_nodes(data, model, args):
-    if args.dataset.startswith("syn"):
+    if args.dataset.startswith(tuple(["ba", "tree"])):
         pred_labels = get_labels(model(data.x, data.edge_index).cpu().detach().numpy())
         if args.testing_pred=="correct":
             list_node_idx = np.where(pred_labels == data.y.cpu().numpy())[0]
