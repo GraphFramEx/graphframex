@@ -11,7 +11,7 @@ def build_syndata(args):
     """Generate synthetic graohs and convert them into Pytorch geometric Data object.
 
     Returns:
-        Data: converted synthetic graph
+        Data: converted synthetic Pytorch geometric Data object
     """
     generate_function = "gen_" + args.dataset
 

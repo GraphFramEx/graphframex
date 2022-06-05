@@ -5,12 +5,21 @@
 import numpy as np
 from sympy import re
 import torch
-from gnn.eval import gnn_preds_gc, gnn_preds_gc_batch
-from utils.gen_utils import get_true_labels_gc_batch, list_to_dict, get_true_labels_gc, get_labels, get_proba
-from utils.graph_utils import compute_masked_edges, compute_masked_edges_batch
-from evaluate.mask_utils import get_size, get_sparsity
+from utils.gen_utils import list_to_dict, get_proba
 
 def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx, device, args):
+    """ Evaluate related predictions for a single node.
+
+    Args:
+        model: trained GNN model
+        data: initial data object
+        edge_masks: edge masks for the testing node
+        node_feat_masks: node features masks for the testing node
+        list_node_idx: list of testing nodes
+
+    Returns:
+        related_pred: dictionary of related predictions with masked and maskout predictions
+    """
     related_preds = []
     data = data.to(device)
     ori_ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
@@ -79,91 +88,6 @@ def eval_related_pred_nc(model, data, edge_masks, node_feat_masks, list_node_idx
     related_preds = list_to_dict(related_preds)
     return related_preds
 
-
-def eval_related_pred_gc(model, dataset, edge_masks, device, args):
-    related_preds = []
-
-    for i in range(len(dataset)):
-        data = dataset[i].to(device)
-        edge_mask = torch.Tensor(edge_masks[i])
-        mask_sparsity = 1.0 - (edge_mask != 0).sum() / edge_mask.size(0)
-
-        ori_ypred = model(data.x, data.edge_index).cpu().detach().numpy()
-        ori_yprob = get_proba(ori_ypred)[0]
-
-        indices = np.where(edge_mask > 0)[0]
-        indices_inv = [i for i in range(len(edge_mask)) if i not in indices]
-
-        masked_edge_index = data.edge_index[:, indices].to(device)
-        maskout_edge_index = data.edge_index[:, indices_inv].to(device)
-
-        masked_ypred = model(data.x, masked_edge_index).cpu().detach().numpy()
-        masked_yprob = get_proba(masked_ypred)[0]
-
-        maskout_ypred = model(data.x, maskout_edge_index).cpu().detach().numpy()
-        maskout_yprob = get_proba(maskout_ypred)[0]
-
-        true_label = data.y
-        pred_label = np.argmax(ori_yprob)
-
-        related_preds.append(
-            {
-                "node_idx": -1,
-                "masked": masked_yprob,
-                "maskout": maskout_yprob,
-                "origin": ori_yprob,
-                "mask_sparsity": mask_sparsity,
-                "expl_edges": (edge_mask != 0).sum(),
-                "true_label": true_label,
-                "pred_label": pred_label,
-            }
-        )
-
-    related_preds = list_to_dict(related_preds)
-    related_preds["mask_sparsity"] = related_preds["mask_sparsity"].mean().item()
-    related_preds["expl_edges"] = related_preds["expl_edges"].mean().item()
-    return related_preds
-
-
-def eval_related_pred_gc_batch(model, dataset, edge_index_set, edge_masks_set, device, args):
-
-    mask_sparsity = get_sparsity(np.hstack(edge_masks_set))
-    expl_edges = get_size(np.hstack(edge_masks_set))
-
-    ori_ypred = gnn_preds_gc_batch(model, dataset, edge_index_set, args, device)
-    ori_yprob = get_proba(ori_ypred)
-
-    if eval(args.hard_mask):
-        masked_edge_index_set, maskout_edge_index_set = compute_masked_edges_batch(
-            edge_masks_set, edge_index_set, device
-        )
-
-        masked_ypred = gnn_preds_gc_batch(model, dataset, masked_edge_index_set, args, device)
-        masked_yprob = get_proba(masked_ypred)
-
-        maskout_ypred = gnn_preds_gc_batch(model, dataset, maskout_edge_index_set, args, device)
-        maskout_yprob = get_proba(maskout_ypred)
-
-    else:
-        masked_ypred = gnn_preds_gc_batch(model, dataset, edge_index_set, args, device, edge_masks_set=edge_masks_set)
-        masked_yprob = get_proba(masked_ypred)
-
-        edge_masks_out_set = [[1 - edge_masks[i] for i in range(len(edge_masks))] for edge_masks in edge_masks_set]
-        maskout_ypred = gnn_preds_gc_batch(
-            model, dataset, edge_index_set, args, device, edge_masks_set=edge_masks_out_set
-        )
-        maskout_yprob = get_proba(maskout_ypred)
-
-    related_preds = {
-        "masked": masked_yprob,
-        "maskout": maskout_yprob,
-        "origin": ori_yprob,
-        "mask_sparsity": mask_sparsity,
-        "expl_edges": expl_edges,
-        "true_label": get_true_labels_gc_batch(dataset),
-        "pred_label": get_labels(ori_ypred),
-    }
-    return related_preds
 
 
 def fidelity_acc(related_preds):

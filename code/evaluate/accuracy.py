@@ -12,6 +12,16 @@ from evaluate.mask_utils import mask_to_shape
 
 
 def get_explanation(data, edge_mask, args, top_acc):
+    """Create an explanation graph from the edge_mask.
+
+    Args:
+        data (Pytorch data object): the initial graph as Data object
+        edge_mask (Tensor): the explanation mask
+        top_acc (bool): if True, use the top_acc as the threshold for the edge_mask
+
+    Returns:
+        G_masked (networkx graph): explanatory subgraph
+    """
     if top_acc:
         # indices = (-edge_mask).argsort()[:kwargs['num_top_edges']]
         edge_mask = mask_to_shape(edge_mask, data.edge_index, args.num_top_edges)
@@ -45,6 +55,12 @@ def get_explanation(data, edge_mask, args, top_acc):
 
 
 def get_scores(G1, G2):
+    """Compute recall, precision, and f1 score of a graph.
+
+    Args:
+        G1 (networkx graph): ground truth graph
+        G2 (networkx graph): explanation graph
+    """
     G1, G2 = G1.to_undirected(), G2.to_undirected()
     g_int = nx.intersection(G1, G2)
     g_int.remove_nodes_from(list(nx.isolates(g_int)))
@@ -65,6 +81,7 @@ def get_scores(G1, G2):
 
 
 def get_accuracy(data, edge_mask, node_idx, args, top_acc):
+    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets) """
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
     G_expl = get_explanation(data, edge_mask, args, top_acc)
     if eval(args.draw_graph):
@@ -76,6 +93,7 @@ def get_accuracy(data, edge_mask, node_idx, args, top_acc):
 
 
 def eval_accuracy(data, edge_masks, list_node_idx, args, top_acc=False):
+    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets) for all masks"""
     scores = []
 
     for i in range(args.num_test_final):

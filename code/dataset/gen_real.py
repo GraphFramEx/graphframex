@@ -19,6 +19,7 @@ def load_data_real(data_filename):
 
 
 def preprocess_real(data):
+    """ Preprocess the data for real dataset by defining a Pytorch geometric data object."""
     adj = from_edge_index_to_sparse_adj(data.edge_index, np.ones(data.edge_index.shape[1]), data.num_nodes)
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
