@@ -144,13 +144,13 @@ Tuning the mask sparsity/threshold/top-k values.
 | Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
 | Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
 | Citeseer         |    `citeseer`     | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| FacebookPagePage |    `facebook`     | Facebook                                                                                                                               |
-| Chameleon        |    `chameleon`    |                                                                                                                                        |
-| Squirrel         |    `squirrel`     |                                                                                                                                        |
-| Texas            |      `texas`      |                                                                                                                                        |
-| Wisconsin        |    `wisconsin`    |                                                                                                                                        |
-| Cornell          |     `cornell`     |                                                                                                                                        |
-| Actor            |      `actor`      |                                                                                                                                        |
+| FacebookPagePage |    `facebook`     | Facebook Page-Page network dataset                                                                                                     |
+| Chameleon        |    `chameleon`    | Wikipedia dataset                                                                                                                      |
+| Squirrel         |    `squirrel`     | Wikipedia dataset                                                                                                                      |
+| Texas            |      `texas`      | WebKB dataset                                                                                                                          |
+| Wisconsin        |    `wisconsin`    | WebKB dataset                                                                                                                          |
+| Cornell          |     `cornell`     | WebKB dataset                                                                                                                          |
+| Actor            |      `actor`      | Film-director-actor-writer network (Actor)                                                                                             |
 
 ### Using the explainer on other models
 
