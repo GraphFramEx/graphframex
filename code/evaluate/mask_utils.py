@@ -9,6 +9,13 @@ from torch_geometric.utils import to_scipy_sparse_matrix
 
 
 def topk_edges_unique(edge_mask, edge_index, num_top_edges):
+    """Return the indices of the top-k edges in the mask.
+
+    Args:
+        edge_mask (Tensor): edge mask of shape (num_edges,).
+        edge_index (Tensor): edge index tensor of shape (2, num_edges)
+        num_top_edges (int): number of top edges to be kept
+    """
     indices = (-edge_mask).argsort()
     top = np.array([], dtype="int")
     i = 0
@@ -35,6 +42,7 @@ def normalize_all_masks(masks):
 
 
 def clean_masks(masks):
+    """Clean masks by removing NaN, inf and too small values and normalizing"""
     for i in range(len(masks)):
         masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
         masks[i] = np.clip(masks[i], -10, 10)
@@ -43,6 +51,7 @@ def clean_masks(masks):
     return masks
 
 def get_ratio_connected_components(edge_masks, edge_index):
+    """Compute connected components ratio of the edge mask."""
     cc_ratio = []
     for i in range(len(edge_masks)):
         edge_mask = edge_masks[i]
@@ -115,6 +124,7 @@ def get_mask_info(masks, edge_index):
 
 
 def transform_mask(masks, data, param, args):
+    """Transform masks according to the given strategy (topk, threshold, sparsity) and level."""
     new_masks = []
     for mask_ori in masks:
         mask = mask_ori.copy()
@@ -134,6 +144,7 @@ def transform_mask(masks, data, param, args):
 
 
 def mask_to_shape(mask, edge_index, num_top_edges):
+    """Modify the mask by selecting only the num_top_edges edges with the highest mask value."""
     indices = topk_edges_unique(mask, edge_index, num_top_edges)
     unimportant_indices = [i for i in range(len(mask)) if i not in indices]
     new_mask = mask.clone()
