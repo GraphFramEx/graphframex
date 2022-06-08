@@ -7,9 +7,7 @@ import pickle
 
 import numpy as np
 import torch
-from sklearn import metrics
-from torch_geometric.datasets import FacebookPagePage, Planetoid, WikipediaNetwork, PPI, Actor, WebKB
-from torch_geometric.loader import ClusterData, ClusterLoader
+from torch_geometric.datasets import Planetoid, WikipediaNetwork, WebKB
 import torch.nn.functional as F
 from scipy.special import softmax
 
@@ -19,9 +17,9 @@ from dataset.gen_real import load_data_real
 from dataset.data_utils import get_split, split_data
 from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
-from evaluate.fidelity import eval_fidelity, eval_related_pred_gc, eval_related_pred_gc_batch, eval_related_pred_nc
-from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, mask_to_shape, normalize_all_masks, transform_mask
-from explainer.genmask import compute_edge_masks_gc, compute_edge_masks_gc_batch, compute_edge_masks_nc
+from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
+from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
+from explainer.genmask import compute_edge_masks_nc
 from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
 from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
 from gnn.train import train_graph_classification, train_node_classification, train_real

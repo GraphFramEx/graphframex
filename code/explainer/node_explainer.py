@@ -131,6 +131,7 @@ def explain_sa_node(model, data, node_idx, x, edge_index, edge_weight, target, d
     saliency_mask = saliency.attribute(
         input_mask, target=target, additional_forward_args=(model, edge_index, edge_weight, node_idx), abs=False
     )
+    # 1 node feature mask per node.
     node_feat_mask = saliency_mask.cpu().numpy()
     node_attr = node_feat_mask.sum(axis=1)
     edge_mask = node_attr_to_edge(edge_index, node_attr)
@@ -197,6 +198,7 @@ def explain_gnnexplainer_node(model, data, node_idx, x, edge_index, edge_weight,
         node_idx, x=x, edge_index=edge_index, edge_weight=edge_weight, target=target
     )
     edge_mask = edge_mask.cpu().detach().numpy()
+    # 1 node feature mask for all the nodes.
     node_feat_mask = node_feat_mask.cpu().detach().numpy()
     return edge_mask, node_feat_mask
 
