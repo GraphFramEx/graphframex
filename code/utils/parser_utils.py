@@ -56,14 +56,11 @@ def arg_parse():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dest", type=str, default="/Users/kenzaamara/GithubProjects/Explain")
-
     parser.add_argument("--seed", help="random seed", type=int, default=0)
 
-    # Computing power
-    parser.add_argument("--cuda", dest="cuda", help="CUDA.")
-
     # saving data, model, figures
+    parser.add_argument("--save_mask", help="If we save the masks", type=str, default="False")
+    
     parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default="data")
     parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
     parser.add_argument("--fig_save_dir", help="Directory where figures are saved", type=str, default="figures")
@@ -80,28 +77,27 @@ def arg_parse():
     parser.add_argument("--width_basis", help="width of base graph", type=int)
     parser.add_argument("--num_shapes", help="number of houses", type=int)
 
-    # sampling
+    # sampling - if dataset is too large, we sample it
     parser.add_argument(
         "--sample_size",
         dest="sample_size",
         type=int,
         help="Number of nodes in each sample (ClusterSampling).",
-    )
-
-    parser.add_argument(
-        "--max_nodes",
-        dest="max_nodes",
-        type=int,
-        help="Maximum number of nodes (ignore graghs with nodes exceeding the number.",
+        default = 10e5
     )
 
     # training parameters
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--lr_decay", type=float, default=0.5)
     parser.add_argument("--lr", type=float)
-    parser.add_argument("--bs", type=int)
+    parser.add_argument(
+        "--weight_decay",
+        dest="weight_decay",
+        type=float,
+        help="Weight decay regularization constant.",
+    )
 
-    parser.add_argument("--batch_size", dest="batch_size", type=int, help="Batch size.")
+    
     parser.add_argument("--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train.")
     parser.add_argument(
         "--train_ratio",
@@ -126,19 +122,6 @@ def arg_parse():
         "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=4
     )
 
-    parser.add_argument(
-        "--fastmode",
-        dest="fastmode",
-        type=str,
-        help="Evaluate val set performance separately, deactivate dropout during val run",
-        default="False",
-    )
-
-    parser.add_argument(
-        "--feature_type",
-        dest="feature_type",
-        help="Feature used for encoder. Can be: id, deg",
-    )
     # gnn achitecture parameters
     parser.add_argument("--input_dim", dest="input_dim", type=int, help="Input feature dimension")
     parser.add_argument("--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension")
@@ -159,24 +142,9 @@ def arg_parse():
         help="Whether batch normalization is used",
     )
     parser.add_argument("--dropout", dest="dropout", type=float, help="Dropout rate.")
-    parser.add_argument(
-        "--nobias",
-        dest="bias",
-        action="store_const",
-        const=False,
-        default=True,
-        help="Whether to add bias. Default to True.",
-    )
-    parser.add_argument(
-        "--weight_decay",
-        dest="weight_decay",
-        type=float,
-        help="Weight decay regularization constant.",
-    )
-
-    parser.add_argument("--method", dest="method", help="Method. Possible values: base, ")
-    parser.add_argument("--name_suffix", dest="name_suffix", help="suffix added to the output filename")
-
+    
+    parser.add_argument("--method", dest="method", help="Method for aggregating in GNN model. Possible values: base, att, soft-assign")
+    
     # explainer params
     parser.add_argument("--explain_graph", help="graph classification or node classification", type=str)
     parser.add_argument("--true_label_as_target", help="target is groudtruth label or GNN initial prediction", type=str)
@@ -227,7 +195,6 @@ def arg_parse():
         lr=0.01,
         clip=2.0,
         sample_size=10e5,
-        batch_size=20,
         num_epochs=200,
         train_ratio=0.8,
         val_ratio=0.15,
@@ -240,7 +207,6 @@ def arg_parse():
         dropout=0.5,
         weight_decay=5e-4,
         method="base",
-        name_suffix="",
         edge_ent=1.0,
         edge_size=0.005,
         explainer_name="gnnexplainer",

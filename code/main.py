@@ -9,25 +9,21 @@ import numpy as np
 import torch
 from torch_geometric.datasets import Planetoid, WikipediaNetwork, WebKB
 import torch.nn.functional as F
-from scipy.special import softmax
 
-from dataset.gen_mutag import build_mutag
 from dataset.gen_syn import build_syndata
 from dataset.gen_real import load_data_real
 from dataset.data_utils import get_split, split_data
-from dataset.mutag_utils import data_to_graph
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_nc
-from gnn.eval import gnn_scores_gc, gnn_scores_nc, gnn_accuracy
-from gnn.model import GCN, GcnEncoderGraph, GcnEncoderNode
-from gnn.train import train_graph_classification, train_node_classification, train_real
-from utils.gen_utils import gen_dataloader, get_test_graphs, get_test_nodes
-from utils.graph_utils import get_edge_index_batch, split_batch
+from gnn.eval import gnn_scores_nc, gnn_accuracy
+from gnn.model import GCN, GcnEncoderNode
+from gnn.train import train_real_nc, train_syn_nc
+from utils.gen_utils import get_test_nodes
 from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
 from utils.parser_utils import arg_parse, get_data_args, get_graph_size_args
-from utils.plot_utils import plot_expl_gc, plot_feat_importance, plot_masks_density
+from utils.plot_utils import plot_feat_importance, plot_masks_density
 
 REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid",
                 "chameleon": "WikipediaNetwork", "squirrel": "WikipediaNetwork", 
@@ -100,7 +96,7 @@ def main_real(args):
             num_layers=args.num_gc_layers,
             device=device,
         )
-        train_real(model, data, device, args)
+        train_real_nc(model, data, device, args)
         results_train, results_test = gnn_scores_nc(model, data, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)
 
@@ -113,13 +109,9 @@ def main_real(args):
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
-    mask_filename = create_mask_filename(args)
-    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-    """
-    if args.dataset.startswith("ebay"):
-        edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-        
-    else:
+
+    if eval(args.save_mask):
+        mask_filename = create_mask_filename(args)
         if (os.path.isfile(mask_filename)) & (args.explainer_name not in ["sa", "ig"]):
             with open(mask_filename, 'rb') as f:
                 w_list = pickle.load(f)
@@ -129,7 +121,9 @@ def main_real(args):
             if args.explainer_name not in ["sa", "ig"]:
                 with open(mask_filename, 'wb') as f:
                     pickle.dump([edge_masks, node_feat_masks, Time], f)
-    """
+    else:
+        edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+        
 
     args.E = False if edge_masks[0] is None else True
     args.NF = False if node_feat_masks[0] is None else True
@@ -258,7 +252,7 @@ def main_syn(args):
             args=args,
             device=device,
         )
-        train_node_classification(model, data, device, args)
+        train_syn_nc(model, data, device, args)
         model.eval()
         output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
         loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
@@ -277,18 +271,20 @@ def main_syn(args):
     
     ### Explain ###
     list_test_nodes = get_test_nodes(data, model, args)
-    mask_filename = create_mask_filename(args)
 
-    """if os.path.isfile(mask_filename):
-        with open(mask_filename, 'rb') as f:
-            w_list = pickle.load(f)
-        edge_masks, node_feat_masks, Time = tuple(w_list)
+    if eval(args.save_mask):
+        mask_filename = create_mask_filename(args)
+        if os.path.isfile(mask_filename):
+            with open(mask_filename, 'rb') as f:
+                w_list = pickle.load(f)
+            edge_masks, node_feat_masks, Time = tuple(w_list)
+        else:
+            edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+            with open(mask_filename, 'wb') as f:
+                pickle.dump([edge_masks, node_feat_masks, Time], f)
     else:
         edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-        with open(mask_filename, 'wb') as f:
-            pickle.dump([edge_masks, node_feat_masks, Time], f)"""
-    edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
-    
+        
     args.E = False if edge_masks[0] is None else True
     args.NF = False if node_feat_masks[0] is None else True
     if args.NF:

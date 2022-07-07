@@ -147,3 +147,6 @@ code/dataset/gen_mutag.py
 code/evaluate/fidelity_gc.py
 code/explainer/genmask_gc.py
 notebooks/
+code/utils/gc_utils.py
+code/gnn/eval_gc.py
+code/gnn/train_gc.py
