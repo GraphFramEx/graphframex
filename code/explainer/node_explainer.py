@@ -1,16 +1,12 @@
 import os
-import random
-
 import networkx as nx
 import numpy as np
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from gnn.model import GraphConv, GraphConvolution
-from torch.autograd import Variable
 from torch_geometric.data import Data
-from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import to_networkx
-from utils.gen_utils import get_subgraph, sample_large_graph
+from utils.gen_utils import sample_large_graph
 
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.gnnlrp import GNN_LRP

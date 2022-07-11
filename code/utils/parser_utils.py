@@ -146,7 +146,7 @@ def arg_parse():
     parser.add_argument("--method", dest="method", help="Method for aggregating in GNN model. Possible values: base, att, soft-assign")
     
     # explainer params
-    parser.add_argument("--explain_graph", help="graph classification or node classification", type=str)
+    parser.add_argument("--explain_graph", help="graph classification or node classification", type=str, default="False")
     parser.add_argument("--true_label_as_target", help="target is groudtruth label or GNN initial prediction", type=str)
     parser.add_argument("--hard_mask", help="Soft or hard mask", type=str)
     parser.add_argument("--testing_pred", help="True if all testing nodes are correct; False if all testing nodes labels are wrong; None otherwise", type=str, default="mix") # ["correct", "wrong", "mix"]
@@ -180,7 +180,6 @@ def arg_parse():
         datadir="data",  # io_parser
         logdir="log",
         ckptdir="ckpt",
-        explain_graph="False",
         true_label_as_target="True",
         hard_mask="True",
         dataset="ba_house",
