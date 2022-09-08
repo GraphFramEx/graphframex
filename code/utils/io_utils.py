@@ -27,7 +27,7 @@ def gen_prefix(args, **kwargs):
         name += "_gc"
     else:
         name += "_nc"
-    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_gcn_" + str(args.num_gc_layers) + "_epch" + str(args.num_epochs) + "_lr" + str(args.lr) + "_wd" + str(args.weight_decay) + "_drop" + str(args.dropout)
+    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_" + args.model + "_" + str(args.num_gc_layers) + "_epch" + str(args.num_epochs) + "_lr" + str(args.lr) + "_wd" + str(args.weight_decay) + "_drop" + str(args.dropout)
     name+= "_" + str(args.seed)
     if 'suffix' in kwargs:
         name += "_" + kwargs.get('suffix')

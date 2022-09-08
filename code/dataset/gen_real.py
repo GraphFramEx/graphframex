@@ -1,9 +1,6 @@
 from utils.gen_utils import (
-    from_adj_to_edge_index,
-    from_edge_index_to_adj,
     from_edge_index_to_sparse_adj,
-    from_sparse_adj_to_edge_index,
-    init_weights,
+    from_sparse_adj_to_edge_index
 )
 
 import numpy as np

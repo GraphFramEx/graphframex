@@ -18,7 +18,7 @@ from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_nc
 from gnn.eval import gnn_scores_nc, gnn_accuracy
-from gnn.model import GCN, GcnEncoderNode
+from gnn.model import GCN, GcnEncoderNode, GAT, GINE
 from gnn.train import train_real_nc, train_syn_nc
 from utils.gen_utils import get_test_nodes
 from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
@@ -32,7 +32,7 @@ REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "P
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
 
-
+MODELS = {"gcn":"GCN", "gat":"GAT", "gine":"GINE"}
 def main_real(args):
 
     np.random.seed(args.seed)
@@ -78,24 +78,19 @@ def main_real(args):
     args.num_classes = data.y.max().item() + 1
 
     model_filename = create_model_filename(args)
-    if os.path.isfile(model_filename):
-        model = GCN(
+    if data.edge_weight is None:
+        edge_dim = 1
+    else: 
+        edge_dim = data.edge_weight.dim()
+    model = eval(MODELS[args.model])(
             num_node_features=data.x.shape[1],
             hidden_dim=args.hidden_dim,
             num_classes=args.num_classes,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
-            device=device,
+            device=device, edge_dim=edge_dim
         )
-    else:
-        model = GCN(
-            num_node_features=data.x.shape[1],
-            hidden_dim=args.hidden_dim,
-            num_classes=args.num_classes,
-            dropout=args.dropout,
-            num_layers=args.num_gc_layers,
-            device=device,
-        )
+    if os.path.isfile(model_filename)==False:
         train_real_nc(model, data, device, args)
         results_train, results_test = gnn_scores_nc(model, data, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GATConv, NNConv, GINEConv
 from zmq import device
 from utils.gen_utils import from_adj_to_edge_index, from_edge_index_to_adj, init_weights
 from torch.autograd import Variable
@@ -57,23 +57,28 @@ class GraphConvolution(Module):
         return self.__class__.__name__ + " (" + str(self.in_features) + " -> " + str(self.out_features) + ")"
 
 
-class GCN(nn.Module):
-    def __init__(self, num_node_features, hidden_dim, num_classes, dropout, num_layers=2, device=None):
+class GNN_basic(nn.Module):
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
         super().__init__()
-        self.num_node_features, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
+        self.num_node_features, self.edge_dim, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
             num_node_features,
+            edge_dim,
             num_classes,
             num_layers,
             hidden_dim,
             dropout,
         )
         self.device = device
+        self.get_layers()
+
+    def get_layers(self):
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GraphConvolution(current_dim, hidden_dim, device=self.device))
-            current_dim = hidden_dim
-        self.layers.append(GraphConvolution(current_dim, self.num_classes, device=self.device))
+            self.layers.append(NNConv(current_dim, self.hidden_dim))
+            current_dim = self.hidden_dim
+        self.layers.append(NNConv(current_dim, self.num_classes))
+        return
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
@@ -103,9 +108,46 @@ class GCN(nn.Module):
 
 
 
+class GAT(GNN_basic):
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
+        super(GAT, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+
+    def get_layers(self):
+        self.layers = nn.ModuleList()
+        current_dim = self.num_node_features
+        for l in range(self.num_layers - 1):
+            self.layers.append(GATConv(current_dim, self.hidden_dim, edge_dim = self.edge_dim))
+            current_dim = self.hidden_dim
+        self.layers.append(GATConv(current_dim, self.num_classes, edge_dim = self.edge_dim))
+        return
+
+    
+class GCN(GNN_basic):
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
+        super(GCN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+
+    def get_layers(self):
+        self.layers = nn.ModuleList()
+        current_dim = self.num_node_features
+        for l in range(self.num_layers - 1):
+            self.layers.append(GraphConvolution(current_dim, self.hidden_dim, device=self.device))
+            current_dim = self.hidden_dim
+        self.layers.append(GraphConvolution(current_dim, self.num_classes, device=self.device))
+        return
 
 
+class GINE(GNN_basic):
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
+        super(GINE, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
 
+    def get_layers(self):
+        self.layers = nn.ModuleList()
+        current_dim = self.num_node_features
+        for l in range(self.num_layers - 1):
+            self.layers.append(GINEConv(current_dim, self.hidden_dim))
+            current_dim = self.hidden_dim
+        self.layers.append(GINEConv(current_dim, self.num_classes))
+        return
 
 
 ### GCN basic operation for Synthetic dataset ###
@@ -197,10 +239,7 @@ class GcnEncoderGraph(nn.Module):
         self.num_aggs = 1
         self.device = device
         self.bias = True
-        if args.method == "att":
-            self.att = True
-        else:
-            self.att = False
+        self.att = False
         # if args is not None:
         # self.bias = args.bias
 

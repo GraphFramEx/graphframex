@@ -143,7 +143,7 @@ def arg_parse():
     )
     parser.add_argument("--dropout", dest="dropout", type=float, help="Dropout rate.")
     
-    parser.add_argument("--method", dest="method", help="Method for aggregating in GNN model. Possible values: base, att, soft-assign")
+    parser.add_argument("--model", dest="model", help="GNN model. Possible values: base, gat, gcn, gine", type=str)
     
     # explainer params
     parser.add_argument("--explain_graph", help="graph classification or node classification", type=str, default="False")
@@ -205,7 +205,7 @@ def arg_parse():
         num_gc_layers=2,
         dropout=0.5,
         weight_decay=5e-4,
-        method="base",
+        model="gcn",
         edge_ent=1.0,
         edge_size=0.005,
         explainer_name="gnnexplainer",
