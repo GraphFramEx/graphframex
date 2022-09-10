@@ -1,35 +1,35 @@
-Sender: LSF System <lsfadmin@eu-g2-03>
-Subject: Job 231228390: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh> in cluster <euler> Exited
+Sender: LSF System <lsfadmin@eu-g2-01>
+Subject: Job 231246286: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh> in cluster <euler> Done
 
-Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh> was submitted from host <eu-login-47> by user <kamara> in cluster <euler> at Sat Sep 10 18:04:40 2022
-Job was executed on host(s) <eu-g2-03>, in queue <gpu.24h>, as user <kamara> in cluster <euler> at Sat Sep 10 18:04:57 2022
+Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh> was submitted from host <eu-login-13> by user <kamara> in cluster <euler> at Sat Sep 10 23:24:38 2022
+Job was executed on host(s) <eu-g2-01>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Sat Sep 10 23:25:52 2022
 </cluster/home/kamara> was used as the home directory.
 </cluster/home/kamara/Explain> was used as the working directory.
-Started at Sat Sep 10 18:04:57 2022
-Terminated at Sat Sep 10 18:06:01 2022
-Results reported at Sat Sep 10 18:06:01 2022
+Started at Sat Sep 10 23:25:52 2022
+Terminated at Sun Sep 11 00:01:35 2022
+Results reported at Sun Sep 11 00:01:35 2022
 
 Your job looked like:
 
 ------------------------------------------------------------
 # LSBATCH: User input
-/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh
+/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh
 ------------------------------------------------------------
 
-Exited with exit code 1.
+Successfully completed.
 
 Resource usage summary:
 
-    CPU time :                                   42.58 sec.
-    Max Memory :                                 8641 MB
-    Average Memory :                             3071.75 MB
-    Total Requested Memory :                     10000.00 MB
-    Delta Memory :                               1359.00 MB
+    CPU time :                                   2138.04 sec.
+    Max Memory :                                 7711 MB
+    Average Memory :                             5945.43 MB
+    Total Requested Memory :                     15000.00 MB
+    Delta Memory :                               7289.00 MB
     Max Swap :                                   -
     Max Processes :                              5
-    Max Threads :                                10
-    Run time :                                   64 sec.
-    Turnaround time :                            81 sec.
+    Max Threads :                                12
+    Run time :                                   2142 sec.
+    Turnaround time :                            2217 sec.
 
 The output (if any) follows:
 

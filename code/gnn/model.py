@@ -121,6 +121,19 @@ class GAT(GNN_basic):
         self.layers.append(GATConv(current_dim, self.num_classes, edge_dim = self.edge_dim))
         return
 
+    def forward(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index, edge_weight)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        self.embedding_tensor = x
+        x = self.layers[-1](x, edge_index, edge_weight)
+        self.logits = x
+        self.probs = F.softmax(x, dim=1)
+        return self.probs
+
     
 class GCN(GNN_basic):
     def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
@@ -134,6 +147,19 @@ class GCN(GNN_basic):
             current_dim = self.hidden_dim
         self.layers.append(GraphConvolution(current_dim, self.num_classes, device=self.device))
         return
+
+    def forward(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index, edge_weight)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        self.embedding_tensor = x
+        x = self.layers[-1](x, edge_index, edge_weight)
+        self.logits = x
+        self.probs = F.softmax(x, dim=1)
+        return self.probs
 
 
 class GIN(GNN_basic):
@@ -163,6 +189,15 @@ class GIN(GNN_basic):
         self.logits = x
         self.probs = F.softmax(x, dim=1)
         return self.probs
+
+    def get_emb(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        return x
 
 
 ### GCN basic operation for Synthetic dataset ###

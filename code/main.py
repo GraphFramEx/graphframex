@@ -93,7 +93,7 @@ def main_real(args):
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
             device=device, edge_dim=edge_dim
-        )
+        ).to(device)
     if os.path.isfile(model_filename)==False:
         train_real_nc(model, data, device, args)
         results_train, results_test = gnn_scores_nc(model, data, args, device)
