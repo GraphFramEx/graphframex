@@ -11,6 +11,9 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     explain_function = eval("explain_" + args.explainer_name + "_node")
     Time = []
     edge_masks, node_feat_masks = [], []
+    print('data edge index device: ', data.edge_index.device)
+    print('data edge weight device: ', data.edge_weight.device)
+    print('model device: ', model.device)
     if eval(args.true_label_as_target):
         targets = data.y
     else:

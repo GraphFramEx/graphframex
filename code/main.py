@@ -108,6 +108,8 @@ def main_real(args):
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
+    model = model.to(device)
+    data = data.to(device)
 
     if eval(args.save_mask):
         mask_filename = create_mask_filename(args)

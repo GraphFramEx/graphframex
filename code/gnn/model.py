@@ -123,7 +123,10 @@ class GAT(GNN_basic):
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True).to(self.device)
+        print('data edge index device in gat: ', edge_index.device)
+        print('data edge weight device in gat: ', edge_weight.device)
+        print('self device in gat: ', self.device)
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
