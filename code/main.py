@@ -33,6 +33,9 @@ PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
 
 MODELS = {"gcn":"GCN", "gat":"GAT", "gine":"GINE"}
+
+
+
 def main_real(args):
 
     np.random.seed(args.seed)
@@ -82,6 +85,7 @@ def main_real(args):
         edge_dim = 1
     else: 
         edge_dim = data.edge_weight.dim()
+    
     model = eval(MODELS[args.model])(
             num_node_features=data.x.shape[1],
             hidden_dim=args.hidden_dim,

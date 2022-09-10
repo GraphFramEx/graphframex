@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
-from torch_geometric.nn import GCNConv, GATConv, NNConv, GINEConv
+from torch_geometric.nn import GCNConv, GATConv, NNConv, GINEConv, GINConv
 from zmq import device
 from utils.gen_utils import from_adj_to_edge_index, from_edge_index_to_adj, init_weights
 from torch.autograd import Variable
@@ -84,11 +84,11 @@ class GNN_basic(nn.Module):
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         for layer in self.layers[:-1]:
-            x = layer(x, edge_index, edge_weight)
+            x = layer(x, edge_index)#, edge_attr=edge_weight)
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
         self.embedding_tensor = x
-        x = self.layers[-1](x, edge_index, edge_weight)
+        x = self.layers[-1](x, edge_index)#, edge_attr=edge_weight)
         self.logits = x
         self.probs = F.softmax(x, dim=1)
         return self.probs
@@ -139,14 +139,16 @@ class GCN(GNN_basic):
 class GINE(GNN_basic):
     def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
         super(GINE, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
-
+    
     def get_layers(self):
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GINEConv(current_dim, self.hidden_dim))
+            self.layers.append(GINConv(nn=nn.Sequential(nn.Linear(current_dim, self.hidden_dim), nn.ReLU(),
+                                           nn.Linear(self.hidden_dim, self.hidden_dim))))#, edge_dim = self.edge_dim))
             current_dim = self.hidden_dim
-        self.layers.append(GINEConv(current_dim, self.num_classes))
+        self.layers.append(GINConv(nn=nn.Sequential(nn.Linear(current_dim, self.num_classes), nn.ReLU(),
+                                           nn.Linear(self.num_classes, self.num_classes))))#, edge_dim = self.edge_dim))
         return
 
 
