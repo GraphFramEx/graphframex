@@ -1,0 +1,35 @@
+Sender: LSF System <lsfadmin@eu-g2-03>
+Subject: Job 231228390: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh> in cluster <euler> Exited
+
+Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh> was submitted from host <eu-login-47> by user <kamara> in cluster <euler> at Sat Sep 10 18:04:40 2022
+Job was executed on host(s) <eu-g2-03>, in queue <gpu.24h>, as user <kamara> in cluster <euler> at Sat Sep 10 18:04:57 2022
+</cluster/home/kamara> was used as the home directory.
+</cluster/home/kamara/Explain> was used as the working directory.
+Started at Sat Sep 10 18:04:57 2022
+Terminated at Sat Sep 10 18:06:01 2022
+Results reported at Sat Sep 10 18:06:01 2022
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_dataset=cora_model=gcn.sh
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+    CPU time :                                   42.58 sec.
+    Max Memory :                                 8641 MB
+    Average Memory :                             3071.75 MB
+    Total Requested Memory :                     10000.00 MB
+    Delta Memory :                               1359.00 MB
+    Max Swap :                                   -
+    Max Processes :                              5
+    Max Threads :                                10
+    Run time :                                   64 sec.
+    Turnaround time :                            81 sec.
+
+The output (if any) follows:
+

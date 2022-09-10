@@ -18,7 +18,7 @@ from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
 from evaluate.mask_utils import clean_masks, get_mask_info, get_ratio_connected_components, get_size, get_sparsity, normalize_all_masks, transform_mask
 from explainer.genmask import compute_edge_masks_nc
 from gnn.eval import gnn_scores_nc, gnn_accuracy
-from gnn.model import GCN, GcnEncoderNode, GAT, GINE
+from gnn.model import GCN, GcnEncoderNode, GAT, GIN
 from gnn.train import train_real_nc, train_syn_nc
 from utils.gen_utils import get_test_nodes
 from utils.io_utils import check_dir, create_data_filename, create_mask_filename, create_model_filename, load_ckpt, save_checkpoint
@@ -32,7 +32,7 @@ REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "P
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
 
-MODELS = {"gcn":"GCN", "gat":"GAT", "gine":"GINE"}
+MODELS = {"gcn":"GCN", "gat":"GAT", "gin":"GIN"}
 
 
 

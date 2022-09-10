@@ -84,11 +84,11 @@ class GNN_basic(nn.Module):
         if edge_weight is None:
             edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         for layer in self.layers[:-1]:
-            x = layer(x, edge_index)#, edge_attr=edge_weight)
+            x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
         self.embedding_tensor = x
-        x = self.layers[-1](x, edge_index)#, edge_attr=edge_weight)
+        x = self.layers[-1](x, edge_index, edge_weight)
         self.logits = x
         self.probs = F.softmax(x, dim=1)
         return self.probs
@@ -136,9 +136,9 @@ class GCN(GNN_basic):
         return
 
 
-class GINE(GNN_basic):
+class GIN(GNN_basic):
     def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
-        super(GINE, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+        super(GIN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
     
     def get_layers(self):
         self.layers = nn.ModuleList()
@@ -150,6 +150,19 @@ class GINE(GNN_basic):
         self.layers.append(GINConv(nn=nn.Sequential(nn.Linear(current_dim, self.num_classes), nn.ReLU(),
                                            nn.Linear(self.num_classes, self.num_classes))))#, edge_dim = self.edge_dim))
         return
+
+    def forward(self, x, edge_index, edge_weight=None):
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+        for layer in self.layers[:-1]:
+            x = layer(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        self.embedding_tensor = x
+        x = self.layers[-1](x, edge_index)
+        self.logits = x
+        self.probs = F.softmax(x, dim=1)
+        return self.probs
 
 
 ### GCN basic operation for Synthetic dataset ###

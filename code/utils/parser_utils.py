@@ -57,7 +57,7 @@ def arg_parse():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--seed", help="random seed", type=int, default=0)
-
+    parser.add_argument("--dest", help="dest", type=str, default='/cluster/home/kamara/')
     # saving data, model, figures
     parser.add_argument("--save_mask", help="If we save the masks", type=str, default="False")
     
