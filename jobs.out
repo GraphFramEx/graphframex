@@ -1,35 +1,35 @@
-Sender: LSF System <lsfadmin@eu-g2-01>
-Subject: Job 231246286: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh> in cluster <euler> Done
+Sender: LSF System <lsfadmin@eu-g3-002>
+Subject: Job 231305886: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=random_dataset=cora_model=gat_true_label_as_target=True_hard_mask=True.sh> in cluster <euler> Done
 
-Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh> was submitted from host <eu-login-13> by user <kamara> in cluster <euler> at Sat Sep 10 23:24:38 2022
-Job was executed on host(s) <eu-g2-01>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Sat Sep 10 23:25:52 2022
+Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=random_dataset=cora_model=gat_true_label_as_target=True_hard_mask=True.sh> was submitted from host <eu-login-37> by user <kamara> in cluster <euler> at Sun Sep 11 16:31:04 2022
+Job was executed on host(s) <eu-g3-002>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Sun Sep 11 16:31:13 2022
 </cluster/home/kamara> was used as the home directory.
 </cluster/home/kamara/Explain> was used as the working directory.
-Started at Sat Sep 10 23:25:52 2022
-Terminated at Sun Sep 11 00:01:35 2022
-Results reported at Sun Sep 11 00:01:35 2022
+Started at Sun Sep 11 16:31:13 2022
+Terminated at Sun Sep 11 16:34:48 2022
+Results reported at Sun Sep 11 16:34:48 2022
 
 Your job looked like:
 
 ------------------------------------------------------------
 # LSBATCH: User input
-/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1_test/run_explainer_name=random_dataset=pubmed_model=gat_true_label_as_target=True_hard_mask=False.sh
+/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=random_dataset=cora_model=gat_true_label_as_target=True_hard_mask=True.sh
 ------------------------------------------------------------
 
 Successfully completed.
 
 Resource usage summary:
 
-    CPU time :                                   2138.04 sec.
-    Max Memory :                                 7711 MB
-    Average Memory :                             5945.43 MB
+    CPU time :                                   210.59 sec.
+    Max Memory :                                 4821 MB
+    Average Memory :                             3585.78 MB
     Total Requested Memory :                     15000.00 MB
-    Delta Memory :                               7289.00 MB
+    Delta Memory :                               10179.00 MB
     Max Swap :                                   -
     Max Processes :                              5
-    Max Threads :                                12
-    Run time :                                   2142 sec.
-    Turnaround time :                            2217 sec.
+    Max Threads :                                10
+    Run time :                                   214 sec.
+    Turnaround time :                            224 sec.
 
 The output (if any) follows:
 

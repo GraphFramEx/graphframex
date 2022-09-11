@@ -85,14 +85,14 @@ def main_real(args):
         edge_dim = 1
     else: 
         edge_dim = data.edge_weight.dim()
-    
     model = eval(MODELS[args.model])(
             num_node_features=data.x.shape[1],
+            edge_dim=edge_dim,
             hidden_dim=args.hidden_dim,
             num_classes=args.num_classes,
             dropout=args.dropout,
             num_layers=args.num_gc_layers,
-            device=device, edge_dim=edge_dim
+            device=device,
         ).to(device)
     if os.path.isfile(model_filename)==False:
         train_real_nc(model, data, device, args)
@@ -108,8 +108,6 @@ def main_real(args):
 
     ### Explainer ###
     list_test_nodes = get_test_nodes(data, model, args)
-    model = model.to(device)
-    data = data.to(device)
 
     if eval(args.save_mask):
         mask_filename = create_mask_filename(args)

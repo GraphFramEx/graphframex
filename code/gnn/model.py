@@ -58,7 +58,7 @@ class GraphConvolution(Module):
 
 
 class GNN_basic(nn.Module):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
         super().__init__()
         self.num_node_features, self.edge_dim, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
             num_node_features,
@@ -109,8 +109,8 @@ class GNN_basic(nn.Module):
 
 
 class GAT(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
-        super(GAT, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
+        super(GAT, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
 
     def get_layers(self):
         self.layers = nn.ModuleList()
@@ -123,10 +123,7 @@ class GAT(GNN_basic):
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True).to(self.device)
-        print('data edge index device in gat: ', edge_index.device)
-        print('data edge weight device in gat: ', edge_weight.device)
-        print('self device in gat: ', self.device)
+            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
@@ -139,8 +136,8 @@ class GAT(GNN_basic):
 
     
 class GCN(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
-        super(GCN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
+        super(GCN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
 
     def get_layers(self):
         self.layers = nn.ModuleList()
@@ -166,8 +163,8 @@ class GCN(GNN_basic):
 
 
 class GIN(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None):
-        super(GIN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, num_layers=2, device=None)
+    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
+        super(GIN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
     
     def get_layers(self):
         self.layers = nn.ModuleList()
