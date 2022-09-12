@@ -96,15 +96,16 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 ## Node Classification
 
 ```bash
-python3 code/main.py --dataset [dataset-name] --explain_graph False --explainer_name [explainer_name]
+python3 code/main.py --dataset [dataset-name] --model [gnn-model] --explainer_name [explainer-name]
 ```
 
 - dataset-name:
   - synthetic: ba_house, ba_grid, tree_cycle, tree_grid, ba_bottle
   - real-world: cora, pubmed, citeseer, facebook, chameleon, squirrel, texas, wisconsin, cornell, actor
-- explainer_name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer, pgexplainer
+- gnn-model: gcn, gat, gin
+- explainer-name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer, pgexplainer
 
-Note that gradcam is only available for synthetic datasets.
+Note that gradcam is only available for synthetic datasets and subgraphx only for GCN model.
 
 ### Mask transformation
 

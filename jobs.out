@@ -1,36 +1,35 @@
-Sender: LSF System <lsfadmin@eu-g3-013>
-Subject: Job 231306988: </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=subgraphx_dataset=cora_model=gat_true_label_as_target=False_hard_mask=True.sh> in cluster <euler> Exited
+Sender: LSF System <lsfadmin@eu-g3-014>
+Subject: Job 231362209: </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh> in cluster <euler> Done
 
-Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=subgraphx_dataset=cora_model=gat_true_label_as_target=False_hard_mask=True.sh> was submitted from host <eu-login-37> by user <kamara> in cluster <euler> at Sun Sep 11 16:35:33 2022
-Job was executed on host(s) <eu-g3-013>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Mon Sep 12 02:55:27 2022
+Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh> was submitted from host <eu-login-02> by user <kamara> in cluster <euler> at Mon Sep 12 09:35:15 2022
+Job was executed on host(s) <eu-g3-014>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Mon Sep 12 13:17:43 2022
 </cluster/home/kamara> was used as the home directory.
 </cluster/home/kamara/Explain> was used as the working directory.
-Started at Mon Sep 12 02:55:27 2022
-Terminated at Mon Sep 12 09:32:01 2022
-Results reported at Mon Sep 12 09:32:01 2022
+Started at Mon Sep 12 13:17:43 2022
+Terminated at Mon Sep 12 22:02:39 2022
+Results reported at Mon Sep 12 22:02:39 2022
 
 Your job looked like:
 
 ------------------------------------------------------------
 # LSBATCH: User input
-/cluster/work/zhang/kamara/checkpoints/node_classification/real/sparsity/gnns_sparsity_real_1/run_explainer_name=subgraphx_dataset=cora_model=gat_true_label_as_target=False_hard_mask=True.sh
+/cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh
 ------------------------------------------------------------
 
-TERM_OWNER: job killed by owner.
-Exited with exit code 129.
+Successfully completed.
 
 Resource usage summary:
 
-    CPU time :                                   23771.00 sec.
-    Max Memory :                                 3560 MB
-    Average Memory :                             3396.11 MB
+    CPU time :                                   31474.77 sec.
+    Max Memory :                                 3652 MB
+    Average Memory :                             3246.90 MB
     Total Requested Memory :                     15000.00 MB
-    Delta Memory :                               11440.00 MB
+    Delta Memory :                               11348.00 MB
     Max Swap :                                   -
     Max Processes :                              5
     Max Threads :                                10
-    Run time :                                   23793 sec.
-    Turnaround time :                            60988 sec.
+    Run time :                                   31495 sec.
+    Turnaround time :                            44844 sec.
 
 The output (if any) follows:
 
