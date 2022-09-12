@@ -77,7 +77,8 @@ def main_real(args):
     if data.train_mask.dim() > 1:
         data = get_split(data, args)
     data = data.to(device)
-
+    if data.edge_weight is None:
+        data.edge_weight = torch.ones(data.edge_index.size(1), device=data.x.device, requires_grad=True)
     args.num_classes = data.y.max().item() + 1
 
     model_filename = create_model_filename(args)

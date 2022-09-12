@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np
 import torch
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
-from gnn.model import GraphConv, GraphConvolution
+from gnn.model import GraphConv, GraphConvolution, GATConv, GINConv
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 from utils.gen_utils import sample_large_graph
@@ -55,7 +55,7 @@ def get_all_convolution_layers(model, args):
         if args.dataset.startswith(tuple(["ba", "tree"])) and isinstance(module, GraphConv):
             layers.append(module)
         else:
-            if isinstance(module, GraphConvolution):
+            if isinstance(module, GraphConvolution) or isinstance(module, GATConv) or isinstance(module, GINConv):
                 layers.append(module)
     return layers
 
@@ -68,7 +68,7 @@ def explain_random_node(model, data, node_idx, target, device, args):
 
 
 def explain_distance_node(model, data, node_idx, target, device, args):
-    data = Data(x=data.x, edge_index=data.edge_index)
+    data = Data(x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight)
     g = to_networkx(data)
     length = nx.shortest_path_length(g, target=node_idx)
 
@@ -82,7 +82,7 @@ def explain_distance_node(model, data, node_idx, target, device, args):
 
 
 def explain_pagerank_node(model, data, node_idx, target, device, args):
-    data = Data(x=data.x, edge_index=data.edge_index)
+    data = Data(x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight)
     g = to_networkx(data)
     pagerank = nx.pagerank(g, personalization={node_idx: 1})
 
@@ -114,8 +114,7 @@ def explain_gradcam_node(model, data, node_idx, target, device, args):
     for layer in layers:
         layer_gc = LayerGradCam(model_forward_node, layer)
         node_attr = layer_gc.attribute(input_mask, target=target, additional_forward_args=(model, data.edge_index, data.edge_weight, node_idx))
-        node_attr = node_attr.cpu().detach().numpy().ravel()
-        node_attrs.append(node_attr)
+        node_attrs.append(node_attr.squeeze().cpu().detach().numpy())
     node_attr = np.array(node_attrs).mean(axis=0)
     edge_mask = node_attr_to_edge(data.edge_index, node_attr)
     return edge_mask, None
@@ -151,7 +150,7 @@ def explain_ig_node(model, data, node_idx,target, device, args):
 
 def explain_occlusion_node(model, data, node_idx, target, device, args):
     depth_limit = args.num_gc_layers + 1
-    data = Data(x=data.x, edge_index=data.edge_index)
+    data = Data(x=data.x, edge_index=data.edge_index, edge_weight=data.edge_weight)
     if target is None:
         pred_probs = model(data.x, data.edge_index, data.edge_weight)[node_idx].cpu().detach().numpy()
         pred_prob = pred_probs[target]
