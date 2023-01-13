@@ -6,6 +6,7 @@
 | :------------------- | :---------------------------------------------------------------------------------- |
 | Distance             | Shortest Path Distance Approximation using Deep learning Techniques                 |
 | PageRank             | The PageRank Citation Ranking: Bringing Order to the Web                            |
+| Occlusion            | Visualizing and understanding convolutional networks                                |
 | SA                   | Explainability Techniques for Graph Convolutional Networks.                         |
 | Grad-CAM             | Explainability Methods for Graph Convolutional Neural Networks.                     |
 | Integrated Gradients | Axiomatic Attribution for Deep Networks                                             |
@@ -52,10 +53,8 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 ├── dataset
 │   ├── __init__.py
 │   ├── data_utils.py
-│   ├── gen_mutag.py
 │   ├── gen_real.py
 │   ├── gen_syn.py
-│   ├── mutag_utils.py
 │   └── syn_utils
 │       ├── featgen.py
 │       ├── gengraph.py
@@ -70,7 +69,6 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 │   ├── __init__.py
 │   ├── genmask.py
 │   ├── gnnexplainer.py
-│   ├── graph_explainer.py
 │   ├── node_explainer.py
 │   ├── pgmexplainer.py
 │   ├── pgexplainer.py
@@ -160,4 +158,12 @@ GNN models in the future.
 
 ## Citation
 
-Please cite our paper if you find the repository useful.
+Please cite our [paper](https://arxiv.org/pdf/2206.09677.pdf) if you find the repository useful:
+
+<pre><code>@article{amara2022graphframex,
+  title={GraphFramEx: Towards Systematic Evaluation of Explainability Methods for Graph Neural Networks},
+  author={Amara, Kenza and Ying, Rex and Zhang, Zitao and
+  Han, Zhihao and Shan, Yinan and Brandes, Ulrik and Schemm, Sebastian and Zhang, Ce},
+  journal={arXiv preprint arXiv:2206.09677},
+  year={2022}
+}</code></pre>
