@@ -1,35 +1,35 @@
 Sender: LSF System <lsfadmin@eu-g3-014>
-Subject: Job 231362209: </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh> in cluster <euler> Done
+Subject: Job 231362219: </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gin_true_label_as_target=False_hard_mask=False.sh> in cluster <euler> Done
 
-Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh> was submitted from host <eu-login-02> by user <kamara> in cluster <euler> at Mon Sep 12 09:35:15 2022
-Job was executed on host(s) <eu-g3-014>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Mon Sep 12 13:17:43 2022
+Job </cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gin_true_label_as_target=False_hard_mask=False.sh> was submitted from host <eu-login-02> by user <kamara> in cluster <euler> at Mon Sep 12 09:35:19 2022
+Job was executed on host(s) <eu-g3-014>, in queue <gpu.120h>, as user <kamara> in cluster <euler> at Mon Sep 12 21:34:08 2022
 </cluster/home/kamara> was used as the home directory.
 </cluster/home/kamara/Explain> was used as the working directory.
-Started at Mon Sep 12 13:17:43 2022
-Terminated at Mon Sep 12 22:02:39 2022
-Results reported at Mon Sep 12 22:02:39 2022
+Started at Mon Sep 12 21:34:08 2022
+Terminated at Tue Sep 13 09:47:40 2022
+Results reported at Tue Sep 13 09:47:40 2022
 
 Your job looked like:
 
 ------------------------------------------------------------
 # LSBATCH: User input
-/cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gcn_true_label_as_target=True_hard_mask=False.sh
+/cluster/work/zhang/kamara/checkpoints/node_classification/real/topk/gnns_topk_real_1/run_explainer_name=subgraphx_model=gin_true_label_as_target=False_hard_mask=False.sh
 ------------------------------------------------------------
 
 Successfully completed.
 
 Resource usage summary:
 
-    CPU time :                                   31474.77 sec.
-    Max Memory :                                 3652 MB
-    Average Memory :                             3246.90 MB
+    CPU time :                                   43982.40 sec.
+    Max Memory :                                 3743 MB
+    Average Memory :                             3300.99 MB
     Total Requested Memory :                     15000.00 MB
-    Delta Memory :                               11348.00 MB
+    Delta Memory :                               11257.00 MB
     Max Swap :                                   -
     Max Processes :                              5
     Max Threads :                                10
-    Run time :                                   31495 sec.
-    Turnaround time :                            44844 sec.
+    Run time :                                   44012 sec.
+    Turnaround time :                            87141 sec.
 
 The output (if any) follows:
 

@@ -1,4 +1,6 @@
+import pickle
 import time
+from utils.io_utils import create_mask_filename
 from utils.gen_utils import get_labels
 
 import torch
@@ -34,3 +36,17 @@ def compute_edge_masks_nc(list_test_nodes, model, data, device, args):
     args.num_test_final = len(edge_masks)
     return edge_masks, node_feat_masks, Time
 
+
+
+def compute_masks(list_test_nodes, model, data, device, args):
+        mask_filename = create_mask_filename(args)
+        if (os.path.isfile(mask_filename)) & (args.explainer_name not in ["sa", "ig"]):
+            with open(mask_filename, 'rb') as f:
+                w_list = pickle.load(f)
+            list_test_nodes, edge_masks, node_feat_masks, Time = tuple(w_list)
+        else:
+            edge_masks, node_feat_masks, Time = compute_edge_masks_nc(list_test_nodes, model, data, device, args)
+            if args.explainer_name not in ["sa", "ig"]:
+                with open(mask_filename, 'wb') as f:
+                    pickle.dump([list_test_nodes, edge_masks, node_feat_masks, Time], f)
+        return list_test_nodes, edge_masks, node_feat_masks, Time

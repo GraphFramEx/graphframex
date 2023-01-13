@@ -65,17 +65,28 @@ def create_model_filename(args, isbest=False, num_epochs=-1, **kwargs):
     return filename + ".pth.tar"
 
 def create_mask_filename(args):
-    dir = "/cluster/work/zhang/kamara/mask"
-    os.makedirs(dir, exist_ok=True)
-    subdir = os.path.join(dir, args.dataset)
+    os.makedirs(args.mask_save_dir, exist_ok=True)
+    subdir = os.path.join(args.mask_save_dir, args.dataset, args.explainer_name)
     os.makedirs(subdir, exist_ok=True)
 
     name = args.dataset + "_" + args.explainer_name 
-    name += "_true_label_as_target_" + str(args.true_label_as_target) + "_test" + str(args.num_test)
+    name += "_model_"+ str(args.model) + "_phenfocus_" + str(args.true_label_as_target) + "_test_" + str(args.num_test)
     name += "_seed" + str(args.seed)
     
     filename = os.path.join(subdir, name)
     return filename + ".pkl"
+
+def create_result_filename(args):
+    os.makedirs(args.result_save_dir, exist_ok=True)
+    subdir = os.path.join(args.result_save_dir, args.dataset, args.explainer_name)
+    os.makedirs(subdir, exist_ok=True)
+
+    name = args.dataset + "_" + args.explainer_name 
+    name += "_model_"+ str(args.model) + "_phenfocus_" + str(args.true_label_as_target) + "_hardmask_" + str(args.hard_mask) + "_test_" + str(args.num_test)
+    name += "_seed" + str(args.seed)
+    
+    filename = os.path.join(subdir, name)
+    return filename + ".csv"
 
 
 

@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+from utils.path import DATA_DIR, LOG_DIR, MODEL_DIR, RESULT_DIR, MASK_DIR
 
 
 def get_graph_size_args(args):
@@ -61,8 +62,11 @@ def arg_parse():
     # saving data, model, figures
     parser.add_argument("--save_mask", help="If we save the masks", type=str, default="False")
     
-    parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default="data")
-    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default="model")
+    parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default=DATA_DIR)
+    parser.add_argument("--logs_save_dir", help="Directory where logs are saved", type=str, default=LOG_DIR)
+    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default=MODEL_DIR)
+    parser.add_argument("--mask_save_dir", help="Directory where masks are saved", type=str, default=MASK_DIR)
+    parser.add_argument("--result_save_dir", help="Directory where results are saved", type=str, default=RESULT_DIR)
     parser.add_argument("--fig_save_dir", help="Directory where figures are saved", type=str, default="figures")
     parser.add_argument(
         "--draw_graph",
@@ -210,4 +214,5 @@ def arg_parse():
         edge_size=0.005,
         explainer_name="gnnexplainer",
     )
-    return parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    return args

@@ -1,5 +1,6 @@
 import json
 import time
+import os
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -10,9 +11,12 @@ import utils.io_utils
 import utils.math_utils
 from torch.autograd import Variable
 from torch_geometric.loader import ClusterData, ClusterLoader
+from gnn.model import GCN, GcnEncoderNode, GAT, GIN
 
 from gnn.eval import *
+from utils.io_utils import create_model_filename, load_ckpt, save_checkpoint
 
+MODELS = {"gcn":"GCN", "gat":"GAT", "gin":"GIN"}
 
 ####### GNN Training #######
 
@@ -148,4 +152,32 @@ def train_syn_nc(model, data, device, args):
     plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
     plt.close()
     matplotlib.style.use("default")
+
+
+
+def get_trained_model(data, args, device):
+    model_filename = create_model_filename(args)
+    if data.edge_weight is None:
+        edge_dim = 1
+    else: 
+        edge_dim = data.edge_weight.dim()
+    model = eval(MODELS[args.model])(
+            num_node_features=data.x.shape[1],
+            edge_dim=edge_dim,
+            hidden_dim=args.hidden_dim,
+            num_classes=args.num_classes,
+            dropout=args.dropout,
+            num_layers=args.num_gc_layers,
+            device=device,
+        ).to(device)
+    if os.path.isfile(model_filename)==False:
+        train_real_nc(model, data, device, args)
+        results_train, results_test = gnn_scores_nc(model, data, args, device)
+        save_checkpoint(model_filename, model, args, results_train, results_test)
+
+    ckpt = load_ckpt(model_filename, device)
+    model.load_state_dict(ckpt["model_state"])
+    print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
+    print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
+    return model
 

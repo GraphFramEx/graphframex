@@ -5,13 +5,60 @@ from utils.gen_utils import (
 
 import numpy as np
 import scipy.sparse as sp
+import os
+import shutil
 import torch
+from torch_geometric.datasets import Planetoid, WikipediaNetwork, WebKB
+from utils.io_utils import check_dir
+from dataset.data_utils import get_split, split_data
+
+REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid",
+                "chameleon": "WikipediaNetwork", "squirrel": "WikipediaNetwork", 
+                "ppi": "PPI", "actor": "Actor", 
+                "texas": "WebKB", "cornell": "WebKB", "wisconsin": "WebKB"}
+PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
+WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
 
 
 
-def load_data_real(data_filename):
+def load_data_real(args, device):
+    check_dir(args.data_save_dir)
+    data_dir = os.path.join(args.data_save_dir, args.dataset)
+    check_dir(data_dir)
+    data_filename = f"{data_dir}/processed/data.pt"
+    if not os.path.isfile(data_filename):
+        if REAL_DATA[args.dataset] == "Planetoid":
+            Planetoid(args.data_save_dir, name=PLANETOIDS[args.dataset])
+            origin_dir = os.path.join(args.data_save_dir, PLANETOIDS[args.dataset])
+            os.rename(origin_dir, data_dir)
+        elif REAL_DATA[args.dataset] == "WebKB":
+            WebKB(args.data_save_dir, name=WEBKB[args.dataset])
+        elif REAL_DATA[args.dataset] == "WikipediaNetwork":
+            WikipediaNetwork(args.data_save_dir, name=args.dataset)
+            origin_dir = os.path.join(data_dir, "geom_gcn")
+            # fetch all files
+            for folder_name in os.listdir(origin_dir):
+                # construct full file path
+                source =  os.path.join(origin_dir, folder_name)
+                destination = os.path.join(data_dir, folder_name)
+                # move only folder
+                print(f"Moving {source} to {destination}")
+                if os.path.isdir(source):
+                    print('moving folder {} to {}'.format(source, destination))
+                    shutil.move(source, destination)
+            shutil.rmtree(origin_dir, ignore_errors=True)
+        else:
+            eval(REAL_DATA[args.dataset])(data_dir)
     data, _ = torch.load(data_filename)
     data = preprocess_real(data)
+
+    if args.dataset == "facebook":
+        data = split_data(data, args)
+    if data.train_mask.dim() > 1:
+        data = get_split(data, args)
+    data = data.to(device)
+    if data.edge_weight is None:
+        data.edge_weight = torch.ones(data.edge_index.size(1), device=data.x.device, requires_grad=True)
     return data
 
 

@@ -1,11 +1,14 @@
 import numpy as np
+import json
 from scipy.stats import entropy, gaussian_kde
 import matplotlib.pyplot as plt
 import torch
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
-from torch_geometric.utils import to_scipy_sparse_matrix
-
+from torch_geometric.utils import to_scipy_sparse_matrix, subgraph
+import networkx as nx
+from torch_geometric.utils.convert import to_networkx
+from torch_geometric.data import Data
 
 
 def topk_edges_unique(edge_mask, edge_index, num_top_edges):
@@ -47,8 +50,45 @@ def clean_masks(masks):
         masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
         masks[i] = np.clip(masks[i], -10, 10)
         masks[i] = normalize_mask(masks[i])
-        masks[i] = np.where(masks[i] < 0.001, 0, masks[i])
+        masks[i] = np.where(masks[i] < 0.01, 0, masks[i])
     return masks
+
+def clean_all_masks(edge_masks, node_feat_masks, args):
+    if args.E:
+        ### Mask normalisation and cleaning ###
+        edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
+        edge_masks = clean_masks(edge_masks)
+    if args.NF:
+        ### Mask normalisation and cleaning ###
+        node_feat_masks = [node_feat_mask.astype("float") for node_feat_mask in node_feat_masks]
+        node_feat_masks = clean_masks(node_feat_masks)
+    return edge_masks, node_feat_masks
+
+
+def from_mask_to_nxsubgraph(mask, node_index, data):
+    """Convert mask to a networkx subgraph."""
+    masked_edge_index = data.edge_index[:, mask > 0]
+    weights = mask[mask > 0]
+    if masked_edge_index.size(1) == 0:
+        return None
+    masked_edge_index = masked_edge_index.cpu().numpy()
+    
+    lst = np.sort(np.unique(masked_edge_index))
+    if node_index not in lst:
+        return None
+    # lst = np.delete(lst, np.where(lst == node_index))
+    # lst = np.insert(lst, 0, node_index)
+    # d = {lst[i]: i for i in range(0,len(lst))}
+    relabeled_node_index = np.where(lst==node_index)[0][0]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    masked_edge_index = torch.LongTensor(masked_edge_index).to(device)
+    lst = torch.LongTensor(lst).to(device)
+    sub_edge_index, sub_edge_attr, sub_mask = subgraph(lst, masked_edge_index, weights, relabel_nodes=True, return_edge_mask=True)
+    masked_x = data.x[lst]
+    data = Data(x=masked_x, edge_index=sub_edge_index, edge_attr=sub_edge_attr)
+    data['weight'] = sub_edge_attr
+    G = to_networkx(data, edge_attrs=['weight'])
+    return G, relabeled_node_index
 
 def get_ratio_connected_components(edge_masks, edge_index):
     """Compute connected components ratio of the edge mask."""
@@ -112,9 +152,15 @@ def get_avg_max(masks):
         return -1
     return max_avg / k
 
-def get_mask_info(masks, edge_index):
-    mask_info = {'mask_size': get_size(masks), 'mask_entropy': get_entropy(masks), 'max_avg': get_avg_max(masks), 'cc_ratio': get_ratio_connected_components(masks, edge_index)}
+def get_mask_properties(masks, edge_index):
+    mask_info = {'mask_size': get_size(masks), 
+                'mask_sparsity': get_sparsity(masks),
+                'mask_entropy': get_entropy(masks), 
+                'max_avg': get_avg_max(masks), 
+                'cc_ratio': get_ratio_connected_components(masks, edge_index)}
     return mask_info
+
+#def get_explanatory_subgraph__properties():
 
 # Edge_masks are normalized; we then select only the edges for which the mask value > threshold
 # transform edge_mask:
