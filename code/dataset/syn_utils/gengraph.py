@@ -116,7 +116,9 @@ def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
     # plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
+    G, role_id, _ = synthetic_structsim.build_graph(
+        width_basis, basis_type, list_shapes, start=0, m=5
+    )
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -125,6 +127,7 @@ def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
     name = basis_type + "_" + str(width_basis) + "_" + str(nb_shapes)
     return G, role_id, name
+
 
 ####
 def gen_ba_community(nb_shapes=100, width_basis=350, feature_generator=None):
@@ -195,7 +198,9 @@ def gen_ba_grid(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
     #     plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
+    G, role_id, _ = synthetic_structsim.build_graph(
+        width_basis, basis_type, list_shapes, start=0, m=5
+    )
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -227,7 +232,9 @@ def gen_tree_cycle(nb_shapes=60, width_basis=8, feature_generator=None, m=4):
 
     #     fig = plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, plugins = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0)
+    G, role_id, plugins = synthetic_structsim.build_graph(
+        width_basis, basis_type, list_shapes, start=0
+    )
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:
@@ -260,7 +267,9 @@ def gen_tree_grid(nb_shapes=80, width_basis=8, feature_generator=None, m=3):
 
     #     plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0)
+    G, role_id, _ = synthetic_structsim.build_graph(
+        width_basis, basis_type, list_shapes, start=0
+    )
     G = perturb([G], 0.1)[0]
 
     if feature_generator is None:
@@ -292,7 +301,9 @@ def gen_ba_bottle(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     basis_type = "ba"
     list_shapes = [["bottle"]] * nb_shapes
 
-    G, role_id, _ = synthetic_structsim.build_graph(width_basis, basis_type, list_shapes, start=0, m=5)
+    G, role_id, _ = synthetic_structsim.build_graph(
+        width_basis, basis_type, list_shapes, start=0, m=5
+    )
     G = perturb([G], 0.01)[0]
 
     if feature_generator is None:

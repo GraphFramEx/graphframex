@@ -27,10 +27,27 @@ def gen_prefix(args, **kwargs):
         name += "_gc"
     else:
         name += "_nc"
-    name += "_h" + str(args.hidden_dim) + "_o" + str(args.output_dim) + "_" + args.model + "_" + str(args.num_gc_layers) + "_epch" + str(args.num_epochs) + "_lr" + str(args.lr) + "_wd" + str(args.weight_decay) + "_drop" + str(args.dropout)
-    name+= "_" + str(args.seed)
-    if 'suffix' in kwargs:
-        name += "_" + kwargs.get('suffix')
+    name += (
+        "_h"
+        + str(args.hidden_dim)
+        + "_o"
+        + str(args.output_dim)
+        + "_"
+        + args.model
+        + "_"
+        + str(args.num_gc_layers)
+        + "_epch"
+        + str(args.num_epochs)
+        + "_lr"
+        + str(args.lr)
+        + "_wd"
+        + str(args.weight_decay)
+        + "_drop"
+        + str(args.dropout)
+    )
+    name += "_" + str(args.seed)
+    if "suffix" in kwargs:
+        name += "_" + kwargs.get("suffix")
     return name
 
 
@@ -45,7 +62,9 @@ def gen_explainer_prefix(args):
 def create_data_filename(args):
     subdir = os.path.join(args.data_save_dir, args.dataset)
     os.makedirs(subdir, exist_ok=True)
-    filename = os.path.join(subdir, f"{args.dataset}_{args.num_shapes}_{args.width_basis}.pt")
+    filename = os.path.join(
+        subdir, f"{args.dataset}_{args.num_shapes}_{args.width_basis}.pt"
+    )
     return filename
 
 
@@ -64,33 +83,52 @@ def create_model_filename(args, isbest=False, num_epochs=-1, **kwargs):
         filename = os.path.join(filename, "best")
     return filename + ".pth.tar"
 
+
 def create_mask_filename(args):
     os.makedirs(args.mask_save_dir, exist_ok=True)
     subdir = os.path.join(args.mask_save_dir, args.dataset, args.explainer_name)
     os.makedirs(subdir, exist_ok=True)
 
-    name = args.dataset + "_" + args.explainer_name 
-    name += "_model_"+ str(args.model) + "_phenfocus_" + str(args.true_label_as_target) + "_test_" + str(args.num_test)
+    name = args.dataset + "_" + args.explainer_name
+    name += (
+        "_model_"
+        + str(args.model)
+        + "_phenfocus_"
+        + str(args.true_label_as_target)
+        + "_test_"
+        + str(args.num_test)
+    )
     name += "_seed" + str(args.seed)
-    
+
     filename = os.path.join(subdir, name)
     return filename + ".pkl"
+
 
 def create_result_filename(args):
     os.makedirs(args.result_save_dir, exist_ok=True)
     subdir = os.path.join(args.result_save_dir, args.dataset, args.explainer_name)
     os.makedirs(subdir, exist_ok=True)
 
-    name = args.dataset + "_" + args.explainer_name 
-    name += "_model_"+ str(args.model) + "_phenfocus_" + str(args.true_label_as_target) + "_hardmask_" + str(args.hard_mask) + "_test_" + str(args.num_test)
+    name = args.dataset + "_" + args.explainer_name
+    name += (
+        "_model_"
+        + str(args.model)
+        + "_phenfocus_"
+        + str(args.true_label_as_target)
+        + "_hardmask_"
+        + str(args.hard_mask)
+        + "_test_"
+        + str(args.num_test)
+    )
     name += "_seed" + str(args.seed)
-    
+
     filename = os.path.join(subdir, name)
     return filename + ".csv"
 
 
-
-def save_checkpoint(filename, model, args, results_train, results_test, isbest=False, cg_dict=None):
+def save_checkpoint(
+    filename, model, args, results_train, results_test, isbest=False, cg_dict=None
+):
     """Save pytorch model checkpoint.
     Args:
         - model         : The PyTorch model to save.
@@ -136,22 +174,30 @@ def load_ckpt(filename, device, isbest=False):
 
 
 def gen_train_plt_name(args):
-    save_fig_dir = os.path.join(os.path.join(args.model_save_dir, args.dataset), "results")
+    save_fig_dir = os.path.join(
+        os.path.join(args.model_save_dir, args.dataset), "results"
+    )
     os.makedirs(save_fig_dir, exist_ok=True)
     return os.path.join(save_fig_dir, gen_prefix(args)) + ".png"
 
 
 def gen_mask_density_plt_name(args, type):
-    save_fig_dir = os.path.join(args.fig_save_dir, 'density')
-    save_fig_dir = os.path.join( os.path.join(save_fig_dir, type), args.dataset)
+    save_fig_dir = os.path.join(args.fig_save_dir, "density")
+    save_fig_dir = os.path.join(os.path.join(save_fig_dir, type), args.dataset)
     os.makedirs(save_fig_dir, exist_ok=True)
     date = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return os.path.join(save_fig_dir, args.explainer_name) + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_sparsity_{args.sparsity}_{date}.png"
+    return (
+        os.path.join(save_fig_dir, args.explainer_name)
+        + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_sparsity_{args.sparsity}_{date}.png"
+    )
 
 
 def gen_feat_importance_plt_name(args):
-    save_fig_dir = os.path.join(args.fig_save_dir, 'feat_importance')
+    save_fig_dir = os.path.join(args.fig_save_dir, "feat_importance")
     save_fig_dir = os.path.join(save_fig_dir, args.dataset)
     os.makedirs(save_fig_dir, exist_ok=True)
     date = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return os.path.join(save_fig_dir, args.explainer_name) + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_sparsity_{args.sparsity}_{date}.png"
+    return (
+        os.path.join(save_fig_dir, args.explainer_name)
+        + f"_focus_{args.true_label_as_target}_hard_{args.hard_mask}_sparsity_{args.sparsity}_{date}.png"
+    )

@@ -24,7 +24,9 @@ class ConstFeatureGen(FeatureGen):
         self.val = val
 
     def gen_node_features(self, G):
-        feat_dict = {i: {"feat": np.array(self.val, dtype=np.float32)} for i in G.nodes()}
+        feat_dict = {
+            i: {"feat": np.array(self.val, dtype=np.float32)} for i in G.nodes()
+        }
         #         print ('feat_dict[0]["feat"]:', feat_dict[0]['feat'].dtype)
         nx.set_node_attributes(G, feat_dict)
 
@@ -60,13 +62,19 @@ class GridFeatureGen(FeatureGen):
 
     def gen_node_features(self, G):
         # Generate community assignment
-        community_dict = {n: self.com_choices[0] if G.degree(n) < 4 else self.com_choices[1] for n in G.nodes()}
+        community_dict = {
+            n: self.com_choices[0] if G.degree(n) < 4 else self.com_choices[1]
+            for n in G.nodes()
+        }
 
         # Generate random variable
         s = np.random.normal(self.mu, self.sigma, G.number_of_nodes())
 
         # Generate features
-        feat_dict = {n: {"feat": np.asarray([community_dict[n], s[i]])} for i, n in enumerate(G.nodes())}
+        feat_dict = {
+            n: {"feat": np.asarray([community_dict[n], s[i]])}
+            for i, n in enumerate(G.nodes())
+        }
 
         nx.set_node_attributes(G, feat_dict)
         return community_dict

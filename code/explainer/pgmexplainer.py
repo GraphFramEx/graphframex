@@ -9,7 +9,17 @@ from torch_geometric.utils import k_hop_subgraph
 
 
 class Node_Explainer:
-    def __init__(self, model, edge_index, edge_weight, X, num_layers, device=None, mode=0, print_result=1):
+    def __init__(
+        self,
+        model,
+        edge_index,
+        edge_weight,
+        X,
+        num_layers,
+        device=None,
+        mode=0,
+        print_result=1,
+    ):
         self.model = model
         self.model.eval()
         self.edge_index = edge_index
@@ -37,12 +47,23 @@ class Node_Explainer:
                 perturb_array = X_perturb[node_idx]
             elif random == 1:
                 perturb_array = np.multiply(
-                    X_perturb[node_idx], np.random.uniform(low=0.0, high=2.0, size=X_perturb[node_idx].shape[0])
+                    X_perturb[node_idx],
+                    np.random.uniform(
+                        low=0.0, high=2.0, size=X_perturb[node_idx].shape[0]
+                    ),
                 )
             X_perturb[node_idx] = perturb_array
         return X_perturb
 
-    def explain(self, node_idx, target, num_samples=100, top_node=None, p_threshold=0.05, pred_threshold=0.1):
+    def explain(
+        self,
+        node_idx,
+        target,
+        num_samples=100,
+        top_node=None,
+        p_threshold=0.05,
+        pred_threshold=0.1,
+    ):
         neighbors, _, _, _ = k_hop_subgraph(node_idx, self.num_layers, self.edge_index)
         neighbors = neighbors.cpu().detach().numpy()
 
@@ -50,7 +71,12 @@ class Node_Explainer:
             neighbors = np.append(neighbors, node_idx)
 
         pred_torch = self.model(self.X, self.edge_index, self.edge_weight).cpu()
-        soft_pred = np.asarray([softmax(np.asarray(pred_torch[node_].data)) for node_ in range(self.X.shape[0])])
+        soft_pred = np.asarray(
+            [
+                softmax(np.asarray(pred_torch[node_].data))
+                for node_ in range(self.X.shape[0])
+            ]
+        )
 
         pred_node = np.asarray(pred_torch[node_idx].data)
         label_node = np.argmax(pred_node)
@@ -67,20 +93,29 @@ class Node_Explainer:
                 seed = np.random.randint(2)
                 if seed == 1:
                     latent = 1
-                    X_perturb = self.perturb_features_on_node(X_perturb, node, random=seed)
+                    X_perturb = self.perturb_features_on_node(
+                        X_perturb, node, random=seed
+                    )
                 else:
                     latent = 0
                 sample.append(latent)
 
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float).to(self.device)
-            pred_perturb_torch = self.model(X_perturb_torch, self.edge_index, self.edge_weight).cpu()
+            pred_perturb_torch = self.model(
+                X_perturb_torch, self.edge_index, self.edge_weight
+            ).cpu()
             soft_pred_perturb = np.asarray(
-                [softmax(np.asarray(pred_perturb_torch[node_].data)) for node_ in range(self.X.shape[0])]
+                [
+                    softmax(np.asarray(pred_perturb_torch[node_].data))
+                    for node_ in range(self.X.shape[0])
+                ]
             )
 
             sample_bool = []
             for node in neighbors:
-                if (soft_pred_perturb[node, target] + pred_threshold) < soft_pred[node, target]:
+                if (soft_pred_perturb[node, target] + pred_threshold) < soft_pred[
+                    node, target
+                ]:
                     sample_bool.append(1)
                 else:
                     sample_bool.append(0)
@@ -93,11 +128,16 @@ class Node_Explainer:
         Combine_Samples = Samples - Samples
         for s in range(Samples.shape[0]):
             Combine_Samples[s] = np.asarray(
-                [Samples[s, i] * 10 + Pred_Samples[s, i] + 1 for i in range(Samples.shape[1])]
+                [
+                    Samples[s, i] * 10 + Pred_Samples[s, i] + 1
+                    for i in range(Samples.shape[1])
+                ]
             )
 
         data_pgm = pd.DataFrame(Combine_Samples)
-        data_pgm = data_pgm.rename(columns={0: "A", 1: "B"})  # Trick to use chi_square test on first two data columns
+        data_pgm = data_pgm.rename(
+            columns={0: "A", 1: "B"}
+        )  # Trick to use chi_square test on first two data columns
         ind_ori_to_sub = dict(zip(neighbors, list(data_pgm.columns)))
 
         p_values = []
@@ -107,7 +147,12 @@ class Node_Explainer:
                 # => this neighbour has no influence on the prediction - should not be in the explanation)
             else:
                 chi2, p, _ = chi_square(
-                    ind_ori_to_sub[node], ind_ori_to_sub[node_idx], [], data_pgm, boolean=False, significance_level=0.05
+                    ind_ori_to_sub[node],
+                    ind_ori_to_sub[node_idx],
+                    [],
+                    data_pgm,
+                    boolean=False,
+                    significance_level=0.05,
                 )
             p_values.append(p)
 
@@ -176,7 +221,9 @@ class Graph_Explainer:
                     elif self.perturb_mode == "max":
                         perturb_array[i] = np.max(feature_matrix[:, i])
                     elif self.perturb_mode == "uniform":
-                        perturb_array[i] = perturb_array[i] + np.random.uniform(low=-epsilon[i], high=epsilon[i])
+                        perturb_array[i] = perturb_array[i] + np.random.uniform(
+                            low=-epsilon[i], high=epsilon[i]
+                        )
                         if perturb_array[i] < 0:
                             perturb_array[i] = 0
                         elif perturb_array[i] > np.max(self.X_feat, axis=0)[i]:
@@ -186,7 +233,9 @@ class Graph_Explainer:
 
         return X_perturb
 
-    def batch_perturb_features_on_node(self, num_samples, index_to_perturb, percentage, p_threshold, pred_threshold):
+    def batch_perturb_features_on_node(
+        self, num_samples, index_to_perturb, percentage, p_threshold, pred_threshold
+    ):
         X_torch = torch.tensor(self.X_feat, dtype=torch.float).to(self.device)
         pred_torch = self.model(X_torch, self.edge_index, self.edge_weight).cpu()
         soft_pred = np.asarray(softmax(np.asarray(pred_torch[0].data)))
@@ -201,7 +250,9 @@ class Graph_Explainer:
                     seed = np.random.randint(100)
                     if seed < percentage:
                         latent = 1
-                        X_perturb = self.perturb_features_on_node(X_perturb, node, random=latent)
+                        X_perturb = self.perturb_features_on_node(
+                            X_perturb, node, random=latent
+                        )
                     else:
                         latent = 0
                 else:
@@ -209,8 +260,12 @@ class Graph_Explainer:
                 sample.append(latent)
 
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float)
-            pred_perturb_torch = self.model(X_perturb_torch, self.edge_index, self.edge_weight).cpu()
-            soft_pred_perturb = np.asarray(softmax(np.asarray(pred_perturb_torch[0].data)))
+            pred_perturb_torch = self.model(
+                X_perturb_torch, self.edge_index, self.edge_weight
+            ).cpu()
+            soft_pred_perturb = np.asarray(
+                softmax(np.asarray(pred_perturb_torch[0].data))
+            )
             pred_change = np.max(soft_pred) - soft_pred_perturb[pred_label]
 
             sample.append(pred_change)
@@ -230,7 +285,14 @@ class Graph_Explainer:
 
         return Samples
 
-    def explain(self, num_samples=1000, percentage=10, top_node=None, p_threshold=0.05, pred_threshold=0.1):
+    def explain(
+        self,
+        num_samples=1000,
+        percentage=10,
+        top_node=None,
+        p_threshold=0.05,
+        pred_threshold=0.1,
+    ):
 
         num_nodes = self.X_feat.shape[0]
         if top_node == None:
@@ -238,7 +300,11 @@ class Graph_Explainer:
 
         #         Round 1
         Samples = self.batch_perturb_features_on_node(
-            int(num_samples / 2), range(num_nodes), percentage, p_threshold, pred_threshold
+            int(num_samples / 2),
+            range(num_nodes),
+            percentage,
+            p_threshold,
+            pred_threshold,
         )
 
         data = pd.DataFrame(Samples)
@@ -246,13 +312,19 @@ class Graph_Explainer:
         p_values = []
         candidate_nodes = []
 
-        target = num_nodes  # The entry for the graph classification data is at "num_nodes"
+        target = (
+            num_nodes  # The entry for the graph classification data is at "num_nodes"
+        )
         for node in range(num_nodes):
-            chi2, p, _ = chi_square(node, target, [], data, boolean=False, significance_level=0.05)
+            chi2, p, _ = chi_square(
+                node, target, [], data, boolean=False, significance_level=0.05
+            )
             p_values.append(p)
 
         number_candidates = top_node
-        candidate_nodes = np.argpartition(p_values, number_candidates)[0:number_candidates]
+        candidate_nodes = np.argpartition(p_values, number_candidates)[
+            0:number_candidates
+        ]
 
         #         Round 2
         Samples = self.batch_perturb_features_on_node(
@@ -265,7 +337,9 @@ class Graph_Explainer:
 
         target = num_nodes
         for node in range(num_nodes):
-            chi2, p, _ = chi_square(node, target, [], data, boolean=False, significance_level=0.05)
+            chi2, p, _ = chi_square(
+                node, target, [], data, boolean=False, significance_level=0.05
+            )
             p_values.append(p)
             if p < p_threshold:
                 dependent_nodes.append(node)

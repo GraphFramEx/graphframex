@@ -9,10 +9,21 @@ import seaborn as sns
 from torch_geometric.utils.convert import to_networkx
 import pandas as pd
 
-from utils.io_utils import check_dir, gen_feat_importance_plt_name, gen_mask_density_plt_name
+from utils.io_utils import (
+    check_dir,
+    gen_feat_importance_plt_name,
+    gen_mask_density_plt_name,
+)
 
-def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
-                   num_nodes=None, flow='source_to_target'):
+
+def k_hop_subgraph(
+    node_idx,
+    num_hops,
+    edge_index,
+    relabel_nodes=False,
+    num_nodes=None,
+    flow="source_to_target",
+):
     r"""Computes the :math:`k`-hop subgraph of :obj:`edge_index` around node
     :attr:`node_idx`.
     It returns (1) the nodes involved in the subgraph, (2) the filtered
@@ -41,8 +52,8 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
 
     num_nodes = maybe_num_nodes(edge_index, num_nodes)
 
-    assert flow in ['source_to_target', 'target_to_source']
-    if flow == 'target_to_source':
+    assert flow in ["source_to_target", "target_to_source"]
+    if flow == "target_to_source":
         row, col = edge_index
     else:
         col, row = edge_index
@@ -64,7 +75,7 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
         subsets.append(col[edge_mask])
 
     subset, inv = torch.cat(subsets).unique(return_inverse=True)
-    inv = inv[:node_idx.numel()]
+    inv = inv[: node_idx.numel()]
 
     node_mask.fill_(False)
     node_mask[subset] = True
@@ -73,16 +84,16 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
     edge_index = edge_index[:, edge_mask]
 
     if relabel_nodes:
-        node_idx = row.new_full((num_nodes, ), -1)
+        node_idx = row.new_full((num_nodes,), -1)
         node_idx[subset] = torch.arange(subset.size(0), device=row.device)
         edge_index = node_idx[edge_index]
 
     return subset, edge_index, inv, edge_mask
 
-    
 
-def custom_to_networkx(data, node_attrs=None, edge_attrs=None, to_undirected=False,
-                    remove_self_loops=False):
+def custom_to_networkx(
+    data, node_attrs=None, edge_attrs=None, to_undirected=False, remove_self_loops=False
+):
     r"""Converts a :class:`torch_geometric.data.Data` instance to a
     :obj:`networkx.DiGraph` if :attr:`to_undirected` is set to :obj:`True`, or
     an undirected :obj:`networkx.Graph` otherwise.
@@ -171,6 +182,7 @@ def plot_mask_density(mask, args, type="edge"):
     plt.close()
     matplotlib.style.use("default")
 
+
 def plot_masks_density(masks, args, type="edge"):
     pal = sns.color_palette("tab10")
     matplotlib.style.use("seaborn")
@@ -198,19 +210,21 @@ def plot_masks_density(masks, args, type="edge"):
     plt.close()
     matplotlib.style.use("default")
 
+
 def plot_feat_importance(node_feat_mask, args):
     matplotlib.style.use("seaborn")
     plt.switch_backend("agg")
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 5)
 
-    sns.barplot(range(0,len(node_feat_mask)), node_feat_mask, ax=ax)
+    sns.barplot(range(0, len(node_feat_mask)), node_feat_mask, ax=ax)
     plt.xlim(0, 1)
     plt.title(f"Node feature importance for {args.explainer_name}")
     plt.xlabel("Node feature importance")
     plt.savefig(gen_feat_importance_plt_name(args), dpi=600)
     plt.close()
     matplotlib.style.use("default")
+
 
 def plot_feat_importance(node_feat_masks, args):
     pal = sns.color_palette("tab10")
@@ -222,7 +236,7 @@ def plot_feat_importance(node_feat_masks, args):
     for i in range(5):
         node_feat_mask = node_feat_masks[i]
 
-    sns.barplot(range(0,len(node_feat_mask)), node_feat_mask, ax=ax)
+    sns.barplot(range(0, len(node_feat_mask)), node_feat_mask, ax=ax)
     plt.xlim(0, 1)
     plt.title(f"Node feature importance for {args.explainer_name}")
     plt.xlabel("Node feature importance")
@@ -244,27 +258,27 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     nodes = np.array(nodes)
     labels = np.array(labels)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 7), sharey=True)
-    dict_color_labels = {0: 'orange', 1: 'green', 2: 'green', 3:'green'}
+    dict_color_labels = {0: "orange", 1: "green", 2: "green", 3: "green"}
     node_labels = [dict_color_labels[l] for l in labels]
-    index_target_node = np.where(nodes==node_idx)[0][0]
-    node_labels[index_target_node] = 'tab:red'
+    index_target_node = np.where(nodes == node_idx)[0][0]
+    node_labels[index_target_node] = "tab:red"
 
     true_nodes = np.array(G_true.nodes())
-    true_node_labels = ['green']*len(true_nodes)
-    true_node_labels[np.where(true_nodes==node_idx)[0][0]] = 'tab:red'
-    
-    U=nx.compose(G_true, G)
-    #pos=nx.planar_layout(U) #nx.spring_layout(U, k=5, iterations=20, seed=4321)
+    true_node_labels = ["green"] * len(true_nodes)
+    true_node_labels[np.where(true_nodes == node_idx)[0][0]] = "tab:red"
+
+    U = nx.compose(G_true, G)
+    # pos=nx.planar_layout(U) #nx.spring_layout(U, k=5, iterations=20, seed=4321)
     weights = np.array(weights)
     weights = np.interp(weights, (weights.min(), weights.max()), (4, 7))
-    
+
     nx.draw(
         G_true.to_undirected(),
         pos=nx.spring_layout(G_true),
         node_size=1200,
         with_labels=False,
         node_color=true_node_labels,
-        edgecolors='black',
+        edgecolors="black",
         edge_color="black",
         width=7,
         ax=ax1,
@@ -273,7 +287,7 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     df = pd.DataFrame(index=G.nodes(), columns=G.nodes())
     for row, data in nx.shortest_path_length(G):
         for col, dist in data.items():
-            df.loc[row,col] = dist
+            df.loc[row, col] = dist
 
     df = df.fillna(df.max().max())
 
@@ -285,9 +299,10 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
         node_size=1200,
         with_labels=False,
         node_color=node_labels,
-        edgecolors='black',
+        edgecolors="black",
         edge_color="black",
-        edgelist=edges, width=weights,
+        edgelist=edges,
+        width=weights,
         ax=ax2,
     )
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
@@ -296,7 +311,10 @@ def plot_expl_nc(G, G_true, role, node_idx, args, top_acc):
     check_dir(dir_name)
     plt.savefig(
         ### os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_sparsity_{args.param}_{args.hard_mask}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.pdf")
-        os.path.join(dir_name, f"fig_expl_nc_top_{top_acc}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.png")
+        os.path.join(
+            dir_name,
+            f"fig_expl_nc_top_{top_acc}_{args.dataset}_{args.explainer_name}_{node_idx}_{date}.png",
+        )
     )
 
 
@@ -351,7 +369,9 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
 
     date = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     check_dir(f"figures/{args.dataset}/")
-    plt.savefig(f"figures/{args.dataset}/fig_expl_gc_hard_{args.hard_mask}_{args.dataset}_{date}.pdf")
+    plt.savefig(
+        f"figures/{args.dataset}/fig_expl_gc_hard_{args.hard_mask}_{args.dataset}_{date}.pdf"
+    )
 
 
 def _fruchterman_reingold(
@@ -398,10 +418,10 @@ def _fruchterman_reingold(
         np.clip(distance, 0.01, None, out=distance)
         # displacement "force"
         displacement = np.einsum(
-            "ijk,ij->ik", delta, (k * k / distance ** 2 - A * distance / k)
+            "ijk,ij->ik", delta, (k * k / distance**2 - A * distance / k)
         )
         # ADD THIS LINE - prevent things from flying off into infinity if not connected
-        displacement = displacement - pos / ( k * np.sqrt(nnodes))
+        displacement = displacement - pos / (k * np.sqrt(nnodes))
         # update positions
         length = np.linalg.norm(displacement, axis=-1)
         length = np.where(length < 0.01, 0.1, length)

@@ -1,7 +1,4 @@
-from utils.gen_utils import (
-    from_edge_index_to_sparse_adj,
-    from_sparse_adj_to_edge_index
-)
+from utils.gen_utils import from_edge_index_to_sparse_adj, from_sparse_adj_to_edge_index
 import numpy as np
 import scipy.sparse as sp
 import os
@@ -11,13 +8,21 @@ from torch_geometric.datasets import Planetoid, WikipediaNetwork, WebKB
 from utils.io_utils import check_dir
 from dataset.data_utils import get_split, split_data
 
-REAL_DATA = {"facebook": "FacebookPagePage", "cora": "Planetoid", "citeseer": "Planetoid", "pubmed": "Planetoid",
-                "chameleon": "WikipediaNetwork", "squirrel": "WikipediaNetwork", 
-                "ppi": "PPI", "actor": "Actor", 
-                "texas": "WebKB", "cornell": "WebKB", "wisconsin": "WebKB"}
+REAL_DATA = {
+    "facebook": "FacebookPagePage",
+    "cora": "Planetoid",
+    "citeseer": "Planetoid",
+    "pubmed": "Planetoid",
+    "chameleon": "WikipediaNetwork",
+    "squirrel": "WikipediaNetwork",
+    "ppi": "PPI",
+    "actor": "Actor",
+    "texas": "WebKB",
+    "cornell": "WebKB",
+    "wisconsin": "WebKB",
+}
 PLANETOIDS = {"cora": "Cora", "citeseer": "CiteSeer", "pubmed": "PubMed"}
 WEBKB = {"texas": "Texas", "cornell": "Cornell", "wisconsin": "Wisconsin"}
-
 
 
 def load_data_real(args, device):
@@ -38,12 +43,12 @@ def load_data_real(args, device):
             # fetch all files
             for folder_name in os.listdir(origin_dir):
                 # construct full file path
-                source =  os.path.join(origin_dir, folder_name)
+                source = os.path.join(origin_dir, folder_name)
                 destination = os.path.join(data_dir, folder_name)
                 # move only folder
                 print(f"Moving {source} to {destination}")
                 if os.path.isdir(source):
-                    print('moving folder {} to {}'.format(source, destination))
+                    print("moving folder {} to {}".format(source, destination))
                     shutil.move(source, destination)
             shutil.rmtree(origin_dir, ignore_errors=True)
         else:
@@ -57,13 +62,17 @@ def load_data_real(args, device):
         data = get_split(data, args)
     data = data.to(device)
     if data.edge_weight is None:
-        data.edge_weight = torch.ones(data.edge_index.size(1), device=data.x.device, requires_grad=True)
+        data.edge_weight = torch.ones(
+            data.edge_index.size(1), device=data.x.device, requires_grad=True
+        )
     return data
 
 
 def preprocess_real(data):
-    """ Preprocess the data for real dataset by defining a Pytorch geometric data object."""
-    adj = from_edge_index_to_sparse_adj(data.edge_index, np.ones(data.edge_index.shape[1]), data.num_nodes)
+    """Preprocess the data for real dataset by defining a Pytorch geometric data object."""
+    adj = from_edge_index_to_sparse_adj(
+        data.edge_index, np.ones(data.edge_index.shape[1]), data.num_nodes
+    )
     # build symmetric adjacency matrix
     adj = adj + adj.T.multiply(adj.T > adj) - adj.multiply(adj.T > adj)
     adj = normalize(adj + sp.eye(adj.shape[0]))
@@ -88,7 +97,9 @@ def normalize(mx):
 def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     """Convert a scipy sparse matrix to a torch sparse tensor."""
     sparse_mx = sparse_mx.tocoo().astype(np.float32)
-    indices = torch.from_numpy(np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64))
+    indices = torch.from_numpy(
+        np.vstack((sparse_mx.row, sparse_mx.col)).astype(np.int64)
+    )
     values = torch.from_numpy(sparse_mx.data)
     shape = torch.Size(sparse_mx.shape)
     return torch.sparse.FloatTensor(indices, values, shape)

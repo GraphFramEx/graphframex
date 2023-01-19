@@ -58,16 +58,50 @@ def arg_parse():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--seed", help="random seed", type=int, default=0)
-    parser.add_argument("--dest", help="dest", type=str, default='/cluster/home/kamara/')
+    parser.add_argument(
+        "--dest", help="dest", type=str, default="/cluster/home/kamara/"
+    )
     # saving data, model, figures
-    parser.add_argument("--save_mask", help="If we save the masks", type=str, default="False")
-    
-    parser.add_argument("--data_save_dir", help="Directory where benchmark is located", type=str, default=DATA_DIR)
-    parser.add_argument("--logs_save_dir", help="Directory where logs are saved", type=str, default=LOG_DIR)
-    parser.add_argument("--model_save_dir", help="saving directory for gnn model", type=str, default=MODEL_DIR)
-    parser.add_argument("--mask_save_dir", help="Directory where masks are saved", type=str, default=MASK_DIR)
-    parser.add_argument("--result_save_dir", help="Directory where results are saved", type=str, default=RESULT_DIR)
-    parser.add_argument("--fig_save_dir", help="Directory where figures are saved", type=str, default="figures")
+    parser.add_argument(
+        "--save_mask", help="If we save the masks", type=str, default="False"
+    )
+
+    parser.add_argument(
+        "--data_save_dir",
+        help="Directory where benchmark is located",
+        type=str,
+        default=DATA_DIR,
+    )
+    parser.add_argument(
+        "--logs_save_dir",
+        help="Directory where logs are saved",
+        type=str,
+        default=LOG_DIR,
+    )
+    parser.add_argument(
+        "--model_save_dir",
+        help="saving directory for gnn model",
+        type=str,
+        default=MODEL_DIR,
+    )
+    parser.add_argument(
+        "--mask_save_dir",
+        help="Directory where masks are saved",
+        type=str,
+        default=MASK_DIR,
+    )
+    parser.add_argument(
+        "--result_save_dir",
+        help="Directory where results are saved",
+        type=str,
+        default=RESULT_DIR,
+    )
+    parser.add_argument(
+        "--fig_save_dir",
+        help="Directory where figures are saved",
+        type=str,
+        default="figures",
+    )
     parser.add_argument(
         "--draw_graph",
         help="Draw explanations (subgraph for NC and graph for GC) after training",
@@ -87,7 +121,7 @@ def arg_parse():
         dest="sample_size",
         type=int,
         help="Number of nodes in each sample (ClusterSampling).",
-        default = 10e5
+        default=10e5,
     )
 
     # training parameters
@@ -101,8 +135,9 @@ def arg_parse():
         help="Weight decay regularization constant.",
     )
 
-    
-    parser.add_argument("--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train.")
+    parser.add_argument(
+        "--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train."
+    )
     parser.add_argument(
         "--train_ratio",
         dest="train_ratio",
@@ -123,14 +158,26 @@ def arg_parse():
     )
 
     parser.add_argument(
-        "--num_workers", dest="num_workers", type=int, help="Number of workers to load data.", default=4
+        "--num_workers",
+        dest="num_workers",
+        type=int,
+        help="Number of workers to load data.",
+        default=4,
     )
 
     # gnn achitecture parameters
-    parser.add_argument("--input_dim", dest="input_dim", type=int, help="Input feature dimension")
-    parser.add_argument("--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension")
-    parser.add_argument("--output_dim", dest="output_dim", type=int, help="Output dimension")
-    parser.add_argument("--num_classes", dest="num_classes", type=int, help="Number of label classes")
+    parser.add_argument(
+        "--input_dim", dest="input_dim", type=int, help="Input feature dimension"
+    )
+    parser.add_argument(
+        "--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension"
+    )
+    parser.add_argument(
+        "--output_dim", dest="output_dim", type=int, help="Output dimension"
+    )
+    parser.add_argument(
+        "--num_classes", dest="num_classes", type=int, help="Number of label classes"
+    )
     parser.add_argument(
         "--num_gc_layers",
         dest="num_gc_layers",
@@ -146,24 +193,73 @@ def arg_parse():
         help="Whether batch normalization is used",
     )
     parser.add_argument("--dropout", dest="dropout", type=float, help="Dropout rate.")
-    
-    parser.add_argument("--model", dest="model", help="GNN model. Possible values: base, gat, gcn, gine", type=str)
-    
+
+    parser.add_argument(
+        "--model",
+        dest="model",
+        help="GNN model. Possible values: base, gat, gcn, gine",
+        type=str,
+    )
+
     # explainer params
-    parser.add_argument("--explain_graph", help="graph classification or node classification", type=str, default="False")
-    parser.add_argument("--true_label_as_target", help="target is groudtruth label or GNN initial prediction", type=str)
+    parser.add_argument(
+        "--explain_graph",
+        help="graph classification or node classification",
+        type=str,
+        default="False",
+    )
+    parser.add_argument(
+        "--true_label_as_target",
+        help="target is groudtruth label or GNN initial prediction",
+        type=str,
+    )
     parser.add_argument("--hard_mask", help="Soft or hard mask", type=str)
-    parser.add_argument("--testing_pred", help="True if all testing nodes are correct; False if all testing nodes labels are wrong; None otherwise", type=str, default="mix") # ["correct", "wrong", "mix"]
-    parser.add_argument("--top_acc", help="Top accuracy for synthetic dataset only", type=str, default="False")
-    
-    parser.add_argument("--num_test", help="number of testing entities (graphs or nodes)", type=int)
-    parser.add_argument("--num_test_final", help="number of testing entities (graphs or nodes) in the final set", type=int)
-    parser.add_argument("--time_limit", help="max time for a method to run on testing set", type=int, default=30000)
-    
-    parser.add_argument("--strategy", help="strategy for mask transformation", type=str, default="topk") # ["topk", "sparsity", "threshold"]
-    parser.add_argument("--params_list", help="list of transformation degrees", type=str, default="5,10")
-    parser.add_argument("--directed", help="if directed, choose the topk directed edges; otherwise topk undirected (no double counting)", type=str, default="True")
-    parser.add_argument("--num_top_edges", help="number of edges to keep in explanation", type=int, default=-1)
+    parser.add_argument(
+        "--testing_pred",
+        help="True if all testing nodes are correct; False if all testing nodes labels are wrong; None otherwise",
+        type=str,
+        default="mix",
+    )  # ["correct", "wrong", "mix"]
+    parser.add_argument(
+        "--top_acc",
+        help="Top accuracy for synthetic dataset only",
+        type=str,
+        default="False",
+    )
+
+    parser.add_argument(
+        "--num_test", help="number of testing entities (graphs or nodes)", type=int
+    )
+    parser.add_argument(
+        "--num_test_final",
+        help="number of testing entities (graphs or nodes) in the final set",
+        type=int,
+    )
+    parser.add_argument(
+        "--time_limit",
+        help="max time for a method to run on testing set",
+        type=int,
+        default=30000,
+    )
+
+    parser.add_argument(
+        "--strategy", help="strategy for mask transformation", type=str, default="topk"
+    )  # ["topk", "sparsity", "threshold"]
+    parser.add_argument(
+        "--params_list", help="list of transformation degrees", type=str, default="5,10"
+    )
+    parser.add_argument(
+        "--directed",
+        help="if directed, choose the topk directed edges; otherwise topk undirected (no double counting)",
+        type=str,
+        default="True",
+    )
+    parser.add_argument(
+        "--num_top_edges",
+        help="number of edges to keep in explanation",
+        type=int,
+        default=-1,
+    )
     parser.add_argument("--explainer_name", help="explainer", type=str)
 
     # hyperparameters for GNNExplainer

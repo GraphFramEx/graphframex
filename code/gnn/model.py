@@ -27,7 +27,9 @@ class GraphConvolution(Module):
         self.in_features = in_features
         self.out_features = out_features
         self.device = device
-        self.weight = nn.Parameter(torch.FloatTensor(in_features, out_features).to(self.device))
+        self.weight = nn.Parameter(
+            torch.FloatTensor(in_features, out_features).to(self.device)
+        )
         if bias:
             self.bias = nn.Parameter(torch.FloatTensor(out_features).to(self.device))
         else:
@@ -42,7 +44,9 @@ class GraphConvolution(Module):
 
     def forward(self, input, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         self.weight = self.weight.to(self.device)
         support = torch.mm(input, self.weight)
         shape = torch.Size((len(input), len(input)))
@@ -54,13 +58,36 @@ class GraphConvolution(Module):
             return output
 
     def __repr__(self):
-        return self.__class__.__name__ + " (" + str(self.in_features) + " -> " + str(self.out_features) + ")"
+        return (
+            self.__class__.__name__
+            + " ("
+            + str(self.in_features)
+            + " -> "
+            + str(self.out_features)
+            + ")"
+        )
 
 
 class GNN_basic(nn.Module):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
+    def __init__(
+        self,
+        num_node_features,
+        edge_dim,
+        hidden_dim,
+        num_classes,
+        dropout,
+        device,
+        num_layers=2,
+    ):
         super().__init__()
-        self.num_node_features, self.edge_dim, self.num_classes, self.num_layers, self.hidden_dim, self.dropout = (
+        (
+            self.num_node_features,
+            self.edge_dim,
+            self.num_classes,
+            self.num_layers,
+            self.hidden_dim,
+            self.dropout,
+        ) = (
             num_node_features,
             edge_dim,
             num_classes,
@@ -82,7 +109,9 @@ class GNN_basic(nn.Module):
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
@@ -98,7 +127,9 @@ class GNN_basic(nn.Module):
 
     def get_emb(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
@@ -106,24 +137,45 @@ class GNN_basic(nn.Module):
         return x
 
 
-
-
 class GAT(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
-        super(GAT, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
+    def __init__(
+        self,
+        num_node_features,
+        edge_dim,
+        hidden_dim,
+        num_classes,
+        dropout,
+        device,
+        num_layers=2,
+    ):
+        super(GAT, self).__init__(
+            num_node_features,
+            edge_dim,
+            hidden_dim,
+            num_classes,
+            dropout,
+            device,
+            num_layers=2,
+        )
 
     def get_layers(self):
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GATConv(current_dim, self.hidden_dim, edge_dim = self.edge_dim))
+            self.layers.append(
+                GATConv(current_dim, self.hidden_dim, edge_dim=self.edge_dim)
+            )
             current_dim = self.hidden_dim
-        self.layers.append(GATConv(current_dim, self.num_classes, edge_dim = self.edge_dim))
+        self.layers.append(
+            GATConv(current_dim, self.num_classes, edge_dim=self.edge_dim)
+        )
         return
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
@@ -134,23 +186,46 @@ class GAT(GNN_basic):
         self.probs = F.softmax(x, dim=1)
         return self.probs
 
-    
+
 class GCN(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
-        super(GCN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
+    def __init__(
+        self,
+        num_node_features,
+        edge_dim,
+        hidden_dim,
+        num_classes,
+        dropout,
+        device,
+        num_layers=2,
+    ):
+        super(GCN, self).__init__(
+            num_node_features,
+            edge_dim,
+            hidden_dim,
+            num_classes,
+            dropout,
+            device,
+            num_layers=2,
+        )
 
     def get_layers(self):
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GraphConvolution(current_dim, self.hidden_dim, device=self.device))
+            self.layers.append(
+                GraphConvolution(current_dim, self.hidden_dim, device=self.device)
+            )
             current_dim = self.hidden_dim
-        self.layers.append(GraphConvolution(current_dim, self.num_classes, device=self.device))
+        self.layers.append(
+            GraphConvolution(current_dim, self.num_classes, device=self.device)
+        )
         return
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index, edge_weight)
             x = F.relu(x)
@@ -163,23 +238,56 @@ class GCN(GNN_basic):
 
 
 class GIN(GNN_basic):
-    def __init__(self, num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2):
-        super(GIN, self).__init__(num_node_features, edge_dim, hidden_dim, num_classes, dropout, device, num_layers=2)
-    
+    def __init__(
+        self,
+        num_node_features,
+        edge_dim,
+        hidden_dim,
+        num_classes,
+        dropout,
+        device,
+        num_layers=2,
+    ):
+        super(GIN, self).__init__(
+            num_node_features,
+            edge_dim,
+            hidden_dim,
+            num_classes,
+            dropout,
+            device,
+            num_layers=2,
+        )
+
     def get_layers(self):
         self.layers = nn.ModuleList()
         current_dim = self.num_node_features
         for l in range(self.num_layers - 1):
-            self.layers.append(GINConv(nn=nn.Sequential(nn.Linear(current_dim, self.hidden_dim), nn.ReLU(),
-                                           nn.Linear(self.hidden_dim, self.hidden_dim))))#, edge_dim = self.edge_dim))
+            self.layers.append(
+                GINConv(
+                    nn=nn.Sequential(
+                        nn.Linear(current_dim, self.hidden_dim),
+                        nn.ReLU(),
+                        nn.Linear(self.hidden_dim, self.hidden_dim),
+                    )
+                )
+            )  # , edge_dim = self.edge_dim))
             current_dim = self.hidden_dim
-        self.layers.append(GINConv(nn=nn.Sequential(nn.Linear(current_dim, self.num_classes), nn.ReLU(),
-                                           nn.Linear(self.num_classes, self.num_classes))))#, edge_dim = self.edge_dim))
+        self.layers.append(
+            GINConv(
+                nn=nn.Sequential(
+                    nn.Linear(current_dim, self.num_classes),
+                    nn.ReLU(),
+                    nn.Linear(self.num_classes, self.num_classes),
+                )
+            )
+        )  # , edge_dim = self.edge_dim))
         return
 
     def forward(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index)
             x = F.relu(x)
@@ -192,7 +300,9 @@ class GIN(GNN_basic):
 
     def get_emb(self, x, edge_index, edge_weight=None):
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.size(1), device=self.device, requires_grad=True)
+            edge_weight = torch.ones(
+                edge_index.size(1), device=self.device, requires_grad=True
+            )
         for layer in self.layers[:-1]:
             x = layer(x, edge_index)
             x = F.relu(x)
@@ -223,11 +333,17 @@ class GraphConv(nn.Module):
         self.normalize_embedding = normalize_embedding
         self.input_dim = input_dim
         self.output_dim = output_dim
-        self.weight = nn.Parameter(torch.FloatTensor(input_dim, output_dim).to(self.device))
+        self.weight = nn.Parameter(
+            torch.FloatTensor(input_dim, output_dim).to(self.device)
+        )
         if add_self:
-            self.self_weight = nn.Parameter(torch.FloatTensor(input_dim, output_dim).to(self.device))
+            self.self_weight = nn.Parameter(
+                torch.FloatTensor(input_dim, output_dim).to(self.device)
+            )
         if att:
-            self.att_weight = nn.Parameter(torch.FloatTensor(input_dim, input_dim).to(self.device))
+            self.att_weight = nn.Parameter(
+                torch.FloatTensor(input_dim, input_dim).to(self.device)
+            )
         if bias:
             self.bias = nn.Parameter(torch.FloatTensor(output_dim).to(self.device))
         else:
@@ -318,14 +434,26 @@ class GcnEncoderGraph(nn.Module):
             if isinstance(m, GraphConv):
                 init.xavier_uniform_(m.weight.data, gain=nn.init.calculate_gain("relu"))
                 if m.att:
-                    init.xavier_uniform_(m.att_weight.data, gain=nn.init.calculate_gain("relu"))
+                    init.xavier_uniform_(
+                        m.att_weight.data, gain=nn.init.calculate_gain("relu")
+                    )
                 if m.add_self:
-                    init.xavier_uniform_(m.self_weight.data, gain=nn.init.calculate_gain("relu"))
+                    init.xavier_uniform_(
+                        m.self_weight.data, gain=nn.init.calculate_gain("relu")
+                    )
                 if m.bias is not None:
                     init.constant_(m.bias.data, 0.0)
 
     def build_conv_layers(
-        self, input_dim, hidden_dim, embedding_dim, num_layers, add_self, normalize=False, dropout=0.0, device=device
+        self,
+        input_dim,
+        hidden_dim,
+        embedding_dim,
+        num_layers,
+        add_self,
+        normalize=False,
+        dropout=0.0,
+        device=device,
     ):
         conv_first = GraphConv(
             input_dim=input_dim,
@@ -362,7 +490,9 @@ class GcnEncoderGraph(nn.Module):
         )
         return conv_first, conv_block, conv_last
 
-    def build_pred_layers(self, pred_input_dim, pred_hidden_dims, label_dim, num_aggs=1):
+    def build_pred_layers(
+        self, pred_input_dim, pred_hidden_dims, label_dim, num_aggs=1
+    ):
         pred_input_dim = pred_input_dim * num_aggs
         if len(pred_hidden_dims) == 0:
             pred_model = nn.Linear(pred_input_dim, label_dim)
@@ -386,7 +516,7 @@ class GcnEncoderGraph(nn.Module):
         batch_size = len(batch_num_nodes)
         out_tensor = torch.zeros(batch_size, max_nodes)
         for i, mask in enumerate(packed_masks):
-                out_tensor[i, : batch_num_nodes[i]] = mask
+            out_tensor[i, : batch_num_nodes[i]] = mask
         out = out_tensor.unsqueeze(2).to(self.device)
         return out
 
@@ -395,7 +525,9 @@ class GcnEncoderGraph(nn.Module):
         bn_module = nn.BatchNorm1d(x.size()[1]).to(self.device)
         return bn_module(x)
 
-    def gcn_forward(self, x, adj, conv_first, conv_block, conv_last, embedding_mask=None):
+    def gcn_forward(
+        self, x, adj, conv_first, conv_block, conv_last, embedding_mask=None
+    ):
 
         """Perform forward prop with graph convolution.
         Returns:
@@ -494,7 +626,11 @@ class GcnEncoderGraph(nn.Module):
         adj = []
         for i in range(len(x)):
             max_n = x[i].size(0)
-            adj.append(from_edge_index_to_adj(edge_index[i].cpu(), torch.FloatTensor(edge_weight[i]), max_n))
+            adj.append(
+                from_edge_index_to_adj(
+                    edge_index[i].cpu(), torch.FloatTensor(edge_weight[i]), max_n
+                )
+            )
         adj = torch.stack(adj).to(self.device)
         pred, adj_att = self.forward_batch(x, adj, batch_num_nodes, **kwargs)
         self.logits = pred
@@ -559,7 +695,9 @@ class GcnEncoderGraph(nn.Module):
             return F.cross_entropy(pred, label, size_average=True)
         elif type == "margin":
             batch_size = pred.size()[0]
-            label_onehot = torch.zeros(batch_size, self.label_dim).long().to(self.device)
+            label_onehot = (
+                torch.zeros(batch_size, self.label_dim).long().to(self.device)
+            )
             label_onehot.scatter_(1, label.view(-1, 1), 1)
             return torch.nn.MultiLabelMarginLoss()(pred, label_onehot)
 
@@ -622,7 +760,9 @@ class GcnEncoderNode(GcnEncoderGraph):
             edge_weight = torch.ones(edge_index.size(1))
         max_n = x.size(0)
         adj = from_edge_index_to_adj(edge_index, edge_weight, max_n).to(self.device)
-        pred, adj_att = self.forward_batch(x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes=None, **kwargs)
+        pred, adj_att = self.forward_batch(
+            x.expand(1, -1, -1), adj.expand(1, -1, -1), batch_num_nodes=None, **kwargs
+        )
         ypred = torch.squeeze(pred, 0)
         self.logits = ypred
         self.probs = F.softmax(ypred, dim=1)
@@ -645,11 +785,12 @@ class GcnEncoderNode(GcnEncoderGraph):
         embedding_mask = None
         self.adj_atts = []
         x_tensor, adj_att = self.gcn_forward(
-            x.expand(1, -1, -1), adj.expand(1, -1, -1), self.conv_first, self.conv_block, self.conv_last, embedding_mask
+            x.expand(1, -1, -1),
+            adj.expand(1, -1, -1),
+            self.conv_first,
+            self.conv_block,
+            self.conv_last,
+            embedding_mask,
         )
         emb = torch.squeeze(x_tensor, 0)
         return emb
-
-
-
-

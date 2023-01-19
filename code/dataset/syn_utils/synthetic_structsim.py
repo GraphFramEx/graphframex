@@ -29,7 +29,13 @@ def bottle(start, role_start=0):
     graph = nx.Graph()
     graph.add_nodes_from(range(start, start + 5))
     graph.add_edges_from(
-        [(start, start + 1), (start + 1, start + 2), (start + 2, start), (start + 3, start), (start + 4, start)]
+        [
+            (start, start + 1),
+            (start + 1, start + 2),
+            (start + 2, start),
+            (start + 3, start),
+            (start + 4, start),
+        ]
     )
     roles = [role_start, role_start + 1, role_start + 1, role_start + 2, role_start + 2]
     return graph, roles

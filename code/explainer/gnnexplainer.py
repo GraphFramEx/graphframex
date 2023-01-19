@@ -152,7 +152,12 @@ class GNNExplainer(torch.nn.Module):
         num_nodes, num_edges = x.size(0), edge_index.size(1)
 
         subset, edge_index, mapping, edge_mask = k_hop_subgraph(
-            node_idx, self.num_hops, edge_index, relabel_nodes=True, num_nodes=num_nodes, flow=self.__flow__()
+            node_idx,
+            self.num_hops,
+            edge_index,
+            relabel_nodes=True,
+            num_nodes=num_nodes,
+            flow=self.__flow__(),
         )
 
         x = x[subset]
@@ -281,7 +286,9 @@ class GNNExplainer(torch.nn.Module):
         num_edges = edge_index.size(1)
 
         # Only operate on a k-hop subgraph around `node_idx`.
-        x, edge_index, mapping, hard_edge_mask, subset, kwargs = self.__subgraph__(node_idx, x, edge_index, **kwargs)
+        x, edge_index, mapping, hard_edge_mask, subset, kwargs = self.__subgraph__(
+            node_idx, x, edge_index, **kwargs
+        )
 
         # Get the initial prediction.
         with torch.no_grad():
@@ -342,7 +349,16 @@ class GNNExplainer(torch.nn.Module):
         return node_feat_mask, edge_mask
 
     def visualize_subgraph(
-        self, node_idx, edge_index, edge_mask, y=None, threshold=None, edge_y=None, node_alpha=None, seed=10, **kwargs
+        self,
+        node_idx,
+        edge_index,
+        edge_mask,
+        y=None,
+        threshold=None,
+        edge_y=None,
+        node_alpha=None,
+        seed=10,
+        **kwargs,
     ):
         r"""Visualizes the subgraph given an edge mask
         :attr:`edge_mask`.
@@ -375,14 +391,21 @@ class GNNExplainer(torch.nn.Module):
         assert edge_mask.size(0) == edge_index.size(1)
 
         if node_idx == -1:
-            hard_edge_mask = torch.BoolTensor([True] * edge_index.size(1), device=edge_mask.device)
+            hard_edge_mask = torch.BoolTensor(
+                [True] * edge_index.size(1), device=edge_mask.device
+            )
             subset = torch.arange(edge_index.max().item() + 1, device=edge_index.device)
             y = None
 
         else:
             # Only operate on a k-hop subgraph around `node_idx`.
             subset, edge_index, _, hard_edge_mask = k_hop_subgraph(
-                node_idx, self.num_hops, edge_index, relabel_nodes=True, num_nodes=None, flow=self.__flow__()
+                node_idx,
+                self.num_hops,
+                edge_index,
+                relabel_nodes=True,
+                num_nodes=None,
+                flow=self.__flow__(),
             )
 
         edge_mask = edge_mask[hard_edge_mask]
@@ -399,9 +422,17 @@ class GNNExplainer(torch.nn.Module):
             edge_color = ["black"] * edge_index.size(1)
         else:
             colors = list(plt.rcParams["axes.prop_cycle"])
-            edge_color = [colors[i % len(colors)]["color"] for i in edge_y[hard_edge_mask]]
+            edge_color = [
+                colors[i % len(colors)]["color"] for i in edge_y[hard_edge_mask]
+            ]
 
-        data = Data(edge_index=edge_index, att=edge_mask, edge_color=edge_color, y=y, num_nodes=y.size(0)).to("cpu")
+        data = Data(
+            edge_index=edge_index,
+            att=edge_mask,
+            edge_color=edge_color,
+            y=y,
+            num_nodes=y.size(0),
+        ).to("cpu")
         G = to_networkx(data, node_attrs=["y"], edge_attrs=["att", "edge_color"])
         mapping = {k: i for k, i in enumerate(subset.tolist())}
         G = nx.relabel_nodes(G, mapping)
@@ -439,7 +470,13 @@ class GNNExplainer(torch.nn.Module):
         else:
             node_alpha_subset = node_alpha[subset]
             assert ((node_alpha_subset >= 0) & (node_alpha_subset <= 1)).all()
-            nx.draw_networkx_nodes(G, pos, alpha=node_alpha_subset.tolist(), node_color=y.tolist(), **node_kwargs)
+            nx.draw_networkx_nodes(
+                G,
+                pos,
+                alpha=node_alpha_subset.tolist(),
+                node_color=y.tolist(),
+                **node_kwargs,
+            )
 
         nx.draw_networkx_labels(G, pos, **label_kwargs)
 
@@ -484,10 +521,10 @@ class TargetedGNNExplainer(GNNExplainer):
 
         if self.allow_node_mask:
             m = self.node_feat_mask.sigmoid()
-            node_feat_reduce = getattr(torch, self.coeffs['node_feat_reduction'])
-            loss = loss + self.coeffs['node_feat_size'] * node_feat_reduce(m)
+            node_feat_reduce = getattr(torch, self.coeffs["node_feat_reduction"])
+            loss = loss + self.coeffs["node_feat_size"] * node_feat_reduce(m)
             ent = -m * torch.log(m + EPS) - (1 - m) * torch.log(1 - m + EPS)
-            loss = loss + self.coeffs['node_feat_ent'] * ent.mean()
+            loss = loss + self.coeffs["node_feat_ent"] * ent.mean()
 
         return loss
 
@@ -512,7 +549,9 @@ class TargetedGNNExplainer(GNNExplainer):
         # Get the initial prediction.
         if target is not None:
             with torch.no_grad():
-                out = self.model(x=x, edge_index=edge_index, edge_weight=edge_weight, batch=batch)
+                out = self.model(
+                    x=x, edge_index=edge_index, edge_weight=edge_weight, batch=batch
+                )
                 if self.return_type == "regression":
                     prediction = out
                 else:
@@ -549,7 +588,7 @@ class TargetedGNNExplainer(GNNExplainer):
                 x=h,
                 edge_index=edge_index,
                 edge_weight=self.edge_mask.sigmoid(),
-                batch=batch, 
+                batch=batch,
             )
             if self.return_type == "regression":
                 loss = self.__loss__(-1, out, prediction)
@@ -571,7 +610,9 @@ class TargetedGNNExplainer(GNNExplainer):
         self.__clear_masks__()
         return node_feat_mask, edge_mask
 
-    def explain_node_with_target(self, node_idx, x, edge_index, edge_weight, target, **kwargs):
+    def explain_node_with_target(
+        self, node_idx, x, edge_index, edge_weight, target, **kwargs
+    ):
         r"""Learns and returns a node feature mask and an edge mask that play a
         crucial role to explain the prediction made by the GNN for node
         :attr:`node_idx`.
@@ -594,7 +635,9 @@ class TargetedGNNExplainer(GNNExplainer):
         col, row = edge_index
         sub_node_mask = row.new_empty(num_nodes, dtype=torch.bool)
         # Only operate on a k-hop subgraph around `node_idx`.
-        x, edge_index, mapping, hard_edge_mask, subset, kwargs = self.__subgraph__(node_idx, x, edge_index, **kwargs)
+        x, edge_index, mapping, hard_edge_mask, subset, kwargs = self.__subgraph__(
+            node_idx, x, edge_index, **kwargs
+        )
 
         sub_node_mask.fill_(False)
         sub_node_mask[subset] = True

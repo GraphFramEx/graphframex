@@ -37,14 +37,26 @@ def find_closest_node_result(results, max_nodes):
 
 
 def reward_func(
-    reward_method, value_func, node_idx=None, local_radius=4, sample_num=100, subgraph_building_method="zero_filling"
+    reward_method,
+    value_func,
+    node_idx=None,
+    local_radius=4,
+    sample_num=100,
+    subgraph_building_method="zero_filling",
 ):
     if reward_method.lower() == "gnn_score":
-        return partial(gnn_score, value_func=value_func, subgraph_building_method=subgraph_building_method)
+        return partial(
+            gnn_score,
+            value_func=value_func,
+            subgraph_building_method=subgraph_building_method,
+        )
 
     elif reward_method.lower() == "mc_shapley":
         return partial(
-            mc_shapley, value_func=value_func, subgraph_building_method=subgraph_building_method, sample_num=sample_num
+            mc_shapley,
+            value_func=value_func,
+            subgraph_building_method=subgraph_building_method,
+            sample_num=sample_num,
         )
 
     elif reward_method.lower() == "l_shapley":
@@ -214,7 +226,11 @@ class MCTS(object):
 
         self.root_coalition = sorted([node for node in range(self.num_nodes)])
         self.MCTSNodeClass = partial(
-            MCTSNode, data=self.data, ori_graph=self.graph, c_puct=self.c_puct, device=self.device
+            MCTSNode,
+            data=self.data,
+            ori_graph=self.graph,
+            c_puct=self.c_puct,
+            device=self.device,
         )
         self.root = self.MCTSNodeClass(self.root_coalition)
         self.state_map = {str(self.root.coalition): self.root}
@@ -226,7 +242,12 @@ class MCTS(object):
     def __subgraph__(node_idx, x, edge_index, num_hops, **kwargs):
         num_nodes, num_edges = x.size(0), edge_index.size(1)
         subset, edge_index, _, edge_mask = k_hop_subgraph(
-            node_idx, num_hops, edge_index, relabel_nodes=True, num_nodes=num_nodes, flow="source_to_target"
+            node_idx,
+            num_hops,
+            edge_index,
+            relabel_nodes=True,
+            num_nodes=num_nodes,
+            flow="source_to_target",
         )
 
         x = x[subset]
@@ -247,7 +268,9 @@ class MCTS(object):
         # Expand if this node has never been visited
         if len(tree_node.children) == 0:
             node_degree_list = list(self.graph.subgraph(cur_graph_coalition).degree)
-            node_degree_list = sorted(node_degree_list, key=lambda x: x[1], reverse=self.high2low)
+            node_degree_list = sorted(
+                node_degree_list, key=lambda x: x[1], reverse=self.high2low
+            )
             all_nodes = [x[0] for x in node_degree_list]
 
             if self.new_node_idx:
@@ -264,7 +287,10 @@ class MCTS(object):
                 subgraph_coalition = [node for node in all_nodes if node != each_node]
 
                 subgraphs = [
-                    self.graph.subgraph(c) for c in nx.connected_components(self.graph.subgraph(subgraph_coalition))
+                    self.graph.subgraph(c)
+                    for c in nx.connected_components(
+                        self.graph.subgraph(subgraph_coalition)
+                    )
                 ]
 
                 if self.new_node_idx:
@@ -282,7 +308,9 @@ class MCTS(object):
                 # check the state map and merge the same sub-graph
                 find_same = False
                 for old_graph_node in self.state_map.values():
-                    if Counter(old_graph_node.coalition) == Counter(new_graph_coalition):
+                    if Counter(old_graph_node.coalition) == Counter(
+                        new_graph_coalition
+                    ):
                         new_node = old_graph_node
                         find_same = True
 
@@ -314,7 +342,9 @@ class MCTS(object):
         for rollout_idx in range(self.n_rollout):
             self.mcts_rollout(self.root)
             if verbose:
-                print(f"At the {rollout_idx} rollout, {len(self.state_map)} states that have been explored.")
+                print(
+                    f"At the {rollout_idx} rollout, {len(self.state_map)} states that have been explored."
+                )
 
         explanations = [node for _, node in self.state_map.items()]
         explanations = sorted(explanations, key=lambda x: x.P, reverse=True)
@@ -428,7 +458,9 @@ class SubgraphX(object):
             subgraph_building_method=self.subgraph_building_method,
         )
 
-    def get_mcts_class(self, x, edge_index, node_idx: int = None, score_func: Callable = None):
+    def get_mcts_class(
+        self, x, edge_index, node_idx: int = None, score_func: Callable = None
+    ):
         if self.explain_graph:
             node_idx = None
         else:
@@ -449,12 +481,16 @@ class SubgraphX(object):
 
     def read_from_MCTSInfo_list(self, MCTSInfo_list):
         if isinstance(MCTSInfo_list[0], dict):
-            ret_list = [MCTSNode(device=self.device).load_info(node_info) for node_info in MCTSInfo_list]
+            ret_list = [
+                MCTSNode(device=self.device).load_info(node_info)
+                for node_info in MCTSInfo_list
+            ]
         elif isinstance(MCTSInfo_list[0][0], dict):
             ret_list = []
             for single_label_MCTSInfo_list in MCTSInfo_list:
                 single_label_ret_list = [
-                    MCTSNode(device=self.device).load_info(node_info) for node_info in single_label_MCTSInfo_list
+                    MCTSNode(device=self.device).load_info(node_info)
+                    for node_info in single_label_MCTSInfo_list
                 ]
                 ret_list.append(single_label_ret_list)
         return ret_list
@@ -465,7 +501,9 @@ class SubgraphX(object):
         elif isinstance(MCTSNode_list[0][0], MCTSNode):
             ret_list = []
             for single_label_MCTSNode_list in MCTSNode_list:
-                single_label_ret_list = [node.info for node in single_label_MCTSNode_list]
+                single_label_ret_list = [
+                    node.info for node in single_label_MCTSNode_list
+                ]
                 ret_list.append(single_label_ret_list)
         return ret_list
 
@@ -482,7 +520,9 @@ class SubgraphX(object):
         x = x.to(self.device)
         edge_index = edge_index.to(self.device)
         edge_weight = edge_weight.to(self.device)
-        probs = self.model(x, edge_index, edge_weight).to(self.device)  # .squeeze().softmax(dim=-1)
+        probs = self.model(x, edge_index, edge_weight).to(
+            self.device
+        )  # .squeeze().softmax(dim=-1)
 
         if self.explain_graph:
             if saved_MCTSInfo_list:
@@ -491,7 +531,9 @@ class SubgraphX(object):
             if not saved_MCTSInfo_list:
                 value_func = GnnNetsGC2valueFunc(self.model, target_class=label)
                 payoff_func = self.get_reward_func(value_func)
-                self.mcts_state_map = self.get_mcts_class(x, edge_index, score_func=payoff_func)
+                self.mcts_state_map = self.get_mcts_class(
+                    x, edge_index, score_func=payoff_func
+                )
                 results = self.mcts_state_map.mcts(verbose=self.verbose)
 
             # l sharply score
@@ -505,9 +547,15 @@ class SubgraphX(object):
             self.mcts_state_map = self.get_mcts_class(x, edge_index, node_idx=node_idx)
             self.new_node_idx = self.mcts_state_map.new_node_idx
             # mcts will extract the subgraph and relabel the nodes
-            value_func = GnnNetsNC2valueFunc(self.model, node_idx=self.mcts_state_map.new_node_idx, target_class=label)
+            value_func = GnnNetsNC2valueFunc(
+                self.model,
+                node_idx=self.mcts_state_map.new_node_idx,
+                target_class=label,
+            )
             if not saved_MCTSInfo_list:
-                payoff_func = self.get_reward_func(value_func, node_idx=self.mcts_state_map.new_node_idx)
+                payoff_func = self.get_reward_func(
+                    value_func, node_idx=self.mcts_state_map.new_node_idx
+                )
                 self.mcts_state_map.set_score_func(payoff_func)
                 results = self.mcts_state_map.mcts(verbose=self.verbose)
 
@@ -515,7 +563,11 @@ class SubgraphX(object):
             tree_node_x = find_closest_node_result(results, max_nodes=max_nodes)
         # keep the important structure
         self.ori_data = self.mcts_state_map.ori_data
-        masked_node_list = [node for node in range(tree_node_x.data.x.shape[0]) if node in tree_node_x.coalition]
+        masked_node_list = [
+            node
+            for node in range(tree_node_x.data.x.shape[0])
+            if node in tree_node_x.coalition
+        ]
 
         """
         # remove the important structure, for node_classification,
@@ -556,7 +608,9 @@ class SubgraphX(object):
         edge_mask = edge_mask.detach().numpy()
         return edge_mask.astype(int)
 
-    def __call__(self, x: Tensor, edge_index: Tensor, edge_weight: Tensor, **kwargs) -> Tuple[None, List, List[Dict]]:
+    def __call__(
+        self, x: Tensor, edge_index: Tensor, edge_weight: Tensor, **kwargs
+    ) -> Tuple[None, List, List[Dict]]:
         r"""explain the GNN behavior for the graph using SubgraphX method
         Args:
             x (:obj:`torch.Tensor`): Node feature matrix with shape
@@ -580,11 +634,19 @@ class SubgraphX(object):
         saved_results = None
         if self.save:
             if os.path.isfile(os.path.join(self.save_dir, f"{self.filename}.pt")):
-                saved_results = torch.load(os.path.join(self.save_dir, f"{self.filename}.pt"))
+                saved_results = torch.load(
+                    os.path.join(self.save_dir, f"{self.filename}.pt")
+                )
 
         for label_idx, label in enumerate(ex_labels):
             edge_mask = self.explain(
-                x, edge_index, edge_weight, label=label, max_nodes=max_nodes, node_idx=node_idx, saved_MCTSInfo_list=saved_results
+                x,
+                edge_index,
+                edge_weight,
+                label=label,
+                max_nodes=max_nodes,
+                node_idx=node_idx,
+                saved_MCTSInfo_list=saved_results,
             )
             edge_masks.append(edge_mask)
 

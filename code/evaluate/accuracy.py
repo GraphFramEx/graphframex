@@ -81,7 +81,7 @@ def get_scores(G1, G2):
 
 
 def get_accuracy(data, edge_mask, node_idx, args, top_acc):
-    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets) """
+    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets)"""
     G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
     G_expl = get_explanation(data, edge_mask, args, top_acc)
     if eval(args.draw_graph):

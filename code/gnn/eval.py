@@ -15,15 +15,25 @@ def gnn_accuracy(output, labels):
     correct = correct.sum()
     return correct / len(labels)
 
+
 def gnn_scores_nc(model, data, args, device):
     model.eval()
 
     if data.num_nodes > args.sample_size:
-        cluster_data = ClusterData(data, num_parts=data.x.size(0) // args.sample_size, recursive=False)
-        data_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)  # , num_workers=args.num_workers)
+        cluster_data = ClusterData(
+            data, num_parts=data.x.size(0) // args.sample_size, recursive=False
+        )
+        data_loader = ClusterLoader(
+            cluster_data, batch_size=1, shuffle=True
+        )  # , num_workers=args.num_workers)
         data = next(iter(data_loader))
 
-    ypred = model(data.x, data.edge_index, edge_weight=data.edge_weight).cpu().detach().numpy()
+    ypred = (
+        model(data.x, data.edge_index, edge_weight=data.edge_weight)
+        .cpu()
+        .detach()
+        .numpy()
+    )
     ylabels = get_labels(ypred)
     data.y = data.y.cpu()
 
@@ -32,16 +42,30 @@ def gnn_scores_nc(model, data, args, device):
     print("lenght of test mask", len(data.test_mask[data.test_mask == True]))
 
     result_train = {
-        "prec": metrics.precision_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
-        "recall": metrics.recall_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
-        "f1-score": metrics.f1_score(data.y[data.train_mask], ylabels[data.train_mask], average="macro"),
-        "acc": metrics.accuracy_score(data.y[data.train_mask], ylabels[data.train_mask]),
+        "prec": metrics.precision_score(
+            data.y[data.train_mask], ylabels[data.train_mask], average="macro"
+        ),
+        "recall": metrics.recall_score(
+            data.y[data.train_mask], ylabels[data.train_mask], average="macro"
+        ),
+        "f1-score": metrics.f1_score(
+            data.y[data.train_mask], ylabels[data.train_mask], average="macro"
+        ),
+        "acc": metrics.accuracy_score(
+            data.y[data.train_mask], ylabels[data.train_mask]
+        ),
     }
 
     result_test = {
-        "prec": metrics.precision_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
-        "recall": metrics.recall_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
-        "f1-score": metrics.f1_score(data.y[data.test_mask], ylabels[data.test_mask], average="macro"),
+        "prec": metrics.precision_score(
+            data.y[data.test_mask], ylabels[data.test_mask], average="macro"
+        ),
+        "recall": metrics.recall_score(
+            data.y[data.test_mask], ylabels[data.test_mask], average="macro"
+        ),
+        "f1-score": metrics.f1_score(
+            data.y[data.test_mask], ylabels[data.test_mask], average="macro"
+        ),
         "acc": metrics.accuracy_score(data.y[data.test_mask], ylabels[data.test_mask]),
     }
     return result_train, result_test

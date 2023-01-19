@@ -16,21 +16,28 @@ from gnn.model import GCN, GcnEncoderNode, GAT, GIN
 from gnn.eval import *
 from utils.io_utils import create_model_filename, load_ckpt, save_checkpoint
 
-MODELS = {"gcn":"GCN", "gat":"GAT", "gin":"GIN"}
+MODELS = {"gcn": "GCN", "gat": "GAT", "gin": "GIN"}
 
 ####### GNN Training #######
+
 
 def test(model, data):
     model.eval()
     output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
     loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
     acc_test = gnn_accuracy(output[data.test_mask], data.y[data.test_mask])
-    print("Test set results:", "loss= {:.4f}".format(loss_test.item()), "accuracy= {:.4f}".format(acc_test.item()))
+    print(
+        "Test set results:",
+        "loss= {:.4f}".format(loss_test.item()),
+        "accuracy= {:.4f}".format(acc_test.item()),
+    )
 
 
 def train_real_nc(model, data, device, args):
     model = model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    optimizer = optim.Adam(
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
     data.to(device)
 
     # Train model
@@ -51,7 +58,7 @@ def train_real_nc(model, data, device, args):
 
         model.eval()
         output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
-        
+
         loss_val = F.nll_loss(output[data.val_mask], data.y[data.val_mask])
         # loss_val = F.cross_entropy(output[idx_val], labels[idx_val])
         acc_val = gnn_accuracy(output[data.val_mask], data.y[data.val_mask])
@@ -68,15 +75,18 @@ def train_real_nc(model, data, device, args):
     print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
 
 
-
 def train_syn_nc(model, data, device, args):
 
     # if eval(args.batch):
     if data.num_nodes > args.sample_size:
 
-        cluster_data = ClusterData(data, num_parts=data.x.size(0) // 2000, recursive=False)
+        cluster_data = ClusterData(
+            data, num_parts=data.x.size(0) // 2000, recursive=False
+        )
         train_loader = ClusterLoader(cluster_data, batch_size=1, shuffle=True)
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        )
 
         val_err = []
         train_err = []
@@ -101,15 +111,25 @@ def train_syn_nc(model, data, device, args):
             loss = total_loss / total_nodes
 
             if epoch % 10 == 0:
-                val_loss = model.loss(out[batch.val_mask], batch.y[batch.val_mask]).item() / batch.val_mask.sum().item()
+                val_loss = (
+                    model.loss(out[batch.val_mask], batch.y[batch.val_mask]).item()
+                    / batch.val_mask.sum().item()
+                )
                 val_err.append(val_loss)
                 train_err.append(loss)
-                print("__logs:" + json.dumps({"val_err": round(val_loss, 4), "train_err": round(loss, 4)}))
+                print(
+                    "__logs:"
+                    + json.dumps(
+                        {"val_err": round(val_loss, 4), "train_err": round(loss, 4)}
+                    )
+                )
 
     else:
 
         data = data.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        )
 
         val_err = []
         train_err = []
@@ -136,16 +156,20 @@ def train_syn_nc(model, data, device, args):
                 val_err.append(val_loss.item())
                 train_err.append(loss.item())
                 print(
-                    "__logs:" + json.dumps({"val_err": round(val_loss.item(), 4), "train_err": round(loss.item(), 4)})
+                    "__logs:"
+                    + json.dumps(
+                        {
+                            "val_err": round(val_loss.item(), 4),
+                            "train_err": round(loss.item(), 4),
+                        }
+                    )
                 )
 
             loss.backward()
             optimizer.step()
 
 
-
-
-def get_trained_model(data, args, device, data_type='real'):
+def get_trained_model(data, args, device, data_type="real"):
     model_filename = create_model_filename(args)
     if data_type == "syn":
         model = GcnEncoderNode(
@@ -160,18 +184,18 @@ def get_trained_model(data, args, device, data_type='real'):
     elif data_type == "real":
         if data.edge_weight is None:
             edge_dim = 1
-        else: 
+        else:
             edge_dim = data.edge_weight.dim()
         model = eval(MODELS[args.model])(
-                num_node_features=data.x.shape[1],
-                edge_dim=edge_dim,
-                hidden_dim=args.hidden_dim,
-                num_classes=args.num_classes,
-                dropout=args.dropout,
-                num_layers=args.num_gc_layers,
-                device=device,
-            ).to(device)
-    if os.path.isfile(model_filename)==False:
+            num_node_features=data.x.shape[1],
+            edge_dim=edge_dim,
+            hidden_dim=args.hidden_dim,
+            num_classes=args.num_classes,
+            dropout=args.dropout,
+            num_layers=args.num_gc_layers,
+            device=device,
+        ).to(device)
+    if os.path.isfile(model_filename) == False:
         if data_type == "syn":
             train_syn_nc(model, data, device, args)
         elif data_type == "real":
@@ -185,4 +209,3 @@ def get_trained_model(data, args, device, data_type='real'):
     print("__gnn_train_scores: " + json.dumps(ckpt["results_train"]))
     print("__gnn_test_scores: " + json.dumps(ckpt["results_test"]))
     return model
-

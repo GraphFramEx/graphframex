@@ -25,7 +25,9 @@ def node_attr_to_edge(edge_index, node_mask):
 
 
 #### Baselines ####
-def explain_random_graph(model, x, edge_index, target, device, args, include_edges=None):
+def explain_random_graph(
+    model, x, edge_index, target, device, args, include_edges=None
+):
     return np.random.uniform(size=edge_index.shape[1])
 
 
@@ -35,7 +37,9 @@ def explain_sa_graph(model, x, edge_index, target, device, args, include_edges=N
     max_n = x.size(0)
     adj = from_edge_index_to_adj(edge_index, edge_weights, max_n)
     adj_mask = adj.requires_grad_(True).to(device)
-    saliency_mask = saliency.attribute(adj_mask, target=int(target), additional_forward_args=(model, x), abs=False)
+    saliency_mask = saliency.attribute(
+        adj_mask, target=int(target), additional_forward_args=(model, x), abs=False
+    )
     edge_att = saliency_mask * adj
     edge_att = pow(edge_att, 2).cpu().detach().numpy()
     edges, edge_mask = from_adj_to_edge_index(edge_att)
@@ -72,7 +76,10 @@ def explain_ig_graph(model, x, edge_index, target, device, args, include_edges=N
     adj = from_edge_index_to_adj(edge_index, edge_weights, max_n)
     adj_mask = adj.requires_grad_(True).to(device)
     ig_mask = ig.attribute(
-        adj_mask, target=int(target), additional_forward_args=(model, x), internal_batch_size=adj_mask.shape[1]
+        adj_mask,
+        target=int(target),
+        additional_forward_args=(model, x),
+        internal_batch_size=adj_mask.shape[1],
     )
     edge_att = ig_mask * adj
     edge_att = pow(edge_att, 2).cpu().detach().numpy()
@@ -81,11 +88,15 @@ def explain_ig_graph(model, x, edge_index, target, device, args, include_edges=N
     return edge_mask
 
 
-def explain_gradcam_graph(model, x, edge_index, target, device, args, include_edges=None):
+def explain_gradcam_graph(
+    model, x, edge_index, target, device, args, include_edges=None
+):
     edge_weights = Variable(torch.ones(edge_index.shape[1]), requires_grad=True)
     x = Variable(x, requires_grad=True)
     max_n = x.size(0)
-    adj_init = from_edge_index_to_adj(edge_index, torch.FloatTensor(edge_weights), max_n)
+    adj_init = from_edge_index_to_adj(
+        edge_index, torch.FloatTensor(edge_weights), max_n
+    )
     adj = Variable(adj_init, requires_grad=True)
     pred, _ = model.forward_adj(x, adj)
     pred[0, target].backward()
@@ -97,7 +108,9 @@ def explain_gradcam_graph(model, x, edge_index, target, device, args, include_ed
     return edge_mask
 
 
-def explain_occlusion_graph(model, x, edge_index, target, device, args, include_edges=None):
+def explain_occlusion_graph(
+    model, x, edge_index, target, device, args, include_edges=None
+):
     depth_limit = args.num_gc_layers + 1
     data = Data(x=x, edge_index=edge_index)
     if target is None:
@@ -115,13 +128,17 @@ def explain_occlusion_graph(model, x, edge_index, target, device, args, include_
         u, v = list(edge_index_numpy[:, i])
         if (u, v) in g.edges():
             edge_occlusion_mask[i] = False
-            prob = model(data.x, data.edge_index[:, edge_occlusion_mask])[0][target].item()
+            prob = model(data.x, data.edge_index[:, edge_occlusion_mask])[0][
+                target
+            ].item()
             edge_mask[i] = pred_prob - prob
             edge_occlusion_mask[i] = True
     return edge_mask
 
 
-def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, include_edges=None, **kwargs):
+def explain_gnnexplainer_graph(
+    model, x, edge_index, target, device, args, include_edges=None, **kwargs
+):
     if "edge_weights" not in kwargs:
         kwargs["edge_weights"] = None
 
@@ -135,17 +152,26 @@ def explain_gnnexplainer_graph(model, x, edge_index, target, device, args, inclu
     )
     if eval(args.explain_graph):
         edge_mask = explainer.explain_graph_with_target(
-            x=x, edge_index=edge_index, edge_weights=kwargs["edge_weights"], target=target
+            x=x,
+            edge_index=edge_index,
+            edge_weights=kwargs["edge_weights"],
+            target=target,
         )
 
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask
 
 
-def explain_pgmexplainer_graph(model, x, edge_index, target, device, args, include_edges=None):
+def explain_pgmexplainer_graph(
+    model, x, edge_index, target, device, args, include_edges=None
+):
     explainer = Graph_Explainer(model, edge_index, x, device=device, print_result=0)
     explanation = explainer.explain(
-        num_samples=1000, percentage=10, top_node=None, p_threshold=0.05, pred_threshold=0.1
+        num_samples=1000,
+        percentage=10,
+        top_node=None,
+        p_threshold=0.05,
+        pred_threshold=0.1,
     )
     node_attr = np.zeros(x.shape[0])
     for node, p_value in explanation.items():
@@ -154,7 +180,13 @@ def explain_pgmexplainer_graph(model, x, edge_index, target, device, args, inclu
     return edge_mask
 
 
-def explain_subgraphx_graph(model, x, edge_index, target, device, args, include_edges=None):
-    subgraphx = SubgraphX(model, args.num_classes, device, num_hops=2, explain_graph=True)
-    edge_mask = subgraphx.explain(x, edge_index, max_nodes=args.num_top_edges, label=target)
+def explain_subgraphx_graph(
+    model, x, edge_index, target, device, args, include_edges=None
+):
+    subgraphx = SubgraphX(
+        model, args.num_classes, device, num_hops=2, explain_graph=True
+    )
+    edge_mask = subgraphx.explain(
+        x, edge_index, max_nodes=args.num_top_edges, label=target
+    )
     return edge_mask

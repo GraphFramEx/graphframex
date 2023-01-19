@@ -9,6 +9,7 @@ from torch_geometric.utils import from_networkx
 
 from dataset.syn_utils.gengraph import *
 
+
 def load_data_syn(args, device):
     """Load synthetic dataset.
 
@@ -29,6 +30,7 @@ def load_data_syn(args, device):
         torch.save(data, data_filename)
     data = data.to(device)
     return data
+
 
 def build_syndata(args):
     """Generate synthetic graohs and convert them into Pytorch geometric Data object.
@@ -56,8 +58,12 @@ def build_syndata(args):
         torch.zeros(n, dtype=torch.bool),
         torch.zeros(n, dtype=torch.bool),
     )
-    train_ids, test_ids = train_test_split(range(n), test_size=args.test_ratio, random_state=args.seed, shuffle=True)
-    train_ids, val_ids = train_test_split(train_ids, test_size=args.val_ratio, random_state=args.seed, shuffle=True)
+    train_ids, test_ids = train_test_split(
+        range(n), test_size=args.test_ratio, random_state=args.seed, shuffle=True
+    )
+    train_ids, val_ids = train_test_split(
+        train_ids, test_size=args.val_ratio, random_state=args.seed, shuffle=True
+    )
 
     data.train_mask[train_ids] = 1
     data.val_mask[val_ids] = 1
