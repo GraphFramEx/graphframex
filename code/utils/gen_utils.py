@@ -1,16 +1,27 @@
 import random
+from dataset.gen_syn import load_data_syn
+from dataset.gen_real import load_data_real
 
 import numpy as np
 import pandas as pd
 import torch
 from torch_geometric.utils.num_nodes import maybe_num_nodes
-from dataset.mutag_utils import GraphSampler, data_to_graph
 from scipy.sparse import csr_matrix
 import scipy.sparse as sp
 from scipy.special import softmax
 from torch_geometric.utils import from_scipy_sparse_matrix, k_hop_subgraph, to_scipy_sparse_matrix
 
 
+def load_data(args, device, data_type="syn"):
+    if data_type == "syn":
+        data = load_data_syn(args, device)
+    elif data_type == "real":
+        data = load_data_real(args, device)
+    else:
+        raise ValueError("Unknown data type")
+    return data
+
+    
 def list_to_dict(preds):
     preds_dict = pd.DataFrame(preds).to_dict("list")
     for key in preds_dict.keys():

@@ -2,7 +2,6 @@ from utils.gen_utils import (
     from_edge_index_to_sparse_adj,
     from_sparse_adj_to_edge_index
 )
-
 import numpy as np
 import scipy.sparse as sp
 import os

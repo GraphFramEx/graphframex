@@ -1,3 +1,6 @@
+import os
+from utils.parser_utils import get_graph_size_args
+from utils.io_utils import check_dir, create_data_filename
 import networkx as nx
 import numpy as np
 import torch
@@ -6,6 +9,26 @@ from torch_geometric.utils import from_networkx
 
 from dataset.syn_utils.gengraph import *
 
+def load_data_syn(args, device):
+    """Load synthetic dataset.
+
+    Args:
+        args (argparse.Namespace): arguments
+        device (torch.device): device
+
+    Returns:
+        Data: Pytorch geometric Data object
+    """
+    check_dir(args.data_save_dir)
+    args = get_graph_size_args(args)
+    data_filename = create_data_filename(args)
+    if os.path.isfile(data_filename):
+        data = torch.load(data_filename)
+    else:
+        data = build_syndata(args)
+        torch.save(data, data_filename)
+    data = data.to(device)
+    return data
 
 def build_syndata(args):
     """Generate synthetic graohs and convert them into Pytorch geometric Data object.

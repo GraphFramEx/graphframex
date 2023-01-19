@@ -20,6 +20,13 @@ MODELS = {"gcn":"GCN", "gat":"GAT", "gin":"GIN"}
 
 ####### GNN Training #######
 
+def test(model, data):
+    model.eval()
+    output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
+    loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
+    acc_test = gnn_accuracy(output[data.test_mask], data.y[data.test_mask])
+    print("Test set results:", "loss= {:.4f}".format(loss_test.item()), "accuracy= {:.4f}".format(acc_test.item()))
+
 
 def train_real_nc(model, data, device, args):
     model = model.to(device)
@@ -60,14 +67,6 @@ def train_real_nc(model, data, device, args):
     print("Optimization Finished!")
     print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
 
-    def test():
-        model.eval()
-        output = model(data.x, data.edge_index, edge_weight=data.edge_weight)
-        loss_test = F.nll_loss(output[data.test_mask], data.y[data.test_mask])
-        acc_test = gnn_accuracy(output[data.test_mask], data.y[data.test_mask])
-        print("Test set results:", "loss= {:.4f}".format(loss_test.item()), "accuracy= {:.4f}".format(acc_test.item()))
-
-    test()
 
 
 def train_syn_nc(model, data, device, args):
@@ -143,35 +142,41 @@ def train_syn_nc(model, data, device, args):
             loss.backward()
             optimizer.step()
 
-    matplotlib.style.use("seaborn")
-    plt.switch_backend("agg")
-    plt.figure()
-    plt.plot(range(args.num_epochs // 10), train_err)
-    plt.plot(range(args.num_epochs // 10), val_err, "-", lw=1)
-    plt.legend(["train", "val"])
-    plt.savefig(utils.io_utils.gen_train_plt_name(args), dpi=600)
-    plt.close()
-    matplotlib.style.use("default")
 
 
 
-def get_trained_model(data, args, device):
+def get_trained_model(data, args, device, data_type='real'):
     model_filename = create_model_filename(args)
-    if data.edge_weight is None:
-        edge_dim = 1
-    else: 
-        edge_dim = data.edge_weight.dim()
-    model = eval(MODELS[args.model])(
-            num_node_features=data.x.shape[1],
-            edge_dim=edge_dim,
-            hidden_dim=args.hidden_dim,
-            num_classes=args.num_classes,
-            dropout=args.dropout,
-            num_layers=args.num_gc_layers,
+    if data_type == "syn":
+        model = GcnEncoderNode(
+            args.input_dim,
+            args.hidden_dim,
+            args.output_dim,
+            args.num_classes,
+            args.num_gc_layers,
+            args=args,
             device=device,
-        ).to(device)
+        )
+    elif data_type == "real":
+        if data.edge_weight is None:
+            edge_dim = 1
+        else: 
+            edge_dim = data.edge_weight.dim()
+        model = eval(MODELS[args.model])(
+                num_node_features=data.x.shape[1],
+                edge_dim=edge_dim,
+                hidden_dim=args.hidden_dim,
+                num_classes=args.num_classes,
+                dropout=args.dropout,
+                num_layers=args.num_gc_layers,
+                device=device,
+            ).to(device)
     if os.path.isfile(model_filename)==False:
-        train_real_nc(model, data, device, args)
+        if data_type == "syn":
+            train_syn_nc(model, data, device, args)
+        elif data_type == "real":
+            train_real_nc(model, data, device, args)
+        test(model, data)
         results_train, results_test = gnn_scores_nc(model, data, args, device)
         save_checkpoint(model_filename, model, args, results_train, results_test)
 
