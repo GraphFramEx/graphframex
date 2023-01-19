@@ -6,9 +6,8 @@ import numpy as np
 import torch
 from torch_geometric.datasets import Planetoid, WikipediaNetwork, WebKB
 import torch.nn.functional as F
+from dataset.load_data import load_data
 
-from dataset.gen_syn import build_syndata
-from dataset.gen_real import load_data_real
 from dataset.data_utils import get_split, split_data
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
@@ -21,10 +20,6 @@ from evaluate.mask_utils import (
     normalize_all_masks,
     transform_mask,
 )
-from explainer.genmask import compute_edge_masks_nc
-from gnn.eval import gnn_scores_nc, gnn_accuracy
-from gnn.model import GCN, GcnEncoderNode
-from gnn.train import train_real_nc, train_syn_nc
 from utils.gen_utils import get_test_nodes, get_labels
 from utils.io_utils import (
     check_dir,
@@ -127,7 +122,7 @@ def test_real(args):
         else:
             eval(REAL_DATA[args.dataset])(data_dir)
 
-    data = load_data_real(data_filename)
+    data = load_data(data_filename, device, data_type="real")
     if args.dataset == "facebook":
         data = split_data(data, args)
     if data.train_mask.dim() > 1:

@@ -1,6 +1,4 @@
 import random
-from dataset.gen_syn import load_data_syn
-from dataset.gen_real import load_data_real
 
 import numpy as np
 import pandas as pd
@@ -14,16 +12,6 @@ from torch_geometric.utils import (
     k_hop_subgraph,
     to_scipy_sparse_matrix,
 )
-
-
-def load_data(args, device, data_type="syn"):
-    if data_type == "syn":
-        data = load_data_syn(args, device)
-    elif data_type == "real":
-        data = load_data_real(args, device)
-    else:
-        raise ValueError("Unknown data type")
-    return data
 
 
 def list_to_dict(preds):

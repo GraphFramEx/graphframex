@@ -6,7 +6,7 @@ import sys
 path = "/cluster/home/kamara/Explain/code"
 sys.path.insert(0, path)
 from evaluate.mask_utils import clean_all_masks, from_mask_to_nxsubgraph
-from dataset.gen_real import load_data_real
+from dataset.load_data import load_data
 from utils.path import MASK_DIR
 import os
 import pickle
@@ -26,7 +26,7 @@ def get_mask_path(args):
 
 def get_mask_properties(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data = load_data_real(args, device)
+    data = load_data(args, device, data_type="real")
 
     mask_filename = (
         get_mask_path(args)

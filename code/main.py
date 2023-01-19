@@ -6,13 +6,13 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from dataset.gen_real import REAL_DATA, WEBKB
+from dataset.load_data import REAL_DATA, WEBKB, load_data
 from evaluate.accuracy import eval_accuracy
 from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
 from evaluate.mask_utils import clean_all_masks, get_mask_properties, transform_mask
 from explainer.genmask import compute_masks
 from gnn.train import get_trained_model
-from utils.gen_utils import get_test_nodes, load_data
+from utils.gen_utils import get_test_nodes
 from utils.io_utils import create_result_filename
 from utils.parser_utils import arg_parse, get_data_args
 
