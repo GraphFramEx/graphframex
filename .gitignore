@@ -150,3 +150,6 @@ notebooks/
 code/utils/gc_utils.py
 code/gnn/eval_gc.py
 code/gnn/train_gc.py
+code/evaluate/mask_analysis.py
+code/test_method.py
+code/new_method.py

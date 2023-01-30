@@ -65,21 +65,23 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 │   ├── accuracy.py
 │   ├── fidelity.py
 │   └── mask_utils.py
+|── explain.py
 ├── explainer
 │   ├── __init__.py
-│   ├── genmask.py
 │   ├── gnnexplainer.py
 │   ├── node_explainer.py
 │   ├── pgmexplainer.py
 │   ├── pgexplainer.py
 │   ├── shapley.py
 │   └── subgraphx.py
+|── gendata.py
 ├── gnn
 │   ├── __init__.py
-│   ├── eval.py
 │   ├── model.py
-│   └── train.py
 ├── main.py
+├── new_method.py
+├── test_method.py
+├── train_gnn.py
 └── utils
     ├── __init__.py
     ├── gen_utils.py
@@ -94,7 +96,7 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 ## Node Classification
 
 ```bash
-python3 code/main.py --dataset [dataset-name] --model [gnn-model] --explainer_name [explainer-name]
+python3 code/main.py --dataset_name [dataset-name] --model_name [gnn-model] --explainer_name [explainer-name]
 ```
 
 - dataset-name:
@@ -115,8 +117,8 @@ To compare the methods, we adopt separately three strategies to cut off the mask
 
 3. Topk
 
-This can be changed by changing the `--strategy` parameter. Choices are [`topk`, `sparsity`,`threshold`]. The default strategy is `topk`.
-You adjust the level of transformation with the `--params_list` parameter. Here, you define the list of transformation values. Default list is `"5,10"`
+This can be changed by changing the `--mask_transformation` parameter. Choices are [`topk`, `sparsity`,`threshold`]. The default strategy is `topk`.
+You adjust the level of transformation with the `--transf_params` parameter. Here, you define the list of transformation values. Default list is `"5,10"`
 
 ### Jupyter Notebook
 
