@@ -6,24 +6,24 @@ from dataset.syn_utils.synthetic_structsim import bottle, cycle, grid, house
 from explainer.node_explainer import node_attr_to_edge
 
 
-def get_ground_truth(node, data, args):
+def get_ground_truth(node, data, dataset_name):
     gt = []
-    if args.dataset == "ba_house":
+    if dataset_name == "ba_house":
         gt = get_ground_truth_ba_house(node)  # correct
         graph, role = house(gt[0], role_start=1)
-    elif args.dataset == "ba_community":
+    elif dataset_name == "ba_community":
         gt = get_ground_truth_ba_house(node)  # correct
         role = data.y[gt]
-    elif args.dataset == "ba_grid":
+    elif dataset_name == "ba_grid":
         gt = get_ground_truth_ba_grid(node)  # correct
         graph, role = grid(gt[0], dim=3, role_start=1)
-    elif args.dataset == "tree_cycle":
+    elif dataset_name == "tree_cycle":
         gt = get_ground_truth_tree_cycle(node)  # correct
         graph, role = cycle(gt[0], 6, role_start=1)
-    elif args.dataset == "tree_grid":
+    elif dataset_name == "tree_grid":
         gt = get_ground_truth_tree_grid(node)  # correct
         graph, role = grid(gt[0], dim=3, role_start=1)
-    elif args.dataset == "ba_bottle":
+    elif dataset_name == "ba_bottle":
         gt = get_ground_truth_ba_house(node)  # correct
         graph, role = bottle(gt[0], role_start=1)
 
@@ -32,7 +32,7 @@ def get_ground_truth(node, data, args):
     true_edge_mask = node_attr_to_edge(data.edge_index, true_node_mask)
     true_edge_mask = np.where(true_edge_mask == 2, 1, 0)
 
-    if args.dataset == "ba_community":
+    if dataset_name == "ba_community":
         graph = nx.Graph()
         graph.add_nodes_from(gt)
         new_edges = np.array(data.edge_index[:, np.where(true_edge_mask > 0)[0]].T)

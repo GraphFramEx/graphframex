@@ -1,36 +1,43 @@
 import argparse
 import numpy as np
+import torch
 from utils.path import DATA_DIR, LOG_DIR, MODEL_DIR, RESULT_DIR, MASK_DIR
 
 
+def fix_random_seed(seed):
+    np.random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+
+
 def get_graph_size_args(args):
-    if not eval(args.explain_graph):
-        if args.dataset == "ba_house":
+    if not eval(args.graph_classification):
+        if args.dataset_name == "ba_house":
             args.num_top_edges = 6
             args.num_shapes = 80
             args.width_basis = 300
             args.num_basis = args.width_basis
-        elif args.dataset == "ba_community":
+        elif args.dataset_name == "ba_community":
             args.num_top_edges = 6
             args.num_shapes = 100
             args.width_basis = 350
             args.num_basis = args.width_basis * 2
-        elif args.dataset == "ba_grid":
+        elif args.dataset_name == "ba_grid":
             args.num_top_edges = 12
             args.num_shapes = 80
             args.width_basis = 300
             args.num_basis = args.width_basis
-        elif args.dataset == "tree_cycle":
+        elif args.dataset_name == "tree_cycle":
             args.num_top_edges = 6
             args.num_shapes = 60
             args.width_basis = 8
             args.num_basis = 2 ^ (args.width_basis + 1) - 1
-        elif args.dataset == "tree_grid":
+        elif args.dataset_name == "tree_grid":
             args.num_top_edges = 12
             args.num_shapes = 80
             args.width_basis = 8
             args.num_basis = 2 ^ (args.width_basis + 1) - 1
-        elif args.dataset == "ba_bottle":
+        elif args.dataset_name == "ba_bottle":
             args.num_top_edges = 5
             args.num_shapes = 80
             args.width_basis = 300
@@ -39,17 +46,15 @@ def get_graph_size_args(args):
 
 
 def get_data_args(data, args):
-    if eval(args.explain_graph):
-        if args.dataset == "mutag":
-            args.num_classes = 2
-            args.input_dim = 7
+    if args.dataset_name == "mutag":
+        args.num_classes = 2
+        args.num_node_features = 7
+    elif args.dataset_name.startswith(tuple(["ba", "tree"])):
+        args.num_classes = data.num_classes
+        args.num_node_features = data.x.size(1)
     else:
-        if args.dataset.startswith(tuple(["ba", "tree"])):
-            args.num_classes = data.num_classes
-            args.input_dim = data.x.size(1)
-        else:
-            args.num_classes = len(np.unique(data.y.cpu().numpy()))
-            args.input_dim = data.x.size(1)
+        args.num_classes = len(np.unique(data.y.cpu().numpy()))
+        args.num_node_features = data.x.size(1)
     return args
 
 
@@ -57,7 +62,6 @@ def arg_parse():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--seed", help="random seed", type=int, default=0)
     parser.add_argument(
         "--dest", help="dest", type=str, default="/cluster/home/kamara/"
     )
@@ -109,167 +113,155 @@ def arg_parse():
         default="False",
     )
 
-    # dataset
-    parser.add_argument("--dataset", type=str)
-    # build ba-shape graphs
-    parser.add_argument("--width_basis", help="width of base graph", type=int)
-    parser.add_argument("--num_shapes", help="number of houses", type=int)
-
-    # sampling - if dataset is too large, we sample it
+    # dataset parameters
+    parser_dataset_params = parser.add_argument_group("dataset_params")
+    parser_dataset_params.add_argument("--dataset_name", type=str)
+    parser_dataset_params.add_argument(
+        "--seed", help="random seed", type=int, default=0
+    )
+    parser_dataset_params.add_argument(
+        "--width_basis", help="width of base graph", type=int
+    )
+    parser_dataset_params.add_argument(
+        "--num_shapes", help="number of houses", type=int
+    )
+    parser_dataset_params.add_argument(
+        "--num_basis", help="number of nodes in the base graph", type=int
+    )
+    parser_dataset_params.add_argument("--num_classes", help="output_dim", type=int)
+    parser_dataset_params.add_argument(
+        "--num_node_features", help="input_dim", type=int
+    )
     parser.add_argument(
-        "--sample_size",
-        dest="sample_size",
+        "--num_top_edges",
+        help="# edges in groundtruth explanation (for syn data) or max size for subgraphX (for real data)",
         type=int,
-        help="Number of nodes in each sample (ClusterSampling).",
-        default=10e5,
+        default=10,
+    )
+    parser_dataset_params.add_argument("--train_ratio", dest="train_ratio", type=float)
+    parser_dataset_params.add_argument("--test_ratio", dest="test_ratio", type=float)
+    parser_dataset_params.add_argument("--val_ratio", dest="val_ratio", type=float)
+    parser_dataset_params.add_argument("--random_split_flag", type=str, default="True")
+
+    # optimization parameters
+    parser_optimizer_params = parser.add_argument_group("optimizer_params")
+    parser_optimizer_params.add_argument("--lr", type=float)
+    parser_optimizer_params.add_argument(
+        "--weight_decay",
+        type=float,
     )
 
     # training parameters
-    parser.add_argument("--optimizer", type=str, default="adam")
-    parser.add_argument("--lr_decay", type=float, default=0.5)
-    parser.add_argument("--lr", type=float)
-    parser.add_argument(
-        "--weight_decay",
-        dest="weight_decay",
-        type=float,
-        help="Weight decay regularization constant.",
-    )
-
-    parser.add_argument(
+    parser_train_params = parser.add_argument_group("train_params")
+    parser_train_params.add_argument(
         "--num_epochs", dest="num_epochs", type=int, help="Number of epochs to train."
     )
-    parser.add_argument(
-        "--train_ratio",
-        dest="train_ratio",
-        type=float,
-        help="Ratio of number of graphs testing set to all graphs.",
+    parser_train_params.add_argument(
+        "--num_early_stop", type=int, help="Num steps before stopping", default=0
     )
-    parser.add_argument(
-        "--test_ratio",
-        dest="test_ratio",
-        type=float,
-        help="Ratio of number of graphs testing set to all graphs.",
+    parser_train_params.add_argument(
+        "--milestones", type=int, help="Learning decay step size.", default=None
     )
-    parser.add_argument(
-        "--val_ratio",
-        dest="val_ratio",
-        type=float,
-        help="Ratio of number of graphs validation set to all graphs.",
+    parser_train_params.add_argument(
+        "--gamma", type=float, help="Learning rate decay.", default=None
     )
 
-    parser.add_argument(
-        "--num_workers",
-        dest="num_workers",
-        type=int,
-        help="Number of workers to load data.",
-        default=4,
-    )
-
-    # gnn achitecture parameters
-    parser.add_argument(
-        "--input_dim", dest="input_dim", type=int, help="Input feature dimension"
-    )
-    parser.add_argument(
-        "--hidden_dim", dest="hidden_dim", type=int, help="Hidden dimension"
-    )
-    parser.add_argument(
-        "--output_dim", dest="output_dim", type=int, help="Output dimension"
-    )
-    parser.add_argument(
-        "--num_classes", dest="num_classes", type=int, help="Number of label classes"
-    )
-    parser.add_argument(
-        "--num_gc_layers",
-        dest="num_gc_layers",
-        type=int,
-        help="Number of graph convolution layers before each pooling",
-    )
-    parser.add_argument(
-        "--bn",
-        dest="bn",
-        action="store_const",
-        const=True,
-        default=False,
-        help="Whether batch normalization is used",
-    )
-    parser.add_argument("--dropout", dest="dropout", type=float, help="Dropout rate.")
-
-    parser.add_argument(
-        "--model",
-        dest="model",
-        help="GNN model. Possible values: base, gat, gcn, gine",
+    # model parameters
+    parser_model_params = parser.add_argument_group("model_params")
+    parser_model_params.add_argument(
+        "--model_name",
+        help="[base, gat, gcn, gin]",
         type=str,
     )
-
-    # explainer params
-    parser.add_argument(
-        "--explain_graph",
-        help="graph classification or node classification",
+    parser_model_params.add_argument(
+        "--graph_classification",
+        help="graph or node classification",
         type=str,
         default="False",
     )
-    parser.add_argument(
-        "--true_label_as_target",
+    parser_model_params.add_argument("--hidden_dim", type=int, help="Hidden dimension")
+
+    parser_model_params.add_argument(
+        "--num_layers",
+        type=int,
+        help="Number of layers before pooling",
+    )
+    parser_model_params.add_argument("--dropout", type=float, help="Dropout rate.")
+    parser_model_params.add_argument(
+        "--readout", type=str, help="Readout type [mean, sum, max]."
+    )
+    parser_model_params.add_argument(
+        "--edge_dim", type=int, help="Edge feature dimension (only for GAT model)."
+    )
+
+    # explainer parameters
+    parser_explainer_params = parser.add_argument_group("explainer_params")
+    parser_explainer_params.add_argument("--explainer_name", help="explainer", type=str)
+    parser_explainer_params.add_argument(
+        "--groundtruth",
+        type=str,
+        default="False",
+    )
+    parser_explainer_params.add_argument(
+        "--focus",
         help="target is groudtruth label or GNN initial prediction",
         type=str,
     )
-    parser.add_argument("--hard_mask", help="Soft or hard mask", type=str)
-    parser.add_argument(
-        "--testing_pred",
+    parser_explainer_params.add_argument(
+        "--mask_nature", help="Soft or hard mask", type=str
+    )
+    parser_explainer_params.add_argument(
+        "--pred_type",
         help="True if all testing nodes are correct; False if all testing nodes labels are wrong; None otherwise",
         type=str,
         default="mix",
     )  # ["correct", "wrong", "mix"]
-    parser.add_argument(
+    parser_explainer_params.add_argument(
         "--top_acc",
         help="Top accuracy for synthetic dataset only",
         type=str,
         default="False",
     )
 
-    parser.add_argument(
-        "--num_test", help="number of testing entities (graphs or nodes)", type=int
-    )
-    parser.add_argument(
-        "--num_test_final",
-        help="number of testing entities (graphs or nodes) in the final set",
+    parser_explainer_params.add_argument(
+        "--num_explained_y",
+        help="number of explained entities (graphs or nodes)",
         type=int,
     )
-    parser.add_argument(
+    parser_explainer_params.add_argument(
         "--time_limit",
         help="max time for a method to run on testing set",
         type=int,
         default=30000,
     )
 
-    parser.add_argument(
-        "--strategy", help="strategy for mask transformation", type=str, default="topk"
+    parser_explainer_params.add_argument(
+        "--mask_transformation",
+        help="strategy for mask transformation",
+        type=str,
+        default="topk",
     )  # ["topk", "sparsity", "threshold"]
-    parser.add_argument(
-        "--params_list", help="list of transformation degrees", type=str, default="5,10"
+    parser_explainer_params.add_argument(
+        "--transf_params",
+        help="list of transformation degrees",
+        type=str,
+        default="5,10",
     )
-    parser.add_argument(
+    parser_explainer_params.add_argument(
         "--directed",
         help="if directed, choose the topk directed edges; otherwise topk undirected (no double counting)",
         type=str,
         default="True",
     )
-    parser.add_argument(
-        "--num_top_edges",
-        help="number of edges to keep in explanation",
-        type=int,
-        default=-1,
-    )
-    parser.add_argument("--explainer_name", help="explainer", type=str)
 
     # hyperparameters for GNNExplainer
-    parser.add_argument(
+    parser_explainer_params.add_argument(
         "--edge_size",
         dest="edge_size",
         type=float,
         help="Constraining edge mask size (high `edge_size` => small edge mask)",
     )
-    parser.add_argument(
+    parser_explainer_params.add_argument(
         "--edge_ent",
         dest="edge_ent",
         type=float,
@@ -280,35 +272,37 @@ def arg_parse():
         datadir="data",  # io_parser
         logdir="log",
         ckptdir="ckpt",
-        true_label_as_target="True",
-        hard_mask="True",
-        dataset="ba_house",
+        focus="phenomenon",
+        mask_nature="hard",
+        dataset_name="ba_house",
         width_basis=300,
         num_shapes=150,
-        num_test=5,
-        opt="adam",  # opt_parser
-        opt_scheduler="none",
-        max_nodes=100,
-        cuda="1",
-        feature_type="default",
-        lr=0.01,
-        clip=2.0,
-        sample_size=10e5,
-        num_epochs=200,
+        num_explained_y=5,
+        opt="adam",
+        lr=0.005,
+        num_epochs=400,
         train_ratio=0.8,
         val_ratio=0.15,
         test_ratio=0.1,
-        input_dim=1,
-        hidden_dim=16,
-        output_dim=16,
+        num_node_features=1,
+        hidden_dim=20,
         num_classes=4,
-        num_gc_layers=2,
-        dropout=0.5,
+        num_layers=3,
+        dropout=0,
+        readout="identity",
         weight_decay=5e-4,
-        model="gcn",
+        model_name="gcn",
         edge_ent=1.0,
         edge_size=0.005,
         explainer_name="gnnexplainer",
     )
     args, unknown = parser.parse_known_args()
-    return args
+    return parser, args
+
+
+def create_arg_groups(parser, args):
+    arg_groups = {}
+    for group in parser._action_groups:
+        group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+        arg_groups[group.title] = group_dict
+    return arg_groups

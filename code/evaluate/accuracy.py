@@ -11,7 +11,7 @@ from utils.gen_utils import list_to_dict
 from evaluate.mask_utils import mask_to_shape
 
 
-def get_explanation(data, edge_mask, args, top_acc):
+def get_explanation(data, edge_mask, top_acc, num_top_edges):
     """Create an explanation graph from the edge_mask.
 
     Args:
@@ -24,7 +24,7 @@ def get_explanation(data, edge_mask, args, top_acc):
     """
     if top_acc:
         # indices = (-edge_mask).argsort()[:kwargs['num_top_edges']]
-        edge_mask = mask_to_shape(edge_mask, data.edge_index, args.num_top_edges)
+        edge_mask = mask_to_shape(edge_mask, data.edge_index, num_top_edges)
         indices = np.where(edge_mask > 0)[0]
     else:
         edge_mask = edge_mask.cpu().detach().numpy()
@@ -78,30 +78,3 @@ def get_scores(G1, G2):
         f1_score = 2 * (precision * recall) / (precision + recall)
 
     return recall, precision, f1_score
-
-
-def get_accuracy(data, edge_mask, node_idx, args, top_acc):
-    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets)"""
-    G_true, role, true_edge_mask = get_ground_truth(node_idx, data, args)
-    G_expl = get_explanation(data, edge_mask, args, top_acc)
-    if eval(args.draw_graph):
-        plot_expl_nc(G_expl, G_true, role, node_idx, args, top_acc)
-    recall, precision, f1_score = get_scores(G_expl, G_true)
-    # fpr, tpr, thresholds = metrics.roc_curve(true_edge_mask, edge_mask, pos_label=1)
-    # auc = metrics.auc(fpr, tpr)
-    return {"recall": recall, "precision": precision, "f1_score": f1_score}
-
-
-def eval_accuracy(data, edge_masks, list_node_idx, args, top_acc=False):
-    """_summary_accuracy_scores: Compute accuracy scores when groundtruth is avaiable (synthetic datasets) for all masks"""
-    scores = []
-
-    for i in range(args.num_test_final):
-        edge_mask = torch.Tensor(edge_masks[i])
-        node_idx = list_node_idx[i]
-        entry = get_accuracy(data, edge_mask, node_idx, args, top_acc)
-        scores.append(entry)
-
-    scores = list_to_dict(scores)
-    accuracy_scores = {k: np.mean(v) for k, v in scores.items()}
-    return accuracy_scores

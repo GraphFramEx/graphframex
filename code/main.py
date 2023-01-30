@@ -1,195 +1,209 @@
-from hashlib import new
-import json
-import pandas as pd
-
-import numpy as np
+import os
+from evaluate.mask_utils import get_mask_properties
+from explain import Explain
 import torch
-import torch.nn.functional as F
+import numpy as np
+import pandas as pd
+from gnn.model import get_gnnNets
+from train_gnn import TrainModel
+from gendata import get_dataset
+from utils.parser_utils import (
+    arg_parse,
+    create_arg_groups,
+    fix_random_seed,
+    get_data_args,
+    get_graph_size_args,
+)
+from pathlib import Path
 
-from dataset.load_data import REAL_DATA, WEBKB, load_data
-from evaluate.accuracy import eval_accuracy
-from evaluate.fidelity import eval_fidelity, eval_related_pred_nc
-from evaluate.mask_utils import clean_all_masks, get_mask_properties, transform_mask
-from explainer.genmask import compute_masks
-from gnn.train import get_trained_model
-from utils.gen_utils import get_test_nodes
-from utils.io_utils import create_result_filename
-from utils.parser_utils import arg_parse, get_data_args
 
-
-def main(args, data_type):
-
-    np.random.seed(args.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(args.seed)
+def main(args, args_group):
+    fix_random_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load data
-    data = load_data(args, device, data_type)
-    args = get_data_args(data, args)
+    dataset_params = args_group["dataset_params"]
+    model_params = args_group["model_params"]
 
-    # Load model
-    model = get_trained_model(data, args, device, data_type="syn")
-    model.eval()
-
-    ### Explain ###
-    list_test_nodes = get_test_nodes(data, model, args)
-
-    # Compute masks
-    node_indices, edge_masks, node_feat_masks, Time = compute_masks(
-        list_test_nodes, model, data, device, args
+    dataset = get_dataset(
+        dataset_root=args.data_save_dir,
+        **dataset_params,
     )
-    args.E = False if edge_masks[0] is None else True
-    args.NF = False if node_feat_masks[0] is None else True
-    if args.NF:
-        if node_feat_masks[0].size <= 1:
-            args.NF = False
-            print("No node feature mask")
-    args.num_test_final = len(edge_masks) if args.E else None
+    dataset.data.x = dataset.data.x.float()
+    dataset.data.y = dataset.data.y.squeeze().long()
+    args = get_data_args(dataset.data, args)
+    dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
+    dataset_params["num_node_features"] = dataset.data.x.size(1)
+    if eval(args.graph_classification):
+        dataloader_params = {
+            "batch_size": args.batch_size,
+            "random_split_flag": eval(args.random_split_flag),
+            "train_ratio": args.train_ratio,
+            "val_ratio": args.val_ratio,
+            "test_ratio": args.test_ratio,
+            "seed": args.seed,
+        }
+
+    model = get_gnnNets(
+        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
+    )
+
+    if eval(args.graph_classification):
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=f"{args.model_name}_{args.num_layers}l",
+            dataloader_params=dataloader_params,
+        )
+    else:
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=f"{args.model_name}_{args.num_layers}l",
+        )
+    if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
+        trainer.load_model()
+    else:
+        trainer.train(
+            train_params=args_group["train_params"],
+            optimizer_params=args_group["optimizer_params"],
+        )
+    _, _, _ = trainer.test()
+
+    additional_args = {
+        "dataset_name": args.dataset_name,
+        "hidden_dim": args.hidden_dim,
+        "num_top_edges": args.num_top_edges,
+        "num_layers": args.num_layers,
+        "num_node_features": args.num_node_features,
+        "num_classes": args.num_classes,
+        "model_save_dir": args.model_save_dir,
+    }
+    save_name = "mask_{}_{}_{}_{}_{}_{}.pkl".format(
+        args.dataset_name,
+        args.model_name,
+        args.explainer_name,
+        args.focus,
+        args.pred_type,
+        args.seed,
+    )
+    explainer = Explain(
+        model=trainer.model,
+        dataset=dataset,
+        device=device,
+        graph_classification=eval(args.graph_classification),
+        dataset_name=args.dataset_name,
+        explainer_params={**args_group["explainer_params"], **additional_args},
+        save_dir=os.path.join(
+            args.mask_save_dir, args.dataset_name, args.explainer_name
+        ),
+        save_name=save_name,
+    )
+
+    edge_masks, node_feat_masks, computation_time = explainer.compute_mask()
+    edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
 
     infos = {
-        "dataset": args.dataset,
-        "model": args.model,
+        "dataset": args.dataset_name,
+        "model": args.model_name,
         "explainer": args.explainer_name,
-        "n_edges": data.edge_index.size(1),
-        "n_expl_nodes": args.num_test,
-        "n_expl_nodes_final": args.num_test_final,
-        "phenomenon": args.true_label_as_target,
-        "hard_mask": args.hard_mask,
-        "time": float(format(np.mean(Time), ".4f")),
+        "focus": args.focus,
+        "mask_nature": args.mask_nature,
+        "pred_type": args.pred_type,
+        "time": float(format(np.mean(computation_time), ".4f")),
     }
-    print("__infos:" + json.dumps(infos))
 
-    ### Mask normalisation and cleaning ###
-    edge_masks, node_feat_masks = clean_all_masks(edge_masks, node_feat_masks, args)
-
-    if eval(args.top_acc):
-        ### Accuracy Top ###
-        accuracy_top = eval_accuracy(
-            data, edge_masks, list_test_nodes, args, top_acc=True
-        )
-        print("__accuracy_top:" + json.dumps(accuracy_top))
-
-    else:
-        ### Transformed mask ###
-        params_lst = [eval(i) for i in args.params_list.split(",")]
-        params_lst.insert(0, None)
-        edge_masks_ori = edge_masks.copy()
-        for i, param in enumerate(params_lst):
-            if param is None:
-                print("Masks are not transformed")
-            else:
-                print("Masks are transformed with strategy: " + args.strategy)
-            params_transf = {args.strategy: param}
-            ### Mask transformation ###
-            edge_masks = transform_mask(edge_masks_ori, data, param, args)
-            # Compute mask properties
-            edge_masks_properties = get_mask_properties(edge_masks, data.edge_index)
-            edge_masks_properties_transf = {
+    if edge_masks[0] is None:
+        raise ValueError("Edge masks are None")
+    params_lst = [eval(i) for i in explainer.transf_params.split(",")]
+    params_lst.insert(0, None)
+    edge_masks_ori = edge_masks.copy()
+    for i, param in enumerate(params_lst):
+        params_transf = {explainer.mask_transformation: param}
+        edge_masks = explainer._transform(edge_masks_ori, param)
+        # Compute mask properties
+        edge_masks_properties = get_mask_properties(edge_masks, dataset.data.edge_index)
+        # Evaluate scores of the masks
+        accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
+        if accuracy_scores is None:
+            scores = {
                 key: value
                 for key, value in sorted(
-                    edge_masks_properties.items() | params_transf.items()
+                    infos.items()
+                    | edge_masks_properties.items()
+                    | fidelity_scores.items()
+                    | params_transf.items()
                 )
             }
-            print("__edge_mask_properties:" + json.dumps(edge_masks_properties_transf))
-
-            if data_type == "syn":
-                ### Accuracy ###
-                accuracy = eval_accuracy(
-                    data, edge_masks, list_test_nodes, args, top_acc=False
-                )
-                accuracy_scores = {
-                    key: value
-                    for key, value in sorted(accuracy.items() | params_transf.items())
-                }
-                print("__accuracy:" + json.dumps(accuracy_scores))
-
-            ### Fidelity ###
-            related_preds = eval_related_pred_nc(
-                model, data, edge_masks, node_feat_masks, list_test_nodes, device, args
-            )
-            fidelity = eval_fidelity(related_preds, args)
-            fidelity_scores = {
+        else:
+            scores = {
                 key: value
-                for key, value in sorted(fidelity.items() | params_transf.items())
+                for key, value in sorted(
+                    infos.items()
+                    | {"top_acc": args.top_acc, "num_top_edges": args.num_top_edges}
+                    | edge_masks_properties.items()
+                    | accuracy_scores.items()
+                    | fidelity_scores.items()
+                    | params_transf.items()
+                )
             }
-            print("__fidelity:" + json.dumps(fidelity_scores))
-
-            ### Full results ###
-            if data_type == "syn":
-                row = {
-                    key: value
-                    for key, value in sorted(
-                        infos.items()
-                        | edge_masks_properties.items()
-                        | accuracy.items()
-                        | fidelity.items()
-                        | params_transf.items()
-                    )
-                }
-            else:
-                row = {
-                    key: value
-                    for key, value in sorted(
-                        infos.items()
-                        | edge_masks_properties.items()
-                        | fidelity.items()
-                        | params_transf.items()
-                    )
-                }
-            if i == 0:
-                results = pd.DataFrame({k: [v] for k, v in row.items()})
-            else:
-                results = results.append(row, ignore_index=True)
-        ### Save results ###
-        results.to_csv(create_result_filename(args))
+        if i == 0:
+            results = pd.DataFrame({k: [v] for k, v in scores.items()})
+        else:
+            results = results.append(scores, ignore_index=True)
+    ### Save results ###
+    save_path = os.path.join(
+        args.result_save_dir, args.dataset_name, args.explainer_name
+    )
+    os.makedirs(save_path, exist_ok=True)
+    results.to_csv(
+        os.path.join(
+            save_path,
+            "results_{}_{}_{}_{}_{}_{}_{}.csv".format(
+                args.dataset_name,
+                args.model_name,
+                args.explainer_name,
+                args.focus,
+                args.mask_nature,
+                args.pred_type,
+                args.seed,
+            ),
+        )
+    )
 
 
 if __name__ == "__main__":
-    args = arg_parse()
-    if args.dataset.startswith(tuple(["ba", "tree"])):
+    parser, args = arg_parse()
+    args = get_graph_size_args(args)
+
+    if args.dataset_name.startswith(tuple(["ba", "tree"])):
         (
-            args.num_gc_layers,
+            args.graph_classification,
+            args.num_layers,
             args.hidden_dim,
-            args.output_dim,
             args.num_epochs,
             args.lr,
             args.weight_decay,
             args.dropout,
-        ) = (3, 20, 20, 1000, 0.001, 5e-3, 0.0)
-        main(args, data_type="syn")
-    elif args.dataset in REAL_DATA.keys():
-        if args.dataset in WEBKB.keys():
-            (
-                args.num_gc_layers,
-                args.hidden_dim,
-                args.output_dim,
-                args.num_epochs,
-                args.lr,
-                args.weight_decay,
-                args.dropout,
-            ) = (2, 32, 32, 400, 0.001, 5e-3, 0.2)
-        else:
-            (
-                args.num_gc_layers,
-                args.hidden_dim,
-                args.output_dim,
-                args.num_epochs,
-                args.lr,
-                args.weight_decay,
-                args.dropout,
-            ) = (2, 16, 16, 200, 0.01, 5e-4, 0.5)
-        main(args, data_type="real")
-    elif args.dataset.startswith("ebay"):
+            args.readout,
+        ) = ("False", 3, 20, 1000, 0.001, 5e-3, 0.0, "identity")
+
+    elif args.dataset_name.startswith(tuple(["cora", "citeseer", "pubmed"])):
         (
-            args.num_gc_layers,
+            args.graph_classification,
+            args.num_layers,
             args.hidden_dim,
-            args.output_dim,
             args.num_epochs,
             args.lr,
             args.weight_decay,
             args.dropout,
-        ) = (2, 32, 32, 500, 0.001, 5e-4, 0.5)
-        main(args, data_type="real")
-    else:
-        pass
+            args.readout,
+        ) = ("False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
+
+    arg_groups = create_arg_groups(parser, args)
+    main(args, arg_groups)

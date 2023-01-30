@@ -6,8 +6,6 @@ import os
 
 import torch
 
-# Only necessary to rebuild the Chemistry example
-# from rdkit import Chem
 
 use_cuda = torch.cuda.is_available()
 

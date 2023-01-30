@@ -44,7 +44,7 @@ def normalize_all_masks(masks):
     return masks
 
 
-def clean_masks(masks):
+def clean(masks):
     """Clean masks by removing NaN, inf and too small values and normalizing"""
     for i in range(len(masks)):
         masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
@@ -58,13 +58,13 @@ def clean_all_masks(edge_masks, node_feat_masks, args):
     if args.E:
         ### Mask normalisation and cleaning ###
         edge_masks = [edge_mask.astype("float") for edge_mask in edge_masks]
-        edge_masks = clean_masks(edge_masks)
+        edge_masks = clean(edge_masks)
     if args.NF:
         ### Mask normalisation and cleaning ###
         node_feat_masks = [
             node_feat_mask.astype("float") for node_feat_mask in node_feat_masks
         ]
-        node_feat_masks = clean_masks(node_feat_masks)
+        node_feat_masks = clean(node_feat_masks)
     return edge_masks, node_feat_masks
 
 
