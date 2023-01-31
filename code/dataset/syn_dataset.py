@@ -120,4 +120,4 @@ class SynGraphDataset:
         data.val_mask[val_ids] = 1
         data.test_mask[test_ids] = 1
 
-        return data
+        return [data]

@@ -173,13 +173,12 @@ def get_avg_max(masks):
     return max_avg / k
 
 
-def get_mask_properties(masks, edge_index):
+def get_mask_properties(masks):
     mask_info = {
         "mask_size": get_size(masks),
         "mask_sparsity": get_sparsity(masks),
         "mask_entropy": get_entropy(masks),
         "max_avg": get_avg_max(masks),
-        "cc_ratio": get_ratio_connected_components(masks, edge_index),
     }
     return mask_info
 

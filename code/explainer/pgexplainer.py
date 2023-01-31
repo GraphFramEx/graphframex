@@ -85,7 +85,7 @@ def k_hop_subgraph_with_default_whole_graph(
                 subset = subsets
                 break
     else:
-        if isinstance(node_idx, (int, list, tuple)):
+        if isinstance(node_idx, (int, np.int64, list, tuple)):
             node_idx = torch.tensor(
                 [node_idx], device=row.device, dtype=torch.int64
             ).flatten()
@@ -329,7 +329,7 @@ class PGExplainer(nn.Module):
             kwargs[key] = item
         if y is not None:
             y = y[subset]
-        return x, edge_index, y, subset, kwargs
+        return x, edge_index, y, subset, edge_mask, kwargs
 
     def concrete_sample(
         self, log_alpha: Tensor, beta: float = 1.0, training: bool = True
@@ -345,6 +345,46 @@ class PGExplainer(nn.Module):
             gate_inputs = log_alpha.sigmoid()
 
         return gate_inputs
+
+    def explain_node(self, node_idx, x, edge_index):
+        select_edge_index = torch.arange(0, edge_index.shape[1])
+        (
+            subgraph_x,
+            subgraph_edge_index,
+            _,
+            subset,
+            subgraph_edge_mask,
+            kwargs,
+        ) = self.get_subgraph(
+            node_idx, x, edge_index, select_edge_index=select_edge_index
+        )
+        self.select_edge_mask = edge_index.new_empty(
+            edge_index.size(1), device=self.device, dtype=torch.bool
+        )
+        self.select_edge_mask.fill_(False)
+        self.select_edge_mask[select_edge_index] = True
+        self.hard_edge_mask = edge_index.new_empty(
+            subgraph_edge_index.size(1), device=self.device, dtype=torch.bool
+        )
+        self.hard_edge_mask.fill_(True)
+        self.subset = subset
+        self.new_node_idx = torch.where(subset == node_idx)[0]
+
+        subgraph_embed = self.model.get_emb(subgraph_x, subgraph_edge_index)
+        _, edge_mask = self.explain(
+            subgraph_x,
+            subgraph_edge_index,
+            embed=subgraph_embed,
+            tmp=1.0,
+            training=False,
+            node_idx=self.new_node_idx,
+        )
+        subgraph_edge_mask = subgraph_edge_mask.cpu().detach().numpy()
+        subindices = np.where(subgraph_edge_mask > 0)[0]
+        edge_mask_full = torch.zeros(len(subgraph_edge_mask))
+        for i in range(len(subindices)):
+            edge_mask_full[subindices[i]] = edge_mask[i]
+        return edge_mask_full
 
     def explain(
         self,

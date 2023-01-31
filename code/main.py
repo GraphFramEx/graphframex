@@ -37,9 +37,7 @@ def main(args, args_group):
         dataloader_params = {
             "batch_size": args.batch_size,
             "random_split_flag": eval(args.random_split_flag),
-            "train_ratio": args.train_ratio,
-            "val_ratio": args.val_ratio,
-            "test_ratio": args.test_ratio,
+            "data_split_ratio": [args.train_ratio, args.val_ratio, args.test_ratio],
             "seed": args.seed,
         }
 
@@ -84,11 +82,13 @@ def main(args, args_group):
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,
     }
-    save_name = "mask_{}_{}_{}_{}_{}_{}.pkl".format(
+    save_name = "mask_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
         args.dataset_name,
         args.model_name,
         args.explainer_name,
         args.focus,
+        args.num_explained_y,
+        args.explained_target,
         args.pred_type,
         args.seed,
     )
@@ -127,7 +127,7 @@ def main(args, args_group):
         params_transf = {explainer.mask_transformation: param}
         edge_masks = explainer._transform(edge_masks_ori, param)
         # Compute mask properties
-        edge_masks_properties = get_mask_properties(edge_masks, dataset.data.edge_index)
+        edge_masks_properties = get_mask_properties(edge_masks)
         # Evaluate scores of the masks
         accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
         if accuracy_scores is None:
@@ -164,12 +164,14 @@ def main(args, args_group):
     results.to_csv(
         os.path.join(
             save_path,
-            "results_{}_{}_{}_{}_{}_{}_{}.csv".format(
+            "results_{}_{}_{}_{}_{}_{}_target{}_{}_{}.csv".format(
                 args.dataset_name,
                 args.model_name,
                 args.explainer_name,
                 args.focus,
                 args.mask_nature,
+                args.num_explained_y,
+                args.explained_target,
                 args.pred_type,
                 args.seed,
             ),
@@ -204,6 +206,18 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
         ) = ("False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
+    elif args.dataset_name == "mutag":
+        (
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+        ) = ("True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
 
     arg_groups = create_arg_groups(parser, args)
     main(args, arg_groups)

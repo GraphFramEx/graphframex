@@ -221,7 +221,6 @@ def gpu_to_cpu(data, device):
 
 def explain_gnnexplainer_node(model, data, node_idx, target, device, **kwargs):
     data = gpu_to_cpu(data, device)
-
     explainer = TargetedGNNExplainer(
         model,
         num_hops=kwargs["num_layers"],
@@ -340,58 +339,9 @@ def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
         state_dict = torch.load(pgexplainer_saving_path)
         pgexplainer.load_state_dict(state_dict)
-        # set default subgraph with 10 edges
-        x = x.to(device)
-        edge_index = edge_index.to(device)
-
-        pgexplainer.__clear_masks__()
-        logits = model(x, edge_index)
-        probs = F.softmax(logits, dim=-1)
-        pred_labels = probs.argmax(dim=-1)
-        embed = model.get_emb(x, edge_index)
-
-        # original value
-        probs = probs.squeeze()[node_idx]
-        label = pred_labels[node_idx]
-        # masked value
-        x, edge_index, _, subset, _ = pgexplainer.get_subgraph(node_idx, x, edge_index)
-        new_node_idx = torch.where(subset == node_idx)[0]
-        embed = model.get_emb(x, edge_index)
-        _, edge_mask = pgexplainer.explain(
-            x, edge_index, embed, tmp=1.0, training=False, node_idx=new_node_idx
-        )
-    return edge_mask.astype("float"), None
-
-
-"""def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
-    dataset_name = kwargs["dataset_name"]
-    if dataset_name.startswith(tuple(["ba", "tree"])):
-        coef = 3 * 3
-    else:
-        coef = 3
-    pgexplainer = PGExplainer(
-        model,
-        in_channels=kwargs["hidden_dim"] * coef,
-        device=device,
-        num_hops=kwargs["num_layers"],
-    )
-    subdir = os.path.join(kwargs["model_save_dir"], "pgexplainer", dataset_name)
-    pgexplainer_saving_path = os.path.join(subdir, f"pgexplainer_{dataset_name}.pth")
-    if os.path.isfile(pgexplainer_saving_path):
-        print("Load saved PGExplainer model...")
-        state_dict = torch.load(pgexplainer_saving_path)
-        pgexplainer.load_state_dict(state_dict)
-    else:
-        data = sample_large_graph(data)
-        pgexplainer.train_explanation_network(data)
-        print("Save PGExplainer model...")
-        torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
-        state_dict = torch.load(pgexplainer_saving_path)
-        pgexplainer.load_state_dict(state_dict)
-
-    edge_mask = pgexplainer.explain_node(model, node_idx, data.x, data.edge_index)
+    edge_mask = pgexplainer.explain_node(node_idx, data.x, data.edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask.astype("float"), None"""
+    return edge_mask.astype("float"), None
 
 
 def explain_gnnlrp_node(model, data, node_idx, target, device, **kwargs):

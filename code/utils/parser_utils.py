@@ -222,7 +222,12 @@ def arg_parse():
         type=str,
         default="False",
     )
-
+    parser_explainer_params.add_argument(
+        "--explained_target",
+        help="the class you only want to explain; None otherwise",
+        type=int,
+        default=None,
+    )
     parser_explainer_params.add_argument(
         "--num_explained_y",
         help="number of explained entities (graphs or nodes)",

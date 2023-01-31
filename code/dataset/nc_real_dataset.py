@@ -164,7 +164,7 @@ class NCRealGraphDataset:
                 data.edge_index.size(1), device=data.x.device, requires_grad=True
             )
         self.data = data
-        return
+        return [data]
 
     def __repr__(self):
         return "{}".format(self.names[self.name][0])

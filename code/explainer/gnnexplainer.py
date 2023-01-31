@@ -528,7 +528,7 @@ class TargetedGNNExplainer(GNNExplainer):
 
         return loss
 
-    def explain_graph_with_target(self, x, edge_index, edge_weight, target):
+    def explain_graph_with_target(self, x, edge_index, edge_attr, target):
         r"""Learns and returns a node feature mask and an edge mask that play a
         crucial role to explain the prediction made by the GNN for a graph.
 
@@ -549,9 +549,7 @@ class TargetedGNNExplainer(GNNExplainer):
         # Get the initial prediction.
         if target is not None:
             with torch.no_grad():
-                out = self.model(
-                    x=x, edge_index=edge_index, edge_weight=edge_weight, batch=batch
-                )
+                out = self.model(x, edge_index, edge_attr, batch)
                 if self.return_type == "regression":
                     prediction = out
                 else:
@@ -562,7 +560,6 @@ class TargetedGNNExplainer(GNNExplainer):
                 prediction = target
             else:
                 pred_label = target
-
         self.__set_masks__(x, edge_index)
         self.to(x.device)
         if self.allow_edge_mask:
@@ -584,12 +581,7 @@ class TargetedGNNExplainer(GNNExplainer):
                 h = x * self.node_feat_mask.sigmoid()
             else:
                 h = x
-            out = self.model(
-                x=h,
-                edge_index=edge_index,
-                edge_weight=self.edge_mask.sigmoid(),
-                batch=batch,
-            )
+            out = self.model(h, edge_index, self.edge_mask.sigmoid(), batch)
             if self.return_type == "regression":
                 loss = self.__loss__(-1, out, prediction)
             else:
@@ -611,7 +603,7 @@ class TargetedGNNExplainer(GNNExplainer):
         return node_feat_mask, edge_mask
 
     def explain_node_with_target(
-        self, node_idx, x, edge_index, edge_weight, target, **kwargs
+        self, node_idx, x, edge_index, edge_attr, target, **kwargs
     ):
         r"""Learns and returns a node feature mask and an edge mask that play a
         crucial role to explain the prediction made by the GNN for node
@@ -642,13 +634,13 @@ class TargetedGNNExplainer(GNNExplainer):
         sub_node_mask.fill_(False)
         sub_node_mask[subset] = True
         sub_edge_mask = sub_node_mask[row] & sub_node_mask[col]
-        edge_weight = edge_weight[sub_edge_mask]
+        edge_attr = edge_attr[sub_edge_mask]
 
         # Get the initial prediction.
         # Get the initial prediction.
         if target is None:
             with torch.no_grad():
-                out = self.model(x, edge_index, edge_weight=edge_weight)
+                out = self.model(x, edge_index, edge_attr=edge_attr)
                 if self.return_type == "regression":
                     prediction = out
                 else:
@@ -682,11 +674,7 @@ class TargetedGNNExplainer(GNNExplainer):
                 h = x * self.node_feat_mask.sigmoid()
             else:
                 h = x
-            out = self.model(
-                x=h,
-                edge_index=edge_index,
-                edge_weight=self.edge_mask.sigmoid(),
-            )
+            out = self.model(h,edge_index,self.edge_mask.sigmoid())
             if self.return_type == "regression":
                 loss = self.__loss__(mapping, out, prediction)
             else:

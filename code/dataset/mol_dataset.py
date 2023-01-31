@@ -238,6 +238,10 @@ class MoleculeDataset(InMemoryDataset):
                     edge_index=dense_to_sparse(torch.from_numpy(adj))[0],
                     y=label,
                 )
+                if data_example.edge_attr is None:
+                    data_example.edge_attr = torch.ones(
+                        data_example.edge_index.size(1)
+                    ).float()
                 data_list.append(data_example)
         else:
             with open(self.raw_paths[0], "r") as f:
