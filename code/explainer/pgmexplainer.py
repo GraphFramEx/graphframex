@@ -13,7 +13,7 @@ class Node_Explainer:
         self,
         model,
         edge_index,
-        edge_weight,
+        edge_attr,
         X,
         num_layers,
         device=None,
@@ -23,7 +23,7 @@ class Node_Explainer:
         self.model = model
         self.model.eval()
         self.edge_index = edge_index
-        self.edge_weight = edge_weight
+        self.edge_attr = edge_attr
         self.X = X
         self.num_layers = num_layers
         self.device = device
@@ -70,7 +70,7 @@ class Node_Explainer:
         if node_idx not in neighbors:
             neighbors = np.append(neighbors, node_idx)
 
-        pred_torch = self.model(self.X, self.edge_index, self.edge_weight).cpu()
+        pred_torch = self.model(self.X, self.edge_index, self.edge_attr).cpu()
         soft_pred = np.asarray(
             [
                 softmax(np.asarray(pred_torch[node_].data))
@@ -102,7 +102,7 @@ class Node_Explainer:
 
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float).to(self.device)
             pred_perturb_torch = self.model(
-                X_perturb_torch, self.edge_index, self.edge_weight
+                X_perturb_torch, self.edge_index, self.edge_attr
             ).cpu()
             soft_pred_perturb = np.asarray(
                 [
@@ -180,7 +180,7 @@ class Graph_Explainer:
         self,
         model,
         edge_index,
-        edge_weight,
+        edge_attr,
         X,
         num_layers=None,
         device=None,
@@ -194,7 +194,7 @@ class Graph_Explainer:
         self.model = model
         self.model.eval()
         self.edge_index = edge_index
-        self.edge_weight = edge_weight
+        self.edge_attr = edge_attr
         self.X_feat = X.cpu().numpy()
         self.device = device
         self.snorm_n = snorm_n
@@ -237,7 +237,7 @@ class Graph_Explainer:
         self, num_samples, index_to_perturb, percentage, p_threshold, pred_threshold
     ):
         X_torch = torch.tensor(self.X_feat, dtype=torch.float).to(self.device)
-        pred_torch = self.model(X_torch, self.edge_index, self.edge_weight).cpu()
+        pred_torch = self.model(X_torch, self.edge_index, self.edge_attr).cpu()
         soft_pred = np.asarray(softmax(np.asarray(pred_torch[0].data)))
         pred_label = np.argmax(soft_pred)
         num_nodes = self.X_feat.shape[0]
@@ -261,7 +261,7 @@ class Graph_Explainer:
 
             X_perturb_torch = torch.tensor(X_perturb, dtype=torch.float)
             pred_perturb_torch = self.model(
-                X_perturb_torch, self.edge_index, self.edge_weight
+                X_perturb_torch, self.edge_index, self.edge_attr
             ).cpu()
             soft_pred_perturb = np.asarray(
                 softmax(np.asarray(pred_perturb_torch[0].data))

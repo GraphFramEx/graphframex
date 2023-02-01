@@ -33,7 +33,9 @@ def node_attr_to_edge(edge_index, node_mask):
 
 #### Baselines ####
 def explain_random_graph(model, data, target, device, **kwargs):
-    return np.random.uniform(size=data.edge_index.shape[1])
+    edge_mask = np.random.uniform(size=data.edge_index.shape[1])
+    node_feat_mask = np.random.uniform(size=data.x.shape[1])
+    return edge_mask.astype("float"), node_feat_mask.astype("float")
 
 
 def explain_sa_graph(model, data, target, device, **kwargs):
@@ -70,10 +72,9 @@ def explain_ig_graph(model, data, target, device, **kwargs):
 def explain_occlusion_graph(model, data, target, device, **kwargs):
     data = Data(x=data.x, edge_index=data.edge_index, edge_attr=data.edge_attr)
     if target is None:
-        pred_probs = (
-            model(data.x, data.edge_index, data.edge_attr).cpu().detach().numpy()
-        )
-        pred_prob = pred_probs[target]
+        pred_probs = model(data)[0].cpu().detach().numpy()
+        pred_prob = pred_probs.max()
+        target = pred_probs.argmax()
     else:
         pred_prob = 1
     g = to_networkx(data)
@@ -90,7 +91,7 @@ def explain_occlusion_graph(model, data, target, device, **kwargs):
                 data.x,
                 data.edge_index[:, edge_occlusion_mask],
                 data.edge_attr[edge_occlusion_mask],
-            )[target].item()
+            )[0][target].item()
             edge_mask[i] = pred_prob - prob
             edge_occlusion_mask[i] = True
     return edge_mask.astype("float"), None
@@ -117,13 +118,13 @@ def explain_gnnexplainer_graph(model, data, target, device, **kwargs):
     )
     edge_mask = edge_mask.cpu().detach().numpy()
     node_feat_mask = node_feat_mask.cpu().detach().numpy()
-    return edge_mask, None # node_feat_mask
+    return edge_mask, None  # node_feat_mask
 
 
-def explain_pgmexplainer_graph(
-    model, x, edge_index, target, device, args, include_edges=None
-):
-    explainer = Graph_Explainer(model, edge_index, x, device=device, print_result=0)
+def explain_pgmexplainer_graph(model, data, target, device, **kwargs):
+    explainer = Graph_Explainer(
+        model, data.edge_index, data.edge_attr, data.x, device=device, print_result=0
+    )
     explanation = explainer.explain(
         num_samples=1000,
         percentage=10,
@@ -131,11 +132,11 @@ def explain_pgmexplainer_graph(
         p_threshold=0.05,
         pred_threshold=0.1,
     )
-    node_attr = np.zeros(x.shape[0])
+    node_attr = np.zeros(data.x.shape[0])
     for node, p_value in explanation.items():
         node_attr[node] = 1 - p_value
-    edge_mask = node_attr_to_edge(edge_index, node_attr)
-    return edge_mask
+    edge_mask = node_attr_to_edge(data.edge_index, node_attr)
+    return edge_mask.astype("float"), None
 
 
 def explain_subgraphx_graph(

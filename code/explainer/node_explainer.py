@@ -184,7 +184,8 @@ def explain_occlusion_node(model, data, node_idx, target, device, **kwargs):
             .detach()
             .numpy()
         )
-        pred_prob = pred_probs[target]
+        pred_prob = pred_probs.max()
+        target = pred_probs.argmax()
     else:
         pred_prob = 1
     g = to_networkx(data)
