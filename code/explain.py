@@ -352,7 +352,7 @@ class Explain(object):
                 computation_time.append(duration_seconds)
             if self.save:
                 self.save_mask(edge_masks, node_feat_masks, computation_time)
-        return edge_masks, node_feat_masks, computation_time
+        return self.explained_y, edge_masks, node_feat_masks, computation_time
 
     def clean_mask(self, edge_masks, node_feat_masks):
         if edge_masks[0] is not None:

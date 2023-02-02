@@ -305,7 +305,7 @@ def arg_parse():
     return parser, args
 
 
-def create_arg_groups(parser, args):
+def create_args_group(parser, args):
     arg_groups = {}
     for group in parser._action_groups:
         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}

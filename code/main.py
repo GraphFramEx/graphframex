@@ -9,7 +9,7 @@ from train_gnn import TrainModel
 from gendata import get_dataset
 from utils.parser_utils import (
     arg_parse,
-    create_arg_groups,
+    create_args_group,
     fix_random_seed,
     get_data_args,
     get_graph_size_args,
@@ -105,7 +105,12 @@ def main(args, args_group):
         save_name=save_name,
     )
 
-    edge_masks, node_feat_masks, computation_time = explainer.compute_mask()
+    (
+        explained_y,
+        edge_masks,
+        node_feat_masks,
+        computation_time,
+    ) = explainer.compute_mask()
     edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
 
     infos = {
@@ -219,5 +224,5 @@ if __name__ == "__main__":
             args.batch_size,
         ) = ("True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
 
-    arg_groups = create_arg_groups(parser, args)
-    main(args, arg_groups)
+    args_group = create_args_group(parser, args)
+    main(args, args_group)

@@ -9,6 +9,7 @@ import seaborn as sns
 from torch_geometric.utils.convert import to_networkx
 import pandas as pd
 
+
 from utils.io_utils import (
     check_dir,
     gen_feat_importance_plt_name,
@@ -374,65 +375,88 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
     )
 
 
-def _fruchterman_reingold(
-    A, k=None, pos=None, fixed=None, iterations=50, threshold=1e-4, dim=2, seed=None
-):
-    # Position nodes in adjacency matrix A using Fruchterman-Reingold
-    # Entry point for NetworkX graph is fruchterman_reingold_layout()
-    import numpy as np
+def plot_explained_graph(data, edge_mask, gid, topk=2):
 
-    try:
-        nnodes, _ = A.shape
-    except AttributeError as e:
-        msg = "fruchterman_reingold() takes an adjacency matrix as input"
-        raise nx.NetworkXError(msg) from e
+    plt.figure()
 
-    if pos is None:
-        # random initial positions
-        pos = np.asarray(seed.rand(nnodes, dim), dtype=A.dtype)
-    else:
-        # make sure positions are of same type as matrix
-        pos = pos.astype(A.dtype)
+    atoms = np.argmax(data.x.cpu().detach().numpy(), axis=1)
+    nmb_nodes = data.num_nodes
+    max_label = np.max(atoms) + 1
+    G = to_networkx(data)
 
-    # optimal distance between nodes
-    if k is None:
-        k = np.sqrt(1.0 / nnodes)
-    # the initial "temperature"  is about .1 of domain area (=1x1)
-    # this is the largest step allowed in the dynamics.
-    # We need to calculate this in case our fixed positions force our domain
-    # to be much bigger than 1x1
-    t = max(max(pos.T[0]) - min(pos.T[0]), max(pos.T[1]) - min(pos.T[1])) * 0.1
-    # simple cooling scheme.
-    # linearly step down by dt on each iteration so last iteration is size dt.
-    dt = t / float(iterations + 1)
-    delta = np.zeros((pos.shape[0], pos.shape[0], pos.shape[1]), dtype=A.dtype)
-    # the inscrutable (but fast) version
-    # this is still O(V^2)
-    # could use multilevel methods to speed this up significantly
-    for iteration in range(iterations):
-        # matrix of difference between points
-        delta = pos[:, np.newaxis, :] - pos[np.newaxis, :, :]
-        # distance between points
-        distance = np.linalg.norm(delta, axis=-1)
-        # enforce minimum distance of 0.01
-        np.clip(distance, 0.01, None, out=distance)
-        # displacement "force"
-        displacement = np.einsum(
-            "ijk,ij->ik", delta, (k * k / distance**2 - A * distance / k)
+    pos = nx.kamada_kawai_layout(G)
+
+    colors = [
+        "orange",
+        "red",
+        "lime",
+        "green",
+        "blue",
+        "orchid",
+        "darksalmon",
+        "darkslategray",
+        "gold",
+        "bisque",
+        "tan",
+        "lightseagreen",
+        "indigo",
+        "navy",
+    ]
+    node_label_dict = {0: "C", 1: "N", 2: "O", 3: "F", 4: "I", 5: "Cl", 6: "Br"}
+    node_labels = {i: node_label_dict[node_feat] for i, node_feat in enumerate(atoms)}
+
+    label2nodes = []
+    for i in range(max_label):
+        label2nodes.append([])
+    for i in range(nmb_nodes):
+        if i in G.nodes():
+            label2nodes[atoms[i]].append(i)
+    for i in range(max_label):
+        node_filter = []
+        for j in range(len(label2nodes[i])):
+            node_filter.append(label2nodes[i][j])
+        nx.draw_networkx_nodes(
+            G,
+            pos,
+            nodelist=node_filter,
+            node_color=colors[i],
+            node_size=300,
+            label=node_label_dict[i],
         )
-        # ADD THIS LINE - prevent things from flying off into infinity if not connected
-        displacement = displacement - pos / (k * np.sqrt(nnodes))
-        # update positions
-        length = np.linalg.norm(displacement, axis=-1)
-        length = np.where(length < 0.01, 0.1, length)
-        delta_pos = np.einsum("ij,i->ij", displacement, t / length)
-        if fixed is not None:
-            # don't change positions of fixed nodes
-            delta_pos[fixed] = 0.0
-        pos += delta_pos
-        # cool temperature
-        t -= dt
-        err = np.linalg.norm(delta_pos) / nnodes
-        if err < threshold:
-            break
-    return pos
+
+    nx.draw_networkx_edges(G, pos, width=2, edge_color="grey")
+
+    k = 0
+    for u, v, d in G.edges(data=True):
+        d["weight"] = edge_mask[k]
+        k += 1
+    G_masked = G.copy()
+    for u, v, d in G_masked.edges(data=True):
+        d["weight"] = (G[u][v]["weight"] + G[v][u]["weight"]) / 2
+    G_masked = G_masked.to_undirected()
+    edges, weights = zip(*nx.get_edge_attributes(G_masked, "weight").items())
+
+    sorted_edge_weights = np.sort(weights)
+    thres_index = max(int(len(weights) - topk), 0)
+    thres = sorted_edge_weights[thres_index]
+    print("thres: ", thres)
+    important_edges_idx = np.where(weights >= thres)[0]
+    important_edges = [edges[i] for i in important_edges_idx]
+
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        edgelist=important_edges,
+        # edge_color=weights,
+        width=7,
+        # edge_cmap=plt.cm.Blues,
+        edge_vmin=0,
+        edge_vmax=1,
+    )
+
+    nx.draw_networkx_labels(G, pos, node_labels, font_size=15, font_color="black")
+
+    plt.title("Graph: " + str(gid) + " label: " + str(data.y.item()))
+    plt.axis("off")
+    plt.show()
+    # plt.clf()
