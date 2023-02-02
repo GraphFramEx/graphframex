@@ -1,12 +1,21 @@
 import os
+from pathlib import Path
 import torch
 import shutil
 import warnings
 from torch.optim import Adam
+from utils.parser_utils import (
+    arg_parse,
+    create_args_group,
+    fix_random_seed,
+    get_data_args,
+    get_graph_size_args,
+)
 from utils.io_utils import check_dir
-from gendata import get_dataloader
+from gendata import get_dataloader, get_dataset
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR
+from gnn.model import get_gnnNets
 
 
 class TrainModel(object):
@@ -191,3 +200,81 @@ class TrainModel(object):
         )["net"]
         self.model.load_state_dict(state_dict)
         self.model.to(self.device)
+
+
+def train_gnn(args, args_group):
+    fix_random_seed(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    dataset_params = args_group["dataset_params"]
+    model_params = args_group["model_params"]
+
+    dataset = get_dataset(
+        dataset_root=args.data_save_dir,
+        **dataset_params,
+    )
+    dataset.data.x = dataset.data.x.float()
+    dataset.data.y = dataset.data.y.squeeze().long()
+    args = get_data_args(dataset.data, args)
+    dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
+    dataset_params["num_node_features"] = dataset.data.x.size(1)
+    if eval(args.graph_classification):
+        dataloader_params = {
+            "batch_size": args.batch_size,
+            "random_split_flag": eval(args.random_split_flag),
+            "data_split_ratio": [args.train_ratio, args.val_ratio, args.test_ratio],
+            "seed": args.seed,
+        }
+
+    model = get_gnnNets(
+        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
+    )
+
+    if eval(args.graph_classification):
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=f"{args.model_name}_{args.num_layers}l",
+            dataloader_params=dataloader_params,
+        )
+    else:
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=f"{args.model_name}_{args.num_layers}l",
+        )
+    if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
+        trainer.load_model()
+    else:
+        trainer.train(
+            train_params=args_group["train_params"],
+            optimizer_params=args_group["optimizer_params"],
+        )
+    _, _, _ = trainer.test()
+
+
+if __name__ == "__main__":
+    parser, args = arg_parse()
+    args = get_graph_size_args(args)
+
+    # Fill in the default parameters for the architecture and the training of the model here
+    if args.dataset_name == "powergrid":
+        (
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+        ) = ("True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max")
+
+    args_group = create_args_group(parser, args)
+    train_gnn(args, args_group)

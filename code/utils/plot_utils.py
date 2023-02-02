@@ -439,7 +439,6 @@ def plot_explained_graph(data, edge_mask, gid, topk=2):
     sorted_edge_weights = np.sort(weights)
     thres_index = max(int(len(weights) - topk), 0)
     thres = sorted_edge_weights[thres_index]
-    print("thres: ", thres)
     important_edges_idx = np.where(weights >= thres)[0]
     important_edges = [edges[i] for i in important_edges_idx]
 
