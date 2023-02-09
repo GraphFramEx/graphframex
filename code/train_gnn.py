@@ -90,7 +90,7 @@ class TrainModel(object):
                 losses.append(loss)
                 accs.append(batch_preds == batch.y)
                 balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
-                f1_scores.append(f1_score(batch.y, batch_preds))
+                f1_scores.append(f1_score(batch.y, batch_preds, average="weighted"))
             eval_loss = torch.tensor(losses).mean().item()
             eval_acc = torch.cat(accs, dim=-1).float().mean().item()
             eval_balanced_acc = np.mean(balanced_accs)
@@ -100,7 +100,7 @@ class TrainModel(object):
             eval_loss, preds = self._eval_batch(data, data.y, mask=data.val_mask)
             eval_acc = (preds == data.y).float().mean().item()
             eval_balanced_acc = balanced_accuracy_score(data.y, preds)
-            eval_f1_score = f1_score(data.y, preds)
+            eval_f1_score = f1_score(data.y, preds, average="weighted")
         return eval_loss, eval_acc, eval_balanced_acc, eval_f1_score
 
     def test(self):
@@ -119,7 +119,7 @@ class TrainModel(object):
                 preds.append(batch_preds)
                 accs.append(batch_preds == batch.y)
                 balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
-                f1_scores.append(f1_score(batch.y, batch_preds))
+                f1_scores.append(f1_score(batch.y, batch_preds, average="weighted"))
             test_loss = torch.tensor(losses).mean().item()
             preds = torch.cat(preds, dim=-1)
             test_acc = torch.cat(accs, dim=-1).float().mean().item()
@@ -130,7 +130,7 @@ class TrainModel(object):
             test_loss, preds = self._eval_batch(data, data.y, mask=data.test_mask)
             test_acc = (preds == data.y).float().mean().item()
             test_balanced_acc = balanced_accuracy_score(data.y, preds)
-            test_f1_score = f1_score(data.y, preds)
+            test_f1_score = f1_score(data.y, preds, average="weighted")
         print(
             f"Test loss: {test_loss:.4f}, test acc {test_acc:.4f}, balanced test acc {test_balanced_acc:.4f}, test f1 score {test_f1_score:.4f}"
         )
