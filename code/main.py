@@ -71,13 +71,14 @@ def main(args, args_group):
             train_params=args_group["train_params"],
             optimizer_params=args_group["optimizer_params"],
         )
-    _, _, _ = trainer.test()
+    _, _, _, _, _ = trainer.test()
 
     additional_args = {
         "dataset_name": args.dataset_name,
         "hidden_dim": args.hidden_dim,
         "num_top_edges": args.num_top_edges,
         "num_layers": args.num_layers,
+        "dropout": args.dropout,
         "num_node_features": args.num_node_features,
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,
@@ -190,6 +191,7 @@ if __name__ == "__main__":
 
     if args.dataset_name.startswith(tuple(["ba", "tree"])):
         (
+            args.groundtruth,
             args.graph_classification,
             args.num_layers,
             args.hidden_dim,
@@ -198,10 +200,11 @@ if __name__ == "__main__":
             args.weight_decay,
             args.dropout,
             args.readout,
-        ) = ("False", 3, 20, 1000, 0.001, 5e-3, 0.0, "identity")
+        ) = ("True", "False", 3, 20, 1000, 0.001, 5e-3, 0.0, "identity")
 
     elif args.dataset_name.startswith(tuple(["cora", "citeseer", "pubmed"])):
         (
+            args.groundtruth,
             args.graph_classification,
             args.num_layers,
             args.hidden_dim,
@@ -210,9 +213,10 @@ if __name__ == "__main__":
             args.weight_decay,
             args.dropout,
             args.readout,
-        ) = ("False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
+        ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
     elif args.dataset_name == "mutag":
         (
+            args.groundtruth,
             args.graph_classification,
             args.num_layers,
             args.hidden_dim,
@@ -222,7 +226,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
+        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
 
     args_group = create_args_group(parser, args)
     main(args, args_group)

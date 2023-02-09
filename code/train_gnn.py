@@ -3,6 +3,7 @@ from pathlib import Path
 import torch
 import shutil
 import warnings
+import numpy as np
 from torch.optim import Adam
 from utils.parser_utils import (
     arg_parse,
@@ -16,6 +17,7 @@ from gendata import get_dataloader, get_dataset
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR
 from gnn.model import get_gnnNets
+from sklearn.metrics import balanced_accuracy_score, f1_score
 
 
 class TrainModel(object):
@@ -81,19 +83,25 @@ class TrainModel(object):
         self.model.to(self.device)
         self.model.eval()
         if self.graph_classification:
-            losses, accs = [], []
+            losses, accs, balanced_accs, f1_scores = [], [], [], []
             for batch in self.loader["eval"]:
                 batch = batch.to(self.device)
                 loss, batch_preds = self._eval_batch(batch, batch.y)
                 losses.append(loss)
                 accs.append(batch_preds == batch.y)
+                balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
+                f1_scores.append(f1_score(batch.y, batch_preds))
             eval_loss = torch.tensor(losses).mean().item()
             eval_acc = torch.cat(accs, dim=-1).float().mean().item()
+            eval_balanced_acc = np.mean(balanced_accs)
+            eval_f1_score = np.mean(f1_scores)
         else:
             data = self.dataset.data.to(self.device)
             eval_loss, preds = self._eval_batch(data, data.y, mask=data.val_mask)
             eval_acc = (preds == data.y).float().mean().item()
-        return eval_loss, eval_acc
+            eval_balanced_acc = balanced_accuracy_score(data.y, preds)
+            eval_f1_score = f1_score(data.y, preds)
+        return eval_loss, eval_acc, eval_balanced_acc, eval_f1_score
 
     def test(self):
         state_dict = torch.load(
@@ -103,22 +111,30 @@ class TrainModel(object):
         self.model = self.model.to(self.device)
         self.model.eval()
         if self.graph_classification:
-            losses, preds, accs = [], [], []
+            losses, preds, accs, balanced_accs, f1_scores = [], [], [], [], []
             for batch in self.loader["test"]:
                 batch = batch.to(self.device)
                 loss, batch_preds = self._eval_batch(batch, batch.y)
                 losses.append(loss)
                 preds.append(batch_preds)
                 accs.append(batch_preds == batch.y)
+                balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
+                f1_scores.append(f1_score(batch.y, batch_preds))
             test_loss = torch.tensor(losses).mean().item()
             preds = torch.cat(preds, dim=-1)
             test_acc = torch.cat(accs, dim=-1).float().mean().item()
+            test_balanced_acc = np.mean(balanced_accs)
+            test_f1_score = np.mean(f1_scores)
         else:
             data = self.dataset.data.to(self.device)
             test_loss, preds = self._eval_batch(data, data.y, mask=data.test_mask)
             test_acc = (preds == data.y).float().mean().item()
-        print(f"Test loss: {test_loss:.4f}, test acc {test_acc:.4f}")
-        return test_loss, test_acc, preds
+            test_balanced_acc = balanced_accuracy_score(data.y, preds)
+            test_f1_score = f1_score(data.y, preds)
+        print(
+            f"Test loss: {test_loss:.4f}, test acc {test_acc:.4f}, balanced test acc {test_balanced_acc:.4f}, test f1 score {test_f1_score:.4f}"
+        )
+        return test_loss, test_acc, test_balanced_acc, test_f1_score, preds
 
     def train(self, train_params=None, optimizer_params=None):
         num_epochs = train_params["num_epochs"]
@@ -158,9 +174,9 @@ class TrainModel(object):
                 train_loss = self._train_batch(data, data.y)
 
             with torch.no_grad():
-                eval_loss, eval_acc = self.eval()
+                eval_loss, eval_acc, eval_balanced_acc, eval_f1_score = self.eval()
             print(
-                f"Epoch:{epoch}, Training_loss:{train_loss:.4f}, Eval_loss:{eval_loss:.4f}, Eval_acc:{eval_acc:.4f}"
+                f"Epoch:{epoch}, Training_loss:{train_loss:.4f}, Eval_loss:{eval_loss:.4f}, Eval_acc:{eval_acc:.4f}, Eval_balanced_acc:{eval_balanced_acc:.4f}, Eval_f1_score:{eval_f1_score:.4f}"
             )
             if num_early_stop > 0:
                 if eval_loss <= best_eval_loss:
@@ -256,7 +272,7 @@ def train_gnn(args, args_group):
             train_params=args_group["train_params"],
             optimizer_params=args_group["optimizer_params"],
         )
-    _, _, _ = trainer.test()
+    _, _, _, _, _ = trainer.test()
 
 
 if __name__ == "__main__":
@@ -274,7 +290,8 @@ if __name__ == "__main__":
             args.weight_decay,
             args.dropout,
             args.readout,
-        ) = ("True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max")
+            args.batch_size,
+        ) = ("True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max", 128)
 
     args_group = create_args_group(parser, args)
     train_gnn(args, args_group)

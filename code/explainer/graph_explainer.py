@@ -118,7 +118,7 @@ def explain_gnnexplainer_graph(model, data, target, device, **kwargs):
     )
     edge_mask = edge_mask.cpu().detach().numpy()
     node_feat_mask = node_feat_mask.cpu().detach().numpy()
-    return edge_mask, None  # node_feat_mask
+    return edge_mask, node_feat_mask
 
 
 def explain_pgmexplainer_graph(model, data, target, device, **kwargs):
