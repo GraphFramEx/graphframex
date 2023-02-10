@@ -16,7 +16,9 @@ def get_dataset(dataset_root, **kwargs):
     if dataset_name.lower() in list(MoleculeDataset.names.keys()):
         return MoleculeDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
-        dataset = NCRealGraphDataset(root=dataset_root, name=dataset_name)
+        dataset = NCRealGraphDataset(
+            root=dataset_root, name=dataset_name, dataset_params=kwargs
+        )
         dataset.process()
         return dataset
     elif dataset_name.lower() in list(SynGraphDataset.names.keys()):

@@ -79,6 +79,7 @@ def main(args, args_group):
         "num_top_edges": args.num_top_edges,
         "num_layers": args.num_layers,
         "dropout": args.dropout,
+        "readout": args.readout,
         "num_node_features": args.num_node_features,
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,

@@ -65,13 +65,13 @@ class NCRealGraphDataset:
         "wisconsin": ["Wisconsin", "WebKB"],
     }
 
-    def __init__(self, root, name):
+    def __init__(self, root, name, dataset_params):
         self.root = root
         self.name = name.lower()
         self.data = None
         assert self.name in self.names.keys()
         self.data_save_dir = osp.join(self.root, self.name)
-        self.origin_dir = osp.join(self.root, self.raw_name())
+        self.dataset_params = dataset_params
 
     def group_name(self):
         return self.names[self.name][1]
@@ -91,14 +91,15 @@ class NCRealGraphDataset:
         self.raw_name = self.raw_name()
         if self.group == "Planetoid":
             Planetoid(self.root, name=self.raw_name)
+            self.origin_dir = osp.join(self.root, self.raw_name())
             os.rename(self.origin_dir, self.data_save_dir)
         elif self.group == "WebKB":
-            WebKB(self.data_save_dir, name=self.raw_name)
+            WebKB(self.root, name=self.raw_name)
         elif self.group == "WikipediaNetwork":
-            WikipediaNetwork(self.data_save_dir, name=self.name)
-            origin_dir = osp.join(self.data_save_dir, "geom_gcn")
+            WikipediaNetwork(self.root, name=self.name)
+            self.origin_dir = osp.join(self.data_save_dir, "geom_gcn")
             # fetch all files
-            for folder_name in os.listdir(origin_dir):
+            for folder_name in os.listdir(self.origin_dir):
                 # construct full file path
                 source = osp.join(self.origin_dir, folder_name)
                 destination = osp.join(self.data_save_dir, folder_name)
@@ -107,7 +108,7 @@ class NCRealGraphDataset:
                 if osp.isdir(source):
                     print("moving folder {} to {}".format(source, destination))
                     shutil.move(source, destination)
-            shutil.rmtree(origin_dir, ignore_errors=True)
+            shutil.rmtree(self.origin_dir, ignore_errors=True)
         else:
             eval(self.group)(self.data_save_dir)
 
