@@ -6,7 +6,7 @@ from dataset.syn_utils.synthetic_structsim import bottle, cycle, grid, house
 from explainer.node_explainer import node_attr_to_edge
 
 
-def get_ground_truth(node, data, dataset_name):
+def get_ground_truth_syn(node, data, dataset_name):
     gt = []
     if dataset_name == "ba_house":
         gt = get_ground_truth_ba_house(node)  # correct

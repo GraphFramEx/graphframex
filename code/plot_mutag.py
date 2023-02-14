@@ -5,7 +5,7 @@ import os
 import pickle
 import numpy as np
 from gendata import get_dataset
-from utils.plot_utils import plot_explained_graph
+from utils.plot_utils import plot_mol_graph
 from utils.path import DATA_DIR, LOG_DIR, MODEL_DIR, RESULT_DIR, MASK_DIR
 
 
@@ -26,7 +26,7 @@ params = {
     "readout": "max",
     "batch_size": 32,
     "model_name": "gcn",
-    "explainer_name": "ig",
+    "explainer_name": "gnnexplainer",
     "focus": "phenomenon",
     "num_explained_y": 5,
     "explained_target": 0,
@@ -65,6 +65,6 @@ explained_y, edge_masks, node_feat_masks, computation_time = tuple(w_list)
 #%%
 gid_list = explained_y
 for i, gid in enumerate(gid_list):
-    plot_explained_graph(dataset[gid], edge_masks[i], gid, topk=params["num_top_edges"])  # args.num_top_edges
+    plot_mol_graph(dataset[gid], edge_masks[i], gid, topk=params["num_top_edges"])  # args.num_top_edges
 
 # %%

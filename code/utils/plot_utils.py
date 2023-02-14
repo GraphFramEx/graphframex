@@ -16,6 +16,8 @@ from utils.io_utils import (
     gen_mask_density_plt_name,
 )
 
+MUTAG_NODE_LABELS = {0: "C", 1: "N", 2: "O", 3: "F", 4: "I", 5: "Cl", 6: "Br"}
+
 
 def k_hop_subgraph(
     node_idx,
@@ -375,7 +377,7 @@ def plot_expl_gc(data_list, edge_masks, args, num_plots=5):
     )
 
 
-def plot_explained_graph(data, edge_mask, gid, topk=2):
+def plot_mol_graph(data, edge_mask, gid, topk=2):
 
     plt.figure()
 
@@ -402,8 +404,7 @@ def plot_explained_graph(data, edge_mask, gid, topk=2):
         "indigo",
         "navy",
     ]
-    node_label_dict = {0: "C", 1: "N", 2: "O", 3: "F", 4: "I", 5: "Cl", 6: "Br"}
-    node_labels = {i: node_label_dict[node_feat] for i, node_feat in enumerate(atoms)}
+    node_labels = {i: MUTAG_NODE_LABELS[node_feat] for i, node_feat in enumerate(atoms)}
 
     label2nodes = []
     for i in range(max_label):
@@ -421,7 +422,7 @@ def plot_explained_graph(data, edge_mask, gid, topk=2):
             nodelist=node_filter,
             node_color=colors[i],
             node_size=300,
-            label=node_label_dict[i],
+            label=MUTAG_NODE_LABELS[i],
         )
 
     nx.draw_networkx_edges(G, pos, width=2, edge_color="grey")

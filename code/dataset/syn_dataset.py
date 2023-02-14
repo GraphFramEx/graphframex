@@ -62,10 +62,10 @@ class SynGraphDataset:
     def process(self):
         if not os.path.isfile(self.file_names()):
             os.makedirs(self.dir(), exist_ok=True)
-            data = self.build_syndata()
-            torch.save(data, self.file_names())
-        data = torch.load(self.file_names())
-        self.data = data
+            dataset = self.build_syndata()
+            torch.save(dataset, self.file_names())
+        dataset = torch.load(self.file_names())
+        self.data = dataset[0]
         return
 
     def __repr__(self):

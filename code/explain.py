@@ -15,8 +15,12 @@ from evaluate.fidelity import (
 )
 from utils.io_utils import check_dir
 from utils.gen_utils import list_to_dict
-from dataset.syn_utils.gengroundtruth import get_ground_truth
-from evaluate.accuracy import get_explanation, get_scores
+from dataset.mutag_utils.gengroundtruth import get_ground_truth_mol
+from dataset.syn_utils.gengroundtruth import get_ground_truth_syn
+from evaluate.accuracy import (
+    get_explanation_syn,
+    get_scores,
+)
 from evaluate.mask_utils import mask_to_shape, clean, control_sparsity
 from explainer.node_explainer import *
 from explainer.graph_explainer import *
@@ -66,17 +70,37 @@ class Explain(object):
             self.top_acc = explainer_params["top_acc"]
             self.num_top_edges = explainer_params["num_top_edges"]
 
+    def get_ground_truth(self, **kwargs):
+        if self.dataset_name == "mutag":
+            G_true_list = get_ground_truth_mol(self.dataset_name)
+        elif self.dataset_name.startswith(["ba", "tree"]):
+            G_true, role, true_edge_mask = get_ground_truth_syn(
+                kwargs["explained_idx"], self.data, self.dataset_name
+            )
+            G_true_list = [G_true]
+        else:
+            raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
+        return G_true_list
+
     def _eval_acc(self, edge_masks):
         scores = []
         for i in range(len(self.explained_y)):
             edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
-            G_true, role, true_edge_mask = get_ground_truth(
-                self.explained_y[i], self.data, self.dataset_name
-            )
-            G_expl = get_explanation(
-                self.data, edge_mask, self.top_acc, self.num_top_edges
-            )
-            recall, precision, f1_score = get_scores(G_expl, G_true)
+            graph = self.dataset[i] if self.graph_classification else self.dataset[0]
+            if self.dataset_name.startswith(["ba", "tree"]):
+                G_true, role, true_edge_mask = get_ground_truth_syn(
+                    self.explained_y[i], self.data, self.dataset_name
+                )
+                G_expl = get_explanation_syn(
+                    graph, edge_mask, self.top_acc, self.num_top_edges
+                )
+                recall, precision, f1_score = get_scores(G_expl, G_true)
+            # elif self.dataset_name == "mutag":
+            # G_true = get_ground_truth_mol(self.dataset_name)[self.explained_y[i]]
+            # G_expl = get_explanation()
+            # recall, precision, f1_score = get_scores(G_expl, G_true)
+            else:
+                raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
             entry = {"recall": recall, "precision": precision, "f1_score": f1_score}
             scores.append(entry)
         scores = list_to_dict(scores)
@@ -308,6 +332,7 @@ class Explain(object):
         if self.focus == "phenomenon":
             targets = self.data.y
         else:
+            self.model.eval()
             out = self.model(data=self.data)
             targets = torch.LongTensor(out.argmax(dim=1).detach().cpu().numpy()).to(
                 self.device
@@ -341,17 +366,27 @@ class Explain(object):
             ) = self.load_mask()
             self.explained_y = explained_y
         else:
-            self.explained_y = self._get_explained_y()
-            edge_masks, node_feat_masks, computation_time = [], [], []
-            for explained_y_idx in self.explained_y:
+            init_explained_y = self._get_explained_y()
+            final_explained_y, edge_masks, node_feat_masks, computation_time = (
+                [],
+                [],
+                [],
+                [],
+            )
+            for explained_y_idx in init_explained_y:
                 edge_mask, node_feat_mask, duration_seconds = eval(
                     "self._compute" + self.task
                 )(explained_y_idx)
-                edge_masks.append(edge_mask)
-                node_feat_masks.append(node_feat_mask)
-                computation_time.append(duration_seconds)
+                if edge_mask is not None:
+                    edge_masks.append(edge_mask)
+                    node_feat_masks.append(node_feat_mask)
+                    computation_time.append(duration_seconds)
+                    final_explained_y.append(explained_y_idx)
+            self.explained_y = final_explained_y
             if self.save:
-                self.save_mask(edge_masks, node_feat_masks, computation_time)
+                self.save_mask(
+                    final_explained_y, edge_masks, node_feat_masks, computation_time
+                )
         return self.explained_y, edge_masks, node_feat_masks, computation_time
 
     def clean_mask(self, edge_masks, node_feat_masks):
@@ -441,12 +476,10 @@ class Explain(object):
             )
         return explained_y
 
-    def save_mask(self, edge_masks, node_feat_masks, computation_time):
+    def save_mask(self, explained_y, edge_masks, node_feat_masks, computation_time):
         save_path = os.path.join(self.save_dir, self.save_name)
         with open(save_path, "wb") as f:
-            pickle.dump(
-                [self.explained_y, edge_masks, node_feat_masks, computation_time], f
-            )
+            pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
 
     def load_mask(self):
         save_path = os.path.join(self.save_dir, self.save_name)

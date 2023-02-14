@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, GATConv, NNConv, GINEConv, TransformerConv
 from torch_geometric.data.batch import Batch
 from torch_geometric.nn.glob import global_mean_pool, global_add_pool, global_max_pool
+from code.utils.gen_utils import from_adj_to_edge_index_torch
 
 
 def get_gnnNets(input_dim, output_dim, model_params):
@@ -103,20 +104,32 @@ class GNNBase(nn.Module):
             if not data:
                 x = kwargs.get("x")
                 edge_index = kwargs.get("edge_index")
+                adj = kwargs.get("adj")
+                if not edge_index:
+                    assert (
+                        adj is not None
+                    ), "forward's args is empty and required adj is not in kwargs"
+                    if torch.is_tensor(adj):
+                        edge_index, edge_attr = from_adj_to_edge_index_torch(adj)
+                    else:
+                        edge_index, edge_attr = from_adj_to_edge_index_torch(
+                            torch.from_numpy(adj)
+                        )
+                if "adj" not in kwargs:
+                    assert (
+                        edge_index is not None
+                    ), "forward's args is empty and required edge_index is not in kwargs"
+                    edge_attr = kwargs.get("edge_attr")
+                    if not edge_attr:
+                        edge_attr = torch.ones(
+                            edge_index.shape[1], dtype=torch.float32, device=x.device
+                        )
                 assert (
                     x is not None
                 ), "forward's args is empty and required node features x is not in kwargs"
-                assert (
-                    edge_index is not None
-                ), "forward's args is empty and required edge_index is not in kwargs"
                 batch = kwargs.get("batch")
                 if not batch:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
-                edge_attr = kwargs.get("edge_attr")
-                if not edge_attr:
-                    edge_attr = torch.ones(
-                        edge_index.shape[1], dtype=torch.float32, device=x.device
-                    )
 
             else:
                 x = data.x
@@ -177,7 +190,7 @@ class GNN_basic(GNNBase):
         emb = self.get_emb(*args, **kwargs)
         x = self.readout_layer(emb, batch)
         self.logits = self.mlps(x)
-        self.probs = F.softmax(self.logits, dim=1)
+        self.probs = F.log_softmax(self.logits, dim=1)
         return self.probs
 
     def loss(self, pred, label):

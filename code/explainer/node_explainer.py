@@ -1,14 +1,22 @@
 import os
 import networkx as nx
 import numpy as np
+from scipy import sparse
 import torch
 import torch.nn.functional as F
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
 from gnn.model import GCNConv, GATConv, GINEConv
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
-from utils.gen_utils import sample_large_graph
-
+from utils.gen_utils import (
+    filter_existing_edges,
+    from_edge_index_to_adj_torch,
+    from_adj_to_edge_index_torch,
+    get_neighbourhood,
+    normalize_adj,
+    sample_large_graph,
+)
+import numpy_indexed as npi
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
 from explainer.gnnlrp import GNN_LRP
 from explainer.graphsvx import LIME, SHAP, GraphLIME, GraphSVX
@@ -16,6 +24,7 @@ from explainer.pgexplainer import PGExplainer
 from explainer.pgmexplainer import Node_Explainer
 from explainer.subgraphx import SubgraphX
 from explainer.zorro import Zorro
+from explainer.cfgnnexplainer import CFExplainer
 
 
 def balance_mask_undirected(edge_mask, edge_index):
@@ -343,6 +352,58 @@ def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
     edge_mask = pgexplainer.explain_node(node_idx, data.x, data.edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask.astype("float"), None
+
+
+def explain_cfgnnexplainer_node(model, data, node_idx, target, device, **kwargs):
+    n_momentum, num_epochs, beta, optimizer, lr = 0.9, 500, 0.5, "SGD", 0.01
+    features, labels = data.x, data.y
+    sub_adj, sub_feat, sub_labels, node_dict = get_neighbourhood(
+        int(node_idx), data.edge_index, kwargs["num_layers"] + 1, features, labels
+    )
+    new_idx = node_dict[int(node_idx)]
+    # Check that original model gives same prediction on full graph and subgraph
+    with torch.no_grad():
+        # output = model(data=data)[node_idx]
+        adj = from_edge_index_to_adj_torch(
+            data.edge_index, data.edge_attr, data.num_nodes
+        )
+        output = model(**{"x": features, "adj": normalize_adj(adj)})
+        sub_output = model(**{"x": sub_feat, "adj": normalize_adj(sub_adj)})
+        # Check that original model gives same prediction on full graph and subgraph
+        print("Output original model, full adj: {}".format(output[node_idx]))
+        print("Output original model, sub adj: {}".format(sub_output[new_idx]))
+
+    # Need to instantitate new cf model every time because size of P changes based on size of sub_adj
+    explainer = CFExplainer(
+        model=model,
+        sub_adj=sub_adj,
+        sub_feat=sub_feat,
+        n_hid=kwargs["hidden_dim"],
+        dropout=kwargs["dropout"],
+        readout=kwargs["readout"],
+        num_layers=kwargs["num_layers"],
+        sub_labels=sub_labels,
+        y_pred_orig=target,
+        num_classes=len(labels.unique()),
+        beta=beta,
+        device=device,
+    )
+    cf_example = explainer.explain(
+        node_idx=node_idx,
+        cf_optimizer=optimizer,
+        new_idx=new_idx,
+        lr=lr,
+        n_momentum=n_momentum,
+        num_epochs=num_epochs,
+    )
+    if cf_example == []:
+        return None, None
+    else:
+        perturb_edges = cf_example[0][2]
+        node_dict_inv = {int(v): int(k) for k, v in node_dict.items()}
+        perturb_edges_ori = np.vectorize(node_dict_inv.get)(perturb_edges)
+        edge_mask = filter_existing_edges(perturb_edges_ori, data.edge_index)
+        return edge_mask, None
 
 
 def explain_gnnlrp_node(model, data, node_idx, target, device, **kwargs):

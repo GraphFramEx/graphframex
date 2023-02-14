@@ -77,6 +77,7 @@ class NCRealGraphDataset:
         return self.names[self.name][1]
 
     def raw_name(self):
+        print(self.names[self.name][0])
         return self.names[self.name][0]
 
     def processed_dir(self):
@@ -91,7 +92,7 @@ class NCRealGraphDataset:
         self.raw_name = self.raw_name()
         if self.group == "Planetoid":
             Planetoid(self.root, name=self.raw_name)
-            self.origin_dir = osp.join(self.root, self.raw_name())
+            self.origin_dir = osp.join(self.root, self.raw_name)
             os.rename(self.origin_dir, self.data_save_dir)
         elif self.group == "WebKB":
             WebKB(self.root, name=self.raw_name)

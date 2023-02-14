@@ -11,6 +11,8 @@ from torch_geometric.utils import (
     from_scipy_sparse_matrix,
     k_hop_subgraph,
     to_scipy_sparse_matrix,
+    to_dense_adj,
+    subgraph,
 )
 
 
@@ -51,7 +53,7 @@ def get_subgraph(node_idx, x, edge_index, num_hops, **kwargs):
     return x, edge_index, mapping, edge_mask, subset, kwargs
 
 
-def subgraph(
+def get_subgraph(
     node_idx,
     num_hops,
     edge_index,
@@ -163,11 +165,43 @@ def from_edge_index_to_sparse_adj(edge_index, edge_weight, max_n):
     return adj
 
 
+def from_edge_index_to_adj_torch(edge_index, edge_weight, max_n):
+    adj = torch.sparse_coo_tensor(
+        edge_index,
+        edge_weight,
+        size=(max_n, max_n),
+        dtype=torch.float32,
+        device=edge_index.device,
+    )
+    if edge_index.requires_grad:
+        adj.requires_grad = True
+    return adj.to_dense()
+
+
 def from_sparse_adj_to_edge_index(adj):
     adj = adj.tocoo().astype(np.float32)
     edge_index = torch.from_numpy(np.vstack((adj.row, adj.col)).astype(np.int64))
-    edge_weight = torch.from_numpy(adj.data)
+    edge_weight = torch.from_numpy(adj.data.astype(np.float32))
     return edge_index, edge_weight
+
+
+def from_adj_to_edge_index_torch(adj):
+    adj_sparse = adj.to_sparse()
+    edge_index = adj_sparse.indices().to(dtype=torch.long)
+    edge_attr = adj_sparse.values()
+    # if adj.requires_grad:
+    # edge_index.requires_grad = True
+    # edge_attr.requires_grad = True
+    return edge_index, edge_attr
+
+
+def convert_coo_to_tensor(adj):
+    values = adj.data
+    indices = np.vstack((adj.row, adj.col))
+    i = torch.LongTensor(indices)
+    v = torch.FloatTensor(values)
+    shape = adj.shape
+    return torch.sparse.FloatTensor(i, v, torch.Size(shape)).to_dense()
 
 
 def init_weights(edge_index):
@@ -236,3 +270,67 @@ def get_proba(ypred):
 def get_labels(ypred):
     ylabels = np.argmax(ypred, axis=1)
     return ylabels
+
+
+def normalize_adj(adj):
+    # Normalize adjacancy matrix according to reparam trick in GCN paper
+    A_tilde = adj + torch.eye(adj.shape[0])
+    D_tilde = get_degree_matrix(A_tilde)
+    # Raise to power -1/2, set all infs to 0s
+    D_tilde_exp = D_tilde ** (-1 / 2)
+    D_tilde_exp[torch.isinf(D_tilde_exp)] = 0
+
+    # Create norm_adj = (D + I)^(-1/2) * (A + I) * (D + I) ^(-1/2)
+    norm_adj = torch.mm(torch.mm(D_tilde_exp, A_tilde), D_tilde_exp)
+    return norm_adj
+
+
+def get_neighbourhood(node_idx, edge_index, n_hops, features, labels):
+    edge_subset = k_hop_subgraph(node_idx, n_hops, edge_index)  # Get all nodes involved
+    edge_subset_relabel = subgraph(
+        edge_subset[0], edge_index, edge_attr=None, relabel_nodes=True
+    )  # Get relabelled subset of edges
+    sub_adj = to_dense_adj(edge_subset_relabel[0]).squeeze()
+    sub_feat = features[edge_subset[0], :]
+    sub_labels = labels[edge_subset[0]]
+    new_index = np.array([i for i in range(len(edge_subset[0]))])
+    node_dict = dict(zip(edge_subset[0].numpy(), new_index))  # Maps orig labels to new
+    # print("Num nodes in subgraph: {}".format(len(edge_subset[0])))
+    return sub_adj, sub_feat, sub_labels, node_dict
+
+
+def get_degree_matrix(adj):
+    return torch.diag(sum(adj))
+
+
+def create_symm_matrix_from_vec(vector, n_rows):
+    matrix = torch.zeros(n_rows, n_rows)
+    idx = torch.tril_indices(n_rows, n_rows)
+    matrix[idx[0], idx[1]] = vector
+    symm_matrix = torch.tril(matrix) + torch.tril(matrix, -1).t()
+    return symm_matrix
+
+
+def create_vec_from_symm_matrix(matrix, P_vec_size):
+    idx = torch.tril_indices(matrix.shape[0], matrix.shape[0])
+    vector = matrix[idx[0], idx[1]]
+    return vector
+
+
+def filter_existing_edges(perturb_edges, edge_index):
+    """Returns a mask of edges that are perturbed by CF-GNNExplainer and also exist in the original graph
+    Args:
+        perturb_edges (_type_): counterfactual explanations, i.e. edges that are perturbed by CF-GNNExplainer
+        edge_index (_type_): edge index of the original graph
+    Returns:
+        _type_: edge mask with value 1 if the edge exists.
+    """
+    edge_mask = np.zeros(edge_index.shape[1])
+    list_tuples = zip(*perturb_edges)
+    for i in range(edge_index.shape[1]):
+        # if include_edges is not None and not include_edges[i].item():
+        # continue
+        u, v = list(edge_index[:, i])
+        if (u, v) in list_tuples:
+            edge_mask[i] = 1
+    return edge_mask
