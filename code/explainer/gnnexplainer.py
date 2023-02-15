@@ -581,7 +581,9 @@ class TargetedGNNExplainer(GNNExplainer):
                 h = x * self.node_feat_mask.sigmoid()
             else:
                 h = x
-            out = self.model(h, edge_index, self.edge_mask.sigmoid(), batch)
+            out = self.model(
+                h, edge_index, edge_attr * self.edge_mask.sigmoid()[:, None], batch
+            )
             if self.return_type == "regression":
                 loss = self.__loss__(-1, out, prediction)
             else:
@@ -674,7 +676,9 @@ class TargetedGNNExplainer(GNNExplainer):
                 h = x * self.node_feat_mask.sigmoid()
             else:
                 h = x
-            out = self.model(h,edge_index,self.edge_mask.sigmoid())
+            out = self.model(
+                h, edge_index, edge_attr * self.edge_mask.sigmoid()[:, None]
+            )
             if self.return_type == "regression":
                 loss = self.__loss__(mapping, out, prediction)
             else:

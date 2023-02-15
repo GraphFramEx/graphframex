@@ -19,6 +19,7 @@ class UK(InMemoryDataset):
     # Base folder to download the files
     names = {"uk": ["uk", "uk", None, None]}
     raw_path = "uk+expmask/"
+    url = "https://figshare.com/s/1af1dcbb4d7fc27b94e1"
 
     def __init__(
         self, root, name, datatype="Binary", transform=None, pre_transform=None
@@ -29,6 +30,14 @@ class UK(InMemoryDataset):
         assert self.name in self.names.keys()
         super(UK, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def raw_dir(self):
+        return osp.join(self.root, self.name, "raw")
+
+    @property
+    def processed_dir(self):
+        return osp.join(self.root, self.name, "processed")
 
     @property
     def raw_file_names(self):
@@ -59,29 +68,27 @@ class UK(InMemoryDataset):
             mask[indices] = False
             return tensor[mask]
 
-        raw_path = "uk+expmask/"
-
         # load branch list also called edge order or edge index
-        path = os.path.join(raw_path, "blist.mat")
+        path = os.path.join(self.raw_dir, "blist.mat")
         edge_order = mat73.loadmat(path)
         edge_order = torch.tensor(edge_order["bList"] - 1)
         # load output binary classification labels
-        path = os.path.join(raw_path, "of_bi.mat")
+        path = os.path.join(self.raw_dir, "of_bi.mat")
         of_bi = mat73.loadmat(path)
         # load output binary regression labels
-        path = os.path.join(raw_path, "of_reg.mat")
+        path = os.path.join(self.raw_dir, "of_reg.mat")
         of_reg = mat73.loadmat(path)
         # load output mc labels
-        path = os.path.join(raw_path, "of_mc.mat")
+        path = os.path.join(self.raw_dir, "of_mc.mat")
         of_mc = mat73.loadmat(path)
         # load output node feature matrix
-        path = os.path.join(raw_path, "Bf.mat")
+        path = os.path.join(self.raw_dir, "Bf.mat")
         node_f = mat73.loadmat(path)
         # load output edge feature matrix
-        path = os.path.join(raw_path, "Ef.mat")
+        path = os.path.join(self.raw_dir, "Ef.mat")
         edge_f = mat73.loadmat(path)
 
-        path = os.path.join(raw_path, "exp.mat")
+        path = os.path.join(self.raw_dir, "exp.mat")
         exp = mat73.loadmat(path)
 
         node_f = node_f["B_f_tot"]
@@ -103,7 +110,7 @@ class UK(InMemoryDataset):
             # edge feat
             f = torch.tensor(edge_f[i][0], dtype=torch.float32)
             e_mask = torch.zeros(len(edge_f[i][0]), 1)
-            if exp_mask[i][0].all() == 0:
+            if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
                 e_mask[exp_mask[i][0]] = 1
@@ -175,6 +182,14 @@ class IEEE24(InMemoryDataset):
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
+    def raw_dir(self):
+        return osp.join(self.root, self.name, "raw")
+
+    @property
+    def processed_dir(self):
+        return osp.join(self.root, self.name, "processed")
+
+    @property
     def raw_file_names(self):
         # List of the raw files
         return [
@@ -206,26 +221,26 @@ class IEEE24(InMemoryDataset):
         raw_path = "ieee24+expmask/"
 
         # load branch list also called edge order or edge index
-        path = os.path.join(raw_path, "blist.mat")
+        path = os.path.join(self.raw_dir, "blist.mat")
         edge_order = mat73.loadmat(path)
         edge_order = torch.tensor(edge_order["bList"] - 1)
         # load output binary classification labels
-        path = os.path.join(raw_path, "of_bi.mat")
+        path = os.path.join(self.raw_dir, "of_bi.mat")
         of_bi = mat73.loadmat(path)
         # load output binary regression labels
-        path = os.path.join(raw_path, "of_reg.mat")
+        path = os.path.join(self.raw_dir, "of_reg.mat")
         of_reg = mat73.loadmat(path)
         # load output mc labels
-        path = os.path.join(raw_path, "of_mc.mat")
+        path = os.path.join(self.raw_dir, "of_mc.mat")
         of_mc = mat73.loadmat(path)
         # load output node feature matrix
-        path = os.path.join(raw_path, "Bf.mat")
+        path = os.path.join(self.raw_dir, "Bf.mat")
         node_f = mat73.loadmat(path)
         # load output edge feature matrix
-        path = os.path.join(raw_path, "Ef.mat")
+        path = os.path.join(self.raw_dir, "Ef.mat")
         edge_f = mat73.loadmat(path)
 
-        path = os.path.join(raw_path, "exp.mat")
+        path = os.path.join(self.raw_dir, "exp.mat")
         exp = mat73.loadmat(path)
 
         node_f = node_f["B_f_tot"]
@@ -247,7 +262,7 @@ class IEEE24(InMemoryDataset):
             # edge feat
             f = torch.tensor(edge_f[i][0], dtype=torch.float32)
             e_mask = torch.zeros(len(edge_f[i][0]), 1)
-            if exp_mask[i][0].all() == 0:
+            if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
                 e_mask[exp_mask[i][0]] = 1
@@ -319,6 +334,14 @@ class IEEE39(InMemoryDataset):
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
+    def raw_dir(self):
+        return osp.join(self.root, self.name, "raw")
+
+    @property
+    def processed_dir(self):
+        return osp.join(self.root, self.name, "processed")
+
+    @property
     def raw_file_names(self):
         # List of the raw files
         return [
@@ -350,26 +373,26 @@ class IEEE39(InMemoryDataset):
         raw_path = "ieee39+expmask/"
 
         # load branch list also called edge order or edge index
-        path = os.path.join(raw_path, "blist.mat")
+        path = os.path.join(self.raw_dir, "blist.mat")
         edge_order = mat73.loadmat(path)
         edge_order = torch.tensor(edge_order["bList"] - 1)
         # load output binary classification labels
-        path = os.path.join(raw_path, "of_bi.mat")
+        path = os.path.join(self.raw_dir, "of_bi.mat")
         of_bi = mat73.loadmat(path)
         # load output binary regression labels
-        path = os.path.join(raw_path, "of_reg.mat")
+        path = os.path.join(self.raw_dir, "of_reg.mat")
         of_reg = mat73.loadmat(path)
         # load output mc labels
-        path = os.path.join(raw_path, "of_mc.mat")
+        path = os.path.join(self.raw_dir, "of_mc.mat")
         of_mc = mat73.loadmat(path)
         # load output node feature matrix
-        path = os.path.join(raw_path, "Bf.mat")
+        path = os.path.join(self.raw_dir, "Bf.mat")
         node_f = mat73.loadmat(path)
         # load output edge feature matrix
-        path = os.path.join(raw_path, "Ef.mat")
+        path = os.path.join(self.raw_dir, "Ef.mat")
         edge_f = mat73.loadmat(path)
 
-        path = os.path.join(raw_path, "exp.mat")
+        path = os.path.join(self.raw_dir, "exp.mat")
         exp = mat73.loadmat(path)
 
         node_f = node_f["B_f_tot"]
@@ -391,7 +414,7 @@ class IEEE39(InMemoryDataset):
             # edge feat
             f = torch.tensor(edge_f[i][0], dtype=torch.float32)
             e_mask = torch.zeros(len(edge_f[i][0]), 1)
-            if exp_mask[i][0].all() == 0:
+            if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
                 e_mask[exp_mask[i][0]] = 1

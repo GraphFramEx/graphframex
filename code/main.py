@@ -33,6 +33,7 @@ def main(args, args_group):
     args = get_data_args(dataset.data, args)
     dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
     dataset_params["num_node_features"] = dataset.data.x.size(1)
+    model_params["edge_dim"] = dataset.data.edge_attr.size(1)
     if eval(args.graph_classification):
         dataloader_params = {
             "batch_size": args.batch_size,
@@ -40,7 +41,6 @@ def main(args, args_group):
             "data_split_ratio": [args.train_ratio, args.val_ratio, args.test_ratio],
             "seed": args.seed,
         }
-
     model = get_gnnNets(
         dataset_params["num_node_features"], dataset_params["num_classes"], model_params
     )
@@ -152,7 +152,10 @@ def main(args, args_group):
                 key: value
                 for key, value in sorted(
                     infos.items()
-                    | {"top_acc": args.top_acc, "num_top_edges": args.num_top_edges}
+                    | {
+                        "top_acc": args.top_acc,
+                        "num_top_edges": args.num_top_edges,
+                    }.items()
                     | edge_masks_properties.items()
                     | accuracy_scores.items()
                     | fidelity_scores.items()
@@ -228,6 +231,31 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
         ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
-
+    elif args.dataset_name == "uk":
+        (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+        ) = ("False", "True", 3, 20, 100, 0.001, 5e-3, 0.0, "max", 128)
+    elif args.dataset_name in ["ieee24", "ieee39"]:
+        (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+        ) = ("False", "True", 3, 20, 100, 0.01, 5e-3, 0.0, "max", 32)
     args_group = create_args_group(parser, args)
     main(args, args_group)

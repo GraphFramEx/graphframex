@@ -5,6 +5,9 @@ from dataset import (
     MoleculeDataset,
     SynGraphDataset,
     NCRealGraphDataset,
+    IEEE24,
+    IEEE39,
+    UK,
 )
 from torch import default_generator
 from utils.parser_utils import arg_parse, get_graph_size_args
@@ -25,6 +28,12 @@ def get_dataset(dataset_root, **kwargs):
         dataset = SynGraphDataset(root=dataset_root, name=dataset_name, **kwargs)
         dataset.process()
         return dataset
+    elif dataset_name.lower() == "uk":
+        return UK(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower() == "ieee24":
+        return IEEE24(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower() == "ieee39":
+        return IEEE39(root=dataset_root, name=dataset_name)
     else:
         raise ValueError(f"{dataset_name} is not defined.")
 

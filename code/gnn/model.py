@@ -58,7 +58,8 @@ class GNNPool(nn.Module):
 
 
 class GNNBase(nn.Module):
-    def __init__(self):
+    def __init__(self, edge_dim):
+        self.edge_dim = edge_dim
         super(GNNBase, self).__init__()
 
     def _argsparse(self, *args, **kwargs):
@@ -75,7 +76,9 @@ class GNNBase(nn.Module):
                     edge_attr = data.edge_attr
                 else:
                     edge_attr = torch.ones(
-                        edge_index.shape[1], dtype=torch.float32, device=x.device
+                        (edge_index.shape[1], self.edge_dim),
+                        dtype=torch.float32,
+                        device=x.device,
                     )
                 if hasattr(data, "batch"):
                     batch = data.batch
@@ -86,7 +89,9 @@ class GNNBase(nn.Module):
                 x, edge_index = args[0], args[1]
                 batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
                 edge_attr = torch.ones(
-                    edge_index.shape[1], dtype=torch.float32, device=x.device
+                    (edge_index.shape[1], self.edge_dim),
+                    dtype=torch.float32,
+                    device=x.device,
                 )
 
             elif len(args) == 3:
@@ -122,7 +127,9 @@ class GNNBase(nn.Module):
                     edge_attr = kwargs.get("edge_attr")
                     if not edge_attr:
                         edge_attr = torch.ones(
-                            edge_index.shape[1], dtype=torch.float32, device=x.device
+                            (edge_index.shape[1], self.edge_dim),
+                            dtype=torch.float32,
+                            device=x.device,
                         )
                 assert (
                     x is not None
@@ -138,7 +145,9 @@ class GNNBase(nn.Module):
                     edge_attr = data.edge_attr
                     if edge_attr is None:
                         edge_attr = torch.ones(
-                            edge_index.shape[1], dtype=torch.float32, device=x.device
+                            (edge_index.shape[1], self.edge_dim),
+                            dtype=torch.float32,
+                            device=x.device,
                         )
                 else:
                     edge_attr = torch.ones(
@@ -156,13 +165,9 @@ class GNNBase(nn.Module):
 
 
 class GNN_basic(GNNBase):
-    def __init__(
-        self,
-        input_dim,
-        output_dim,
-        model_params,
-    ):
-        super(GNN_basic, self).__init__()
+    def __init__(self, input_dim, output_dim, model_params):
+        edge_dim = model_params["edge_dim"]
+        super(GNN_basic, self).__init__(edge_dim)
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.num_layers = model_params["num_layers"]
@@ -215,7 +220,6 @@ class GAT(GNN_basic):
             output_dim,
             model_params,
         )
-        self.edge_dim = model_params["edge_dim"]
 
     def get_layers(self):
         self.convs = nn.ModuleList()
@@ -287,7 +291,7 @@ class GIN(GNN_basic):
         return
 
 
-class Transformer(GNN_basic):
+class TRANSFORMER(GNN_basic):
     def __init__(
         self,
         input_dim,

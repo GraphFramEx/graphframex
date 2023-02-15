@@ -55,6 +55,11 @@ def get_data_args(data, args):
     else:
         args.num_classes = len(np.unique(data.y.cpu().numpy()))
         args.num_node_features = data.x.size(1)
+    print("data.edge_attr dim: ", data.edge_attr.ndim)
+    if data.edge_attr.ndim == 1:
+        print("edge_attr.ndim == 1, unsqueeze")
+        data.edge_attr = torch.unsqueeze(data.edge_attr, 1)
+    args.edge_dim = data.edge_attr.size(1)
     return args
 
 
@@ -170,7 +175,7 @@ def arg_parse():
     parser_model_params = parser.add_argument_group("model_params")
     parser_model_params.add_argument(
         "--model_name",
-        help="[base, gat, gcn, gin]",
+        help="[base, gat, gcn, gin, transformer]",
         type=str,
     )
     parser_model_params.add_argument(
@@ -191,7 +196,9 @@ def arg_parse():
         "--readout", type=str, help="Readout type [mean, sum, max]."
     )
     parser_model_params.add_argument(
-        "--edge_dim", type=int, help="Edge feature dimension (only for GAT model)."
+        "--edge_dim",
+        type=int,
+        help="Edge feature dimension (only for GAT, GIN and TRANSFORMER model).",
     )
 
     # explainer parameters

@@ -234,6 +234,7 @@ def train_gnn(args, args_group):
     args = get_data_args(dataset.data, args)
     dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
     dataset_params["num_node_features"] = dataset.data.x.size(1)
+    model_params["edge_dim"] = dataset.data.edge_attr.size(1)
     if eval(args.graph_classification):
         dataloader_params = {
             "batch_size": args.batch_size,
@@ -280,7 +281,7 @@ if __name__ == "__main__":
     args = get_graph_size_args(args)
 
     # Fill in the default parameters for the architecture and the training of the model here
-    if args.dataset_name == "powergrid":
+    if args.dataset_name == "uk":
         (
             args.graph_classification,
             args.num_layers,

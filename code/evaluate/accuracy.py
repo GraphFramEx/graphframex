@@ -56,10 +56,7 @@ def get_scores(G1, G2):
         G2 (networkx graph): explanation graph
     """
     G1, G2 = G1.to_undirected(), G2.to_undirected()
-    print("G1: ", G1.nodes())
-    print("G2: ", G2.nodes())
     g_int = nx.intersection(G1, G2)
-    print("g_int: ", g_int.nodes())
     g_int.remove_nodes_from(list(nx.isolates(g_int)))
 
     n_tp = g_int.number_of_edges()

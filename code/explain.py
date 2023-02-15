@@ -86,8 +86,8 @@ class Explain(object):
         scores = []
         for i in range(len(self.explained_y)):
             edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
-            graph = self.dataset[i] if self.graph_classification else self.dataset[0]
-            if self.dataset_name.startswith(["ba", "tree"]):
+            graph = self.dataset[i] if self.graph_classification else self.dataset.data
+            if self.dataset_name.startswith(tuple(["ba", "tree"])):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
                 )
