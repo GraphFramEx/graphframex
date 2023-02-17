@@ -11,18 +11,14 @@ import torch.nn as nn
 import networkx as nx
 from math import sqrt
 from torch import Tensor
-from textwrap import wrap
 from torch.optim import Adam
-import matplotlib.pyplot as plt
 import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import to_networkx
 from torch_geometric.utils.num_nodes import maybe_num_nodes
 from typing import Tuple, List, Dict, Optional
-from .shapley import gnn_score, GnnNetsNC2valueFunc, GnnNetsGC2valueFunc, sparsity
-from torch_geometric.datasets import MoleculeNet
-from rdkit import Chem
+
 
 EPS = 1e-6
 
@@ -230,7 +226,6 @@ class PGExplainer(nn.Module):
             self.edge_mask = torch.randn(E) * std + init_bias
         else:
             self.edge_mask = edge_mask
-
         self.edge_mask.to(self.device)
         for module in self.model.modules():
             if isinstance(module, MessagePassing):
@@ -346,7 +341,7 @@ class PGExplainer(nn.Module):
 
         return gate_inputs
 
-    def explain_node(self, node_idx, x, edge_index):
+    def explain_node(self, node_idx, x, edge_index, edge_attr):
         select_edge_index = torch.arange(0, edge_index.shape[1])
         (
             subgraph_x,
@@ -369,11 +364,14 @@ class PGExplainer(nn.Module):
         self.hard_edge_mask.fill_(True)
         self.subset = subset
         self.new_node_idx = torch.where(subset == node_idx)[0]
-
-        subgraph_embed = self.model.get_emb(subgraph_x, subgraph_edge_index)
+        subgraph_edge_attr = edge_attr * subgraph_edge_mask[:, None]
+        subgraph_embed = self.model.get_emb(
+            subgraph_x, subgraph_edge_index, subgraph_edge_attr
+        )
         _, edge_mask = self.explain(
             subgraph_x,
             subgraph_edge_index,
+            subgraph_edge_attr,
             embed=subgraph_embed,
             tmp=1.0,
             training=False,
@@ -390,6 +388,7 @@ class PGExplainer(nn.Module):
         self,
         x: Tensor,
         edge_index: Tensor,
+        edge_attr: Tensor,
         embed: Tensor,
         tmp: float = 1.0,
         training: bool = False,
@@ -436,13 +435,13 @@ class PGExplainer(nn.Module):
         # set the symmetric edge weights
         sym_mask = (mask_sigmoid + mask_sigmoid.transpose(0, 1)) / 2
         edge_mask = sym_mask[edge_index[0], edge_index[1]]
-
         # inverse the weights before sigmoid in MessagePassing Module
         self.__clear_masks__()
         self.__set_masks__(x, edge_index, edge_mask)
-
         # the model prediction with edge mask
-        logits = self.model(x, edge_index)
+        logits = self.model(
+            x, edge_index, edge_attr=edge_attr * edge_mask.sigmoid()[:, None]
+        )
         probs = F.softmax(logits, dim=-1)
 
         self.__clear_masks__()
@@ -459,8 +458,8 @@ class PGExplainer(nn.Module):
                 ori_pred_dict = {}
                 for gid in tqdm.tqdm(dataset_indices):
                     data = dataset[gid].to(self.device)
-                    logits = self.model(data.x, data.edge_index)
-                    emb = self.model.get_emb(data.x, data.edge_index)
+                    logits = self.model(data=data)
+                    emb = self.model.get_emb(data=data)
                     emb_dict[gid] = emb.data.cpu()
                     ori_pred_dict[gid] = logits.argmax(-1).data.cpu()
 
@@ -479,6 +478,7 @@ class PGExplainer(nn.Module):
                     prob, edge_mask = self.explain(
                         data.x,
                         data.edge_index,
+                        data.edge_attr,
                         embed=emb_dict[gid],
                         tmp=tmp,
                         training=True,
@@ -499,7 +499,7 @@ class PGExplainer(nn.Module):
                 self.model.eval()
                 explain_node_index_list = torch.where(data.train_mask)[0].tolist()
                 pred_dict = {}
-                logits = self.model(data.x, data.edge_index)
+                logits = self.model(data=data)
                 for node_idx in tqdm.tqdm(explain_node_index_list):
                     pred_dict[node_idx] = logits[node_idx].argmax(-1).item()
 
@@ -513,16 +513,23 @@ class PGExplainer(nn.Module):
                 tic = time.perf_counter()
                 for iter_idx, node_idx in tqdm.tqdm(enumerate(explain_node_index_list)):
                     with torch.no_grad():
-                        x, edge_index, y, subset, _ = self.get_subgraph(
+                        x, edge_index, y, subset, mask, kwargs = self.get_subgraph(
                             node_idx=node_idx,
                             x=data.x,
                             edge_index=data.edge_index,
                             y=data.y,
                         )
-                        emb = self.model.get_emb(x, edge_index)
+                        edge_attr = data.edge_attr[mask]
+                        emb = self.model.get_emb(x, edge_index, edge_attr)
                         new_node_index = int(torch.where(subset == node_idx)[0])
                     pred, edge_mask = self.explain(
-                        x, edge_index, emb, tmp, training=True, node_idx=new_node_index
+                        x,
+                        edge_index,
+                        edge_attr,
+                        emb,
+                        tmp,
+                        training=True,
+                        node_idx=new_node_index,
                     )
                     loss_tmp = self.__loss__(pred[new_node_index], pred_dict[node_idx])
                     loss_tmp.backward()

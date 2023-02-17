@@ -151,7 +151,9 @@ class GNNBase(nn.Module):
                         )
                 else:
                     edge_attr = torch.ones(
-                        edge_index.shape[1], dtype=torch.float32, device=x.device
+                        (edge_index.shape[1], self.edge_dim),
+                        dtype=torch.float32,
+                        device=x.device,
                     )
                 if hasattr(data, "batch"):
                     batch = data.batch

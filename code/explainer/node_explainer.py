@@ -5,7 +5,7 @@ from scipy import sparse
 import torch
 import torch.nn.functional as F
 from captum.attr import IntegratedGradients, LayerGradCam, Saliency
-from gnn.model import GCNConv, GATConv, GINEConv
+from gnn.model import GCNConv, GATConv, GINEConv, TransformerConv
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
 from utils.gen_utils import (
@@ -72,6 +72,7 @@ def get_all_convolution_layers(model):
             isinstance(module, GCNConv)
             or isinstance(module, GATConv)
             or isinstance(module, GINEConv)
+            or isinstance(module, TransformerConv)
         ):
             layers.append(module)
     return layers
@@ -111,15 +112,23 @@ def explain_pagerank_node(model, data, node_idx, target, device, **kwargs):
 
 
 def explain_basic_gnnexplainer_node(model, data, node_idx, target, device, **kwargs):
-    explainer = GNNExplainer(
+    data = gpu_to_cpu(data, device)
+    explainer = TargetedGNNExplainer(
         model,
         num_hops=kwargs["num_layers"],
         epochs=1000,
         edge_ent=kwargs["edge_ent"],
         edge_size=kwargs["edge_size"],
+        allow_edge_mask=True,
+        allow_node_mask=False,
+        device=device,
     )
-    _, edge_mask = explainer.explain_node(
-        node_idx, x=data.x, edge_index=data.edge_index
+    _, edge_mask = explainer.explain_node_with_target(
+        node_idx,
+        x=data.x,
+        edge_index=data.edge_index,
+        edge_attr=data.edge_attr,
+        target=target,
     )
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask.astype("float"), None
@@ -349,7 +358,9 @@ def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
         state_dict = torch.load(pgexplainer_saving_path)
         pgexplainer.load_state_dict(state_dict)
-    edge_mask = pgexplainer.explain_node(node_idx, data.x, data.edge_index)
+    edge_mask = pgexplainer.explain_node(
+        node_idx, data.x, data.edge_index, data.edge_attr
+    )
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask.astype("float"), None
 
@@ -407,7 +418,7 @@ def explain_cfgnnexplainer_node(model, data, node_idx, target, device, **kwargs)
 
 
 def explain_gnnlrp_node(model, data, node_idx, target, device, **kwargs):
-    gnnlrp = GNN_LRP(model)
+    gnnlrp = GNN_LRP(model, explain_graph=False)
     walks, edge_mask = gnnlrp(data.x, data.edge_index)
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask.astype("float"), None

@@ -75,6 +75,7 @@ def main(args, args_group):
 
     additional_args = {
         "dataset_name": args.dataset_name,
+        "dataset": dataset,
         "hidden_dim": args.hidden_dim,
         "num_top_edges": args.num_top_edges,
         "num_layers": args.num_layers,

@@ -55,9 +55,7 @@ def get_data_args(data, args):
     else:
         args.num_classes = len(np.unique(data.y.cpu().numpy()))
         args.num_node_features = data.x.size(1)
-    print("data.edge_attr dim: ", data.edge_attr.ndim)
     if data.edge_attr.ndim == 1:
-        print("edge_attr.ndim == 1, unsqueeze")
         data.edge_attr = torch.unsqueeze(data.edge_attr, 1)
     args.edge_dim = data.edge_attr.size(1)
     return args

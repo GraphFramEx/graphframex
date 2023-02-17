@@ -177,6 +177,7 @@ class MCTS(object):
         self,
         X: torch.Tensor,
         edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
         num_hops: int,
         n_rollout: int = 10,
         min_atoms: int = 3,
@@ -190,10 +191,15 @@ class MCTS(object):
 
         self.X = X
         self.edge_index = edge_index
+        self.edge_attr = edge_attr
         self.device = device
         self.num_hops = num_hops
-        self.data = Data(x=self.X, edge_index=self.edge_index)
-        graph_data = Data(x=self.X, edge_index=remove_self_loops(self.edge_index)[0])
+        self.data = Data(x=self.X, edge_index=self.edge_index, edge_attr=self.edge_attr)
+        graph_data = Data(
+            x=self.X,
+            edge_index=remove_self_loops(self.edge_index, self.edge_attr)[0],
+            edge_attr=remove_self_loops(self.edge_index, self.edge_attr)[1],
+        )
         self.graph = to_networkx(graph_data, to_undirected=True)
         self.data = Batch.from_data_list([self.data])
         self.num_nodes = self.graph.number_of_nodes()
@@ -213,8 +219,10 @@ class MCTS(object):
             x, edge_index, subset, edge_mask, kwargs = self.__subgraph__(
                 node_idx, self.X, self.edge_index, self.num_hops
             )
-
-            self.data = Batch.from_data_list([Data(x=x, edge_index=edge_index)])
+            edge_attr = self.edge_attr[edge_mask]
+            self.data = Batch.from_data_list(
+                [Data(x=x, edge_index=edge_index, edge_attr=edge_attr)]
+            )
             self.graph = self.ori_graph.subgraph(subset.tolist())
             mapping = {int(v): k for k, v in enumerate(subset)}
             self.mapping_inv = {int(k): int(v) for k, v in enumerate(subset)}
@@ -459,7 +467,12 @@ class SubgraphX(object):
         )
 
     def get_mcts_class(
-        self, x, edge_index, node_idx: int = None, score_func: Callable = None
+        self,
+        x,
+        edge_index,
+        edge_attr,
+        node_idx: int = None,
+        score_func: Callable = None,
     ):
         if self.explain_graph:
             node_idx = None
@@ -468,6 +481,7 @@ class SubgraphX(object):
         return MCTS(
             x,
             edge_index,
+            edge_attr,
             node_idx=node_idx,
             device=self.device,
             score_func=score_func,
@@ -511,7 +525,7 @@ class SubgraphX(object):
         self,
         x: Tensor,
         edge_index: Tensor,
-        edge_weight: Tensor,
+        edge_attr: Tensor,
         label: int,
         max_nodes: int = 6,
         node_idx: Optional[int] = None,
@@ -519,8 +533,8 @@ class SubgraphX(object):
     ):
         x = x.to(self.device)
         edge_index = edge_index.to(self.device)
-        edge_weight = edge_weight.to(self.device)
-        probs = self.model(x, edge_index, edge_weight).to(
+        edge_attr = edge_attr.to(self.device)
+        probs = self.model(x, edge_index, edge_attr).to(
             self.device
         )  # .squeeze().softmax(dim=-1)
 
@@ -532,7 +546,7 @@ class SubgraphX(object):
                 value_func = GnnNetsGC2valueFunc(self.model, target_class=label)
                 payoff_func = self.get_reward_func(value_func)
                 self.mcts_state_map = self.get_mcts_class(
-                    x, edge_index, score_func=payoff_func
+                    x, edge_index, edge_attr, score_func=payoff_func
                 )
                 results = self.mcts_state_map.mcts(verbose=self.verbose)
 
@@ -544,7 +558,9 @@ class SubgraphX(object):
             if saved_MCTSInfo_list:
                 results = self.read_from_MCTSInfo_list(saved_MCTSInfo_list)
 
-            self.mcts_state_map = self.get_mcts_class(x, edge_index, node_idx=node_idx)
+            self.mcts_state_map = self.get_mcts_class(
+                x, edge_index, edge_attr, node_idx=node_idx
+            )
             self.new_node_idx = self.mcts_state_map.new_node_idx
             # mcts will extract the subgraph and relabel the nodes
             value_func = GnnNetsNC2valueFunc(
@@ -569,36 +585,6 @@ class SubgraphX(object):
             if node in tree_node_x.coalition
         ]
 
-        """
-        # remove the important structure, for node_classification,
-        # remain the node_idx when remove the important structure
-        maskout_node_list = [node for node in range(tree_node_x.data.x.shape[0])
-                             if node not in tree_node_x.coalition]
-        if not self.explain_graph:
-            maskout_node_list += [self.new_node_idx]
-
-        
-
-        masked_score = gnn_score(masked_node_list,
-                                 tree_node_x.data,
-                                 value_func=value_func,
-                                 subgraph_building_method=self.subgraph_building_method)
-
-        maskout_score = gnn_score(maskout_node_list,
-                                  tree_node_x.data,
-                                  value_func=value_func,
-                                  subgraph_building_method=self.subgraph_building_method)
-
-        sparsity_score = sparsity(masked_node_list, tree_node_x.data,
-                                  subgraph_building_method=self.subgraph_building_method)
-
-        results = self.write_from_MCTSNode_list(results)
-        related_pred = {'masked': masked_score,
-                        'maskout': maskout_score,
-                        'origin': probs[node_idx, label].item(),
-                        'sparsity': sparsity_score}
-                        
-        """
         if not self.explain_graph:
             masked_node_list = list(map(self.mapping_inv.get, masked_node_list))
         row, col = self.ori_data.edge_index
@@ -609,7 +595,7 @@ class SubgraphX(object):
         return edge_mask.astype(int)
 
     def __call__(
-        self, x: Tensor, edge_index: Tensor, edge_weight: Tensor, **kwargs
+        self, x: Tensor, edge_index: Tensor, edge_attr: Tensor, **kwargs
     ) -> Tuple[None, List, List[Dict]]:
         r"""explain the GNN behavior for the graph using SubgraphX method
         Args:
@@ -642,7 +628,7 @@ class SubgraphX(object):
             edge_mask = self.explain(
                 x,
                 edge_index,
-                edge_weight,
+                edge_attr,
                 label=label,
                 max_nodes=max_nodes,
                 node_idx=node_idx,

@@ -254,7 +254,7 @@ def train_gnn(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l",
+            save_name=f"{args.model_name}_{args.num_layers}l_{args.hidden_dim}h_{args.lr}lr_{args.dropout}d_{args.readout}r",
             dataloader_params=dataloader_params,
         )
     else:
@@ -264,7 +264,7 @@ def train_gnn(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l",
+            save_name=f"{args.model_name}_{args.num_layers}l_{args.hidden_dim}h_{args.lr}lr_{args.dropout}d_{args.readout}r",
         )
     if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
         trainer.load_model()
@@ -283,6 +283,7 @@ if __name__ == "__main__":
     # Fill in the default parameters for the architecture and the training of the model here
     if args.dataset_name == "uk":
         (
+            args.groundtruth,
             args.graph_classification,
             args.num_layers,
             args.hidden_dim,
@@ -292,7 +293,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max", 128)
+        ) = ("False", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
 
     args_group = create_args_group(parser, args)
     train_gnn(args, args_group)
