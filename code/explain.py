@@ -35,6 +35,7 @@ class Explain(object):
         dataset,
         device,
         graph_classification,
+        list_test_idx,
         dataset_name,
         explainer_params,
         save_dir=None,
@@ -55,6 +56,7 @@ class Explain(object):
         self.graph_classification = graph_classification
         self.task = "_graph" if self.graph_classification else "_node"
 
+        self.list_test_idx = list_test_idx
         self.explainer_name = explainer_params["explainer_name"]
         self.num_explained_y = explainer_params["num_explained_y"]
         self.explained_target = explainer_params["explained_target"]
@@ -432,20 +434,14 @@ class Explain(object):
             )
             data = next(iter(dataloader))
             logits = self.model(data)
-            pred_labels = logits.argmax(-1)
-            true_labels = self.dataset.data.y
-            cond1 = pred_labels == true_labels
-            cond2 = pred_labels != true_labels
-            if self.explained_target is not None:
-                cond3 = true_labels == self.explained_target
-            else:
-                cond3 = np.ones(len(self.dataset), dtype=bool)
+            pred_labels = logits.argmax(-1)[self.list_test_idx]
+            true_labels = self.dataset.data.y[self.list_test_idx]
             if self.pred_type == "correct":
-                list_idx = np.where(cond1 & cond3)[0]
+                list_idx = np.where(pred_labels == true_labels)[0]
             elif self.pred_type == "wrong":
-                list_idx = np.where(cond2 & cond3)[0]
+                list_idx = np.where(pred_labels != true_labels)[0]
             elif self.pred_type == "mix":
-                list_idx = np.where(cond3)[0]
+                list_idx = self.list_test_idx
             else:
                 raise ValueError("pred_type must be correct, wrong or mix.")
             explained_y = np.random.choice(
@@ -455,22 +451,17 @@ class Explain(object):
             )
         else:
             logits = self.model(data=self.data)
-            pred_labels = logits.argmax(-1).cpu().numpy()
-            true_labels = self.data.y.cpu().numpy()
-            cond1 = pred_labels == true_labels
-            cond2 = pred_labels != true_labels
-            if self.explained_target is not None:
-                cond3 = np.where(true_labels == self.explained_target)
-            else:
-                cond3 = np.ones(self.data.num_nodes, dtype=bool)
+            pred_labels = logits.argmax(-1).cpu().numpy()[self.list_test_idx]
+            true_labels = self.data.y.cpu().numpy()[self.list_test_idx]
             if self.pred_type == "correct":
-                list_idx = np.where((cond1) & (cond3))[0]
+                list_idx = np.where(pred_labels == true_labels)[0]
             elif self.pred_type == "wrong":
-                list_idx = np.where(cond2 & cond3)[0]
+                list_idx = np.where(pred_labels != true_labels)[0]
             elif self.pred_type == "mix":
-                list_idx = np.where(cond3)[0]
+                list_idx = self.list_test_idx
             else:
                 raise ValueError("pred_type must be correct, wrong or mix.")
+            print("Number of explanable entities: ", len(list_idx))
             explained_y = np.random.choice(
                 list_idx, size=self.num_explained_y, replace=False
             )

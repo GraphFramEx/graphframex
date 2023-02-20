@@ -120,7 +120,7 @@ def explain_occlusion_graph(model, data, target, device, **kwargs):
     return edge_mask.astype("float"), None
 
 
-def explain_basic_gnnexplainer_node(model, data, target, device, **kwargs):
+def explain_basic_gnnexplainer_graph(model, data, target, device, **kwargs):
     data = gpu_to_cpu(data, device)
     explainer = TargetedGNNExplainer(
         model,

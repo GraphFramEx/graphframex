@@ -173,7 +173,7 @@ def arg_parse():
     parser_model_params = parser.add_argument_group("model_params")
     parser_model_params.add_argument(
         "--model_name",
-        help="[base, gat, gcn, gin, transformer]",
+        help="[gat, gcn, gin, transformer]. GCN can only be used for data with no or 1D edge features.",
         type=str,
     )
     parser_model_params.add_argument(

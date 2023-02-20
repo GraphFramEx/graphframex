@@ -95,16 +95,21 @@ def main(args, args_group):
         args.pred_type,
         args.seed,
     )
+    if args.explained_target is None:
+        list_test_idx = range(0, len(dataset.data.y))
+    else:
+        list_test_idx = np.where(dataset.data.y == args.explained_target)[0]
     explainer = Explain(
         model=trainer.model,
         dataset=dataset,
         device=device,
         graph_classification=eval(args.graph_classification),
+        list_test_idx=list_test_idx,
         dataset_name=args.dataset_name,
         explainer_params={**args_group["explainer_params"], **additional_args},
-        save_dir=os.path.join(
-            args.mask_save_dir, args.dataset_name, args.explainer_name
-        ),
+        save_dir=None
+        if args.mask_save_dir is None
+        else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
         save_name=save_name,
     )
 
@@ -244,7 +249,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 20, 100, 0.001, 5e-3, 0.0, "max", 128)
+        ) = ("False", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
     elif args.dataset_name in ["ieee24", "ieee39"]:
         (
             args.groundtruth,

@@ -9,7 +9,6 @@ from code.utils.gen_utils import from_adj_to_edge_index_torch
 
 def get_gnnNets(input_dim, output_dim, model_params):
     if model_params["model_name"].lower() in [
-        "base",
         "gcn",
         "gat",
         "gin",
@@ -21,7 +20,7 @@ def get_gnnNets(input_dim, output_dim, model_params):
         )
     else:
         raise ValueError(
-            f"GNN name should be gcn " f"and {model_params.gnn_name} is not defined."
+            f"GNN name should be base, gcn, gat, gin, transformer, but got {model_params['model_name']}"
         )
 
 
@@ -182,14 +181,7 @@ class GNN_basic(GNNBase):
 
     def get_layers(self):
         # GNN layers
-        self.convs = nn.ModuleList()
-        current_dim = self.input_dim
-        for l in range(self.num_layers):
-            self.convs.append(NNConv(current_dim, self.hidden_dim))
-            current_dim = self.hidden_dim
-        # FC layers
-        self.mlps = nn.Linear(current_dim, self.output_dim)
-        return
+        raise NotImplementedError
 
     def forward(self, *args, **kwargs):
         _, _, _, batch = self._argsparse(*args, **kwargs)
