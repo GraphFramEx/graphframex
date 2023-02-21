@@ -249,7 +249,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
+        ) = ("True", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
     elif args.dataset_name in ["ieee24", "ieee39"]:
         (
             args.groundtruth,
@@ -262,6 +262,6 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 20, 100, 0.01, 5e-3, 0.0, "max", 32)
+        ) = ("True", "True", 3, 20, 100, 0.01, 5e-3, 0.0, "max", 32)
     args_group = create_args_group(parser, args)
     main(args, args_group)

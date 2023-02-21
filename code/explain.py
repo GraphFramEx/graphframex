@@ -1,5 +1,6 @@
 import os
 import time
+import sklearn.metrics
 import torch
 import pickle
 import numpy as np
@@ -86,9 +87,14 @@ class Explain(object):
 
     def _eval_acc(self, edge_masks):
         scores = []
+        num_explained_y_with_acc = 0
         for i in range(len(self.explained_y)):
             edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
-            graph = self.dataset[i] if self.graph_classification else self.dataset.data
+            graph = (
+                self.dataset[self.explained_y[i]]
+                if self.graph_classification
+                else self.dataset.data
+            )
             if self.dataset_name.startswith(tuple(["ba", "tree"])):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
@@ -97,16 +103,35 @@ class Explain(object):
                     graph, edge_mask, self.top_acc, self.num_top_edges
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
-            # elif self.dataset_name == "mutag":
-            # G_true = get_ground_truth_mol(self.dataset_name)[self.explained_y[i]]
-            # G_expl = get_explanation()
-            # recall, precision, f1_score = get_scores(G_expl, G_true)
+                num_explained_y_with_acc += 1
+            elif self.dataset_name in ["uk", "ieee24", "ieee39"]:
+                f1_score, recall, precision = None, None, None
+                if graph.edge_mask is not None:
+                    true_explanation = graph.edge_mask
+                    n = len(np.where(true_explanation == 1)[0])
+                    if n > 0:
+                        pred_explanation = np.zeros(len(edge_mask))
+                        pred_explanation[edge_mask > 0] = 1
+                        precision = sklearn.metrics.precision_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        recall = sklearn.metrics.recall_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        f1_score = sklearn.metrics.f1_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        num_explained_y_with_acc += 1
+                        # print("true is 1", np.where(true_explanation == 1)[0])
+                        # print("pred is 1", np.where(pred_explanation == 1)[0])
+                        # print(recall, precision, f1_score)
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
             entry = {"recall": recall, "precision": precision, "f1_score": f1_score}
             scores.append(entry)
         scores = list_to_dict(scores)
-        accuracy_scores = {k: np.mean(v) for k, v in scores.items()}
+        accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
+        accuracy_scores["num_explained_y_with_acc"] = num_explained_y_with_acc
         return accuracy_scores
 
     def _eval_fid(self, related_preds):
@@ -124,6 +149,7 @@ class Explain(object):
                 "fidelity_gnn_prob+": fidelity_gnn_prob(related_preds),
                 "fidelity_gnn_prob-": fidelity_gnn_prob_inv(related_preds),
             }
+        fidelity_scores["num_explained_y_fid"] = self.num_explained_y
         return fidelity_scores
 
     def eval(self, edge_masks, node_feat_masks):
@@ -463,7 +489,7 @@ class Explain(object):
                 raise ValueError("pred_type must be correct, wrong or mix.")
             print("Number of explanable entities: ", len(list_idx))
             explained_y = np.random.choice(
-                list_idx, size=self.num_explained_y, replace=False
+                list_idx, size=min(self.num_explained_y, len(list_idx)), replace=False
             )
         return explained_y
 
