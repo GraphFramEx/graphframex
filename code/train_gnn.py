@@ -232,7 +232,7 @@ def train_gnn(args, args_group):
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset.data, args)
-    dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
+    dataset_params["num_classes"] = args.num_classes
     dataset_params["num_node_features"] = dataset.data.x.size(1)
     model_params["edge_dim"] = dataset.data.edge_attr.size(1)
     if eval(args.graph_classification):

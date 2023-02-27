@@ -8,6 +8,9 @@ from dataset import (
     IEEE24,
     IEEE39,
     UK,
+    IEEE24Cont,
+    IEEE39Cont,
+    UKCont,
 )
 from torch import default_generator
 from utils.parser_utils import arg_parse, get_graph_size_args
@@ -28,12 +31,22 @@ def get_dataset(dataset_root, **kwargs):
         dataset = SynGraphDataset(root=dataset_root, name=dataset_name, **kwargs)
         dataset.process()
         return dataset
-    elif dataset_name.lower() == "uk":
-        return UK(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower() == "ieee24":
-        return IEEE24(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower() == "ieee39":
-        return IEEE39(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower().startswith(tuple(["uk", "ieee24", "ieee39"])):
+        datatype = "multiclass" if dataset_name.lower().endswith("mc") else "binary"
+        if dataset_name.lower() in ["uk_mc", "uk_bin"]:
+            return UK(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee24_mc", "ieee24_bin"]:
+            return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin"]:
+            return IEEE39(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ukcont_mc", "ukcont_bin"]:
+            return UKCont(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee24cont_mc", "ieee24cont_bin"]:
+            return IEEE24Cont(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee39cont_mc", "ieee39cont_bin"]:
+            return IEEE39Cont(root=dataset_root, name=dataset_name, datatype=datatype)
+        else:
+            raise ValueError(f"{dataset_name} is not defined.")
     else:
         raise ValueError(f"{dataset_name} is not defined.")
 

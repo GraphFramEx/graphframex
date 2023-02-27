@@ -3,6 +3,7 @@
 """
 
 import numpy as np
+import torch
 
 
 def fidelity_acc(related_preds):

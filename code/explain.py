@@ -51,7 +51,8 @@ class Explain(object):
         self.save = save_dir is not None
         self.save_dir = save_dir
         self.save_name = save_name
-        check_dir(self.save_dir)
+        if self.save_dir is not None:
+            check_dir(self.save_dir)
 
         self.explainer_params = explainer_params
         self.graph_classification = graph_classification
@@ -104,7 +105,7 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name in ["uk", "ieee24", "ieee39"]:
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
                 f1_score, recall, precision = None, None, None
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
@@ -169,7 +170,7 @@ class Explain(object):
             explained_y_idx = self.explained_y[i]
             data = self.dataset[explained_y_idx]
             data.batch = torch.zeros(data.x.shape[0], dtype=int, device=data.x.device)
-            ori_prob_idx = self.model(data).cpu().detach().numpy()[0]
+            ori_prob_idx = self.model.get_prob(data).cpu().detach().numpy()[0]
             if node_feat_masks[0] is not None:
                 node_feat_mask = torch.Tensor(node_feat_masks[i]).to(self.device)
                 if node_feat_mask.dim() == 2:
@@ -184,20 +185,20 @@ class Explain(object):
             if edge_masks[0] is None:
                 if self.mask_nature == "hard":
                     masked_prob_idx = (
-                        self.model(x_masked, data.edge_index).cpu().detach().numpy()[0]
+                        self.model.get_prob(x_masked, data.edge_index).cpu().detach().numpy()[0]
                     )
                     maskout_prob_idx = (
-                        self.model(x_maskout, data.edge_index).cpu().detach().numpy()[0]
+                        self.model.get_prob(x_maskout, data.edge_index).cpu().detach().numpy()[0]
                     )
                 else:
                     masked_prob_idx = (
-                        self.model(x_masked, data.edge_index, data.edge_attr)
+                        self.model.get_prob(x_masked, data.edge_index, data.edge_attr)
                         .cpu()
                         .detach()
                         .numpy()[0]
                     )
                     maskout_prob_idx = (
-                        self.model(x_maskout, data.edge_index, data.edge_attr)
+                        self.model.get_prob(x_maskout, data.edge_index, data.edge_attr)
                         .cpu()
                         .detach()
                         .numpy()[0]
@@ -213,20 +214,20 @@ class Explain(object):
                         self.device
                     )
                     masked_prob_idx = (
-                        self.model(x_masked, masked_edge_index)
+                        self.model.get_prob(x_masked, masked_edge_index)
                         .cpu()
                         .detach()
                         .numpy()[0]
                     )
                     maskout_prob_idx = (
-                        self.model(x_maskout, maskout_edge_index)
+                        self.model.get_prob(x_maskout, maskout_edge_index)
                         .cpu()
                         .detach()
                         .numpy()[0]
                     )
                 else:
                     masked_prob_idx = (
-                        self.model(
+                        self.model.get_prob(
                             x_masked,
                             data.edge_index,
                             data.edge_attr * edge_mask,
@@ -236,7 +237,7 @@ class Explain(object):
                         .numpy()[0]
                     )
                     maskout_prob_idx = (
-                        self.model(
+                        self.model.get_prob(
                             x_maskout,
                             data.edge_index,
                             data.edge_attr * (1 - edge_mask),
@@ -267,7 +268,7 @@ class Explain(object):
 
     def related_pred_node(self, edge_masks, node_feat_masks):
         related_preds = []
-        ori_probs = self.model(data=self.data)
+        ori_probs = self.model.get_prob(data=self.data)
         for i in range(len(self.explained_y)):
             if node_feat_masks[0] is not None:
                 node_feat_mask = torch.Tensor(node_feat_masks[i]).to(self.device)
@@ -282,13 +283,13 @@ class Explain(object):
 
             if edge_masks[0] is None:
                 if self.mask_nature == "hard":
-                    masked_probs = self.model(x_masked, self.data.edge_index)
-                    maskout_probs = self.model(x_maskout, self.data.edge_index)
+                    masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
+                    maskout_probs = self.model.get_prob(x_maskout, self.data.edge_index)
                 else:
-                    masked_probs = self.model(
+                    masked_probs = self.model.get_prob(
                         x_masked, self.data.edge_index, self.data.edge_attr
                     )
-                    maskout_probs = self.model(
+                    maskout_probs = self.model.get_prob(
                         x_maskout, self.data.edge_index, self.data.edge_attr
                     )
 
@@ -301,15 +302,15 @@ class Explain(object):
                     maskout_edge_index = self.data.edge_index[:, edge_mask <= 0].to(
                         self.device
                     )
-                    masked_probs = self.model(x_masked, masked_edge_index)
-                    maskout_probs = self.model(x_maskout, maskout_edge_index)
+                    masked_probs = self.model.get_prob(x_masked, masked_edge_index)
+                    maskout_probs = self.model.get_prob(x_maskout, maskout_edge_index)
                 else:
-                    masked_probs = self.model(
+                    masked_probs = self.model.get_prob(
                         x_masked,
                         self.data.edge_index,
                         self.data.edge_attr * edge_mask,
                     )
-                    maskout_probs = self.model(
+                    maskout_probs = self.model.get_prob(
                         x_maskout,
                         self.data.edge_index,
                         self.data.edge_attr * (1 - edge_mask),
@@ -385,7 +386,7 @@ class Explain(object):
     def compute_mask(self):
         self.explain_function = eval("explain_" + self.explainer_name + self.task)
         print("Computing masks using " + self.explainer_name + " explainer.")
-        if Path(os.path.join(self.save_dir, self.save_name)).is_file():
+        if (self.save_dir is not None) and (Path(os.path.join(self.save_dir, self.save_name)).is_file()):
             (
                 explained_y,
                 edge_masks,
@@ -494,9 +495,13 @@ class Explain(object):
         return explained_y
 
     def save_mask(self, explained_y, edge_masks, node_feat_masks, computation_time):
-        save_path = os.path.join(self.save_dir, self.save_name)
-        with open(save_path, "wb") as f:
-            pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
+        if self.save_dir is None:
+            print("save_dir is None. Masks are not saved")
+            return
+        else:
+            save_path = os.path.join(self.save_dir, self.save_name)
+            with open(save_path, "wb") as f:
+                pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
 
     def load_mask(self):
         save_path = os.path.join(self.save_dir, self.save_name)

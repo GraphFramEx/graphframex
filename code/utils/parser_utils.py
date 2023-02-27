@@ -53,11 +53,12 @@ def get_data_args(data, args):
         args.num_classes = data.num_classes
         args.num_node_features = data.x.size(1)
     else:
-        args.num_classes = len(np.unique(data.y.cpu().numpy()))
+        args.num_classes = max(np.unique(data.y.cpu().numpy()))+1
         args.num_node_features = data.x.size(1)
     if data.edge_attr.ndim == 1:
         data.edge_attr = torch.unsqueeze(data.edge_attr, 1)
     args.edge_dim = data.edge_attr.size(1)
+    args.datatype = "binary" if args.num_classes == 2 else "multiclass"
     return args
 
 
@@ -131,6 +132,7 @@ def arg_parse():
     parser_dataset_params.add_argument(
         "--num_basis", help="number of nodes in the base graph", type=int
     )
+    parser_dataset_params.add_argument("--datatype", help="the type of classification (binary or multiclass) for the powergrid datasets (uk, ieee24, ieee39)", type=str, default="binary")
     parser_dataset_params.add_argument("--num_classes", help="output_dim", type=int)
     parser_dataset_params.add_argument(
         "--num_node_features", help="input_dim", type=int

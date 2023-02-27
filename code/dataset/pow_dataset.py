@@ -27,7 +27,6 @@ class UK(InMemoryDataset):
 
         self.datatype = datatype
         self.name = name.lower()
-        assert self.name in self.names.keys()
         super(UK, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -113,7 +112,7 @@ class UK(InMemoryDataset):
             if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
-                e_mask[exp_mask[i][0]] = 1
+                e_mask[exp_mask[i][0].astype('int')-1] = 1
             # contigency lists, finds where do we have contigencies from the .mat edge feature matrices
             # ( if a line is part of the contigency list all egde features are set 0)
             cont = [j for j in range(len(f)) if np.all(np.array(f[j])) == 0]
@@ -177,7 +176,6 @@ class IEEE24(InMemoryDataset):
 
         self.datatype = datatype
         self.name = name.lower()
-        assert self.name in self.names.keys()
         super(IEEE24, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -265,7 +263,7 @@ class IEEE24(InMemoryDataset):
             if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
-                e_mask[exp_mask[i][0]] = 1
+                e_mask[exp_mask[i][0].astype('int')-1] = 1
             # contigency lists, finds where do we have contigencies from the .mat edge feature matrices
             # ( if a line is part of the contigency list all egde features are set 0)
             cont = [j for j in range(len(f)) if np.all(np.array(f[j])) == 0]
@@ -324,12 +322,11 @@ class IEEE39(InMemoryDataset):
     raw_path = "ieee39+expmask/"
 
     def __init__(
-        self, root, name, datatype="Binary", transform=None, pre_transform=None
+        self, root, name, datatype="binary", transform=None, pre_transform=None
     ):
 
         self.datatype = datatype
         self.name = name.lower()
-        assert self.name in self.names.keys()
         super(IEEE39, self).__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -417,7 +414,7 @@ class IEEE39(InMemoryDataset):
             if exp_mask[i][0] is None:  # .all() == 0:
                 e_mask = e_mask
             else:
-                e_mask[exp_mask[i][0]] = 1
+                e_mask[exp_mask[i][0].astype('int')-1] = 1
             # contigency lists, finds where do we have contigencies from the .mat edge feature matrices
             # ( if a line is part of the contigency list all egde features are set 0)
             cont = [j for j in range(len(f)) if np.all(np.array(f[j])) == 0]

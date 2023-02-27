@@ -189,8 +189,8 @@ class GNN_basic(GNNBase):
         emb = self.get_emb(*args, **kwargs)
         x = self.readout_layer(emb, batch)
         self.logits = self.mlps(x)
-        self.probs = F.log_softmax(self.logits, dim=1)
-        return self.probs
+        self.probs = F.softmax(self.logits, dim=1)
+        return F.log_softmax(self.logits, dim=1)
 
     def loss(self, pred, label):
         return F.cross_entropy(pred, label)
@@ -205,6 +205,14 @@ class GNN_basic(GNNBase):
 
     def get_pred_label(self, pred):
         return pred.argmax(dim=1)
+
+    def get_prob(self, *args, **kwargs):
+        _, _, _, batch = self._argsparse(*args, **kwargs)
+        # node embedding for GNN
+        emb = self.get_emb(*args, **kwargs)
+        x = self.readout_layer(emb, batch)
+        self.logits = self.mlps(x)
+        return F.softmax(self.logits, dim=1)
 
 
 class GAT(GNN_basic):

@@ -31,7 +31,7 @@ def main(args, args_group):
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset.data, args)
-    dataset_params["num_classes"] = len(np.unique(dataset.data.y.cpu().numpy()))
+    dataset_params["num_classes"] = max(np.unique(dataset.data.y.cpu().numpy()))+1
     dataset_params["num_node_features"] = dataset.data.x.size(1)
     model_params["edge_dim"] = dataset.data.edge_attr.size(1)
     if eval(args.graph_classification):
@@ -44,7 +44,9 @@ def main(args, args_group):
     model = get_gnnNets(
         dataset_params["num_node_features"], dataset_params["num_classes"], model_params
     )
-
+    model_save_name = f"{args.model_name}_{args.num_layers}l"
+    if args.dataset_name.startswith(tuple(["uk", "ieee"])):
+        model_save_name = f"{args.datatype}_" + model_save_name
     if eval(args.graph_classification):
         trainer = TrainModel(
             model=model,
@@ -52,7 +54,7 @@ def main(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l",
+            save_name=model_save_name,
             dataloader_params=dataloader_params,
         )
     else:
@@ -62,7 +64,7 @@ def main(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l",
+            save_name=model_save_name,
         )
     if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
         trainer.load_model()
@@ -85,7 +87,7 @@ def main(args, args_group):
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,
     }
-    save_name = "mask_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
+    mask_save_name = "mask_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
         args.dataset_name,
         args.model_name,
         args.explainer_name,
@@ -110,7 +112,7 @@ def main(args, args_group):
         save_dir=None
         if args.mask_save_dir is None
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
-        save_name=save_name,
+        save_name=mask_save_name,
     )
 
     (
@@ -124,6 +126,7 @@ def main(args, args_group):
     infos = {
         "dataset": args.dataset_name,
         "model": args.model_name,
+        "datatype": args.datatype,
         "explainer": args.explainer_name,
         "focus": args.focus,
         "mask_nature": args.mask_nature,
@@ -237,7 +240,7 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
         ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
-    elif args.dataset_name == "uk":
+    elif args.dataset_name.startswith("uk"):
         (
             args.groundtruth,
             args.graph_classification,
@@ -250,7 +253,8 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
         ) = ("True", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
-    elif args.dataset_name in ["ieee24", "ieee39"]:
+    
+    elif args.dataset_name.startswith(tuple(["ieee24", "ieee39"])):
         (
             args.groundtruth,
             args.graph_classification,
