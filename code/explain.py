@@ -4,6 +4,7 @@ import sklearn.metrics
 import torch
 import pickle
 import numpy as np
+import warnings
 from evaluate.fidelity import (
     fidelity_acc,
     fidelity_acc_inv,
@@ -106,7 +107,7 @@ class Explain(object):
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
             elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
-                f1_score, recall, precision = None, None, None
+                f1_score, recall, precision = np.nan, np.nan, np.nan
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
@@ -131,7 +132,12 @@ class Explain(object):
             entry = {"recall": recall, "precision": precision, "f1_score": f1_score}
             scores.append(entry)
         scores = list_to_dict(scores)
-        accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            try:
+                accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
+            except RuntimeWarning:
+                accuracy_scores = {}
         accuracy_scores["num_explained_y_with_acc"] = num_explained_y_with_acc
         return accuracy_scores
 
