@@ -11,6 +11,9 @@ from dataset import (
     IEEE24Cont,
     IEEE39Cont,
     UKCont,
+    IEEE24ContRndNc,
+    IEEE39ContRndNc,
+    UKContRndNc,
 )
 from torch import default_generator
 from utils.parser_utils import arg_parse, get_graph_size_args
@@ -39,12 +42,12 @@ def get_dataset(dataset_root, **kwargs):
             return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin"]:
             return IEEE39(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ukcont_mc", "ukcont_bin"]:
-            return UKCont(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee24cont_mc", "ieee24cont_bin"]:
-            return IEEE24Cont(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee39cont_mc", "ieee39cont_bin"]:
-            return IEEE39Cont(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ukcontrnd_mc", "ukcontrnd_bin"]:
+            return UKContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee24contrnd_mc", "ieee24contrnd_bin"]:
+            return IEEE24ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee39contrnd_mc", "ieee39contrnd_bin"]:
+            return IEEE39ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
         else:
             raise ValueError(f"{dataset_name} is not defined.")
     else:

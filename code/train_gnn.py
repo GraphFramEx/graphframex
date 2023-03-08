@@ -134,6 +134,13 @@ class TrainModel(object):
         print(
             f"Test loss: {test_loss:.4f}, test acc {test_acc:.4f}, balanced test acc {test_balanced_acc:.4f}, test f1 score {test_f1_score:.4f}"
         )
+        scores = {
+            "test_loss": test_loss,
+            "test_acc": test_acc,
+            "test_balanced_acc": test_balanced_acc,
+            "test_f1_score": test_f1_score,
+        }
+        self.save_scores(scores)
         return test_loss, test_acc, test_balanced_acc, test_f1_score, preds
 
     def train(self, train_params=None, optimizer_params=None):
@@ -217,6 +224,9 @@ class TrainModel(object):
         self.model.load_state_dict(state_dict)
         self.model.to(self.device)
 
+    def save_scores(self, scores):
+        with open(os.path.join(self.save_dir, f"{self.save_name}_scores.json"), "w") as f:
+            json.dump(scores, f)
 
 def train_gnn(args, args_group):
     fix_random_seed(args.seed)

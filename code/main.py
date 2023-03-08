@@ -254,7 +254,7 @@ if __name__ == "__main__":
             args.batch_size,
         ) = ("True", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
     
-    elif args.dataset_name.startswith(tuple(["ieee24", "ieee39"])):
+    elif args.dataset_name.startswith("ieee24"):
         (
             args.groundtruth,
             args.graph_classification,
@@ -267,5 +267,20 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
         ) = ("True", "True", 3, 20, 100, 0.01, 5e-3, 0.0, "max", 32)
+    elif args.dataset_name.startswith("ieee39"):
+        (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+            args.gamma,
+            args.milestones,
+        ) = ("True", "True", 3, 32, 100, 0.001, 0.0000, 0.0, "max", 128, 0.1, [30, 50, 75])
     args_group = create_args_group(parser, args)
     main(args, args_group)

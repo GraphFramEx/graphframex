@@ -309,11 +309,22 @@ class TRANSFORMER(GNN_basic):
     def get_layers(self):
         self.convs = nn.ModuleList()
         current_dim = self.input_dim
+        #for l in range(self.num_layers):
+            #self.convs.append(
+                #TransformerConv(current_dim, self.hidden_dim, edge_dim=self.edge_dim)
+            #)
+            #current_dim = self.hidden_dim
+
         for l in range(self.num_layers):
-            self.convs.append(
-                TransformerConv(current_dim, self.hidden_dim, edge_dim=self.edge_dim)
-            )
-            current_dim = self.hidden_dim
+            if l == 0:
+                self.convs.append(
+                TransformerConv(current_dim, self.hidden_dim, heads=4, edge_dim=self.edge_dim)#, concat=False)
+                )
+            else:
+                current_dim = self.hidden_dim * 4
+                self.convs.append(
+                TransformerConv(current_dim, current_dim, edge_dim=self.edge_dim)#, concat=False)
+                )
         # FC layers
         self.mlps = nn.Linear(current_dim, self.output_dim)
         return
