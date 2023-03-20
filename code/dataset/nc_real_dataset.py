@@ -170,3 +170,6 @@ class NCRealGraphDataset:
 
     def __repr__(self):
         return "{}".format(self.names[self.name][0])
+
+    def __len__(self):
+        return 1

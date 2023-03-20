@@ -12,6 +12,8 @@ from utils.gen_utils import (
     filter_existing_edges,
     from_edge_index_to_adj_torch,
     from_adj_to_edge_index_torch,
+    from_edge_index_to_adj,
+    from_adj_to_edge_index,
     get_neighbourhood,
     normalize_adj,
     sample_large_graph,
@@ -375,7 +377,7 @@ def explain_cfgnnexplainer_node(model, data, node_idx, target, device, **kwargs)
     # Check that original model gives same prediction on full graph and subgraph
     with torch.no_grad():
         # output = model(data=data)[node_idx]
-        adj = from_edge_index_to_adj_torch(
+        adj = from_edge_index_to_adj(
             data.edge_index, data.edge_attr, data.num_nodes
         )
         output = model(**{"x": features, "adj": normalize_adj(adj)})
@@ -387,19 +389,22 @@ def explain_cfgnnexplainer_node(model, data, node_idx, target, device, **kwargs)
     # Need to instantitate new cf model every time because size of P changes based on size of sub_adj
     explainer = CFExplainer(
         model=model,
-        sub_adj=sub_adj,
-        sub_feat=sub_feat,
+        cf_model_name = kwargs["model_name"],
+        adj=sub_adj,
+        feat=sub_feat,
+        edge_feat=data.edge_attr,
         n_hid=kwargs["hidden_dim"],
         dropout=kwargs["dropout"],
         readout=kwargs["readout"],
+        edge_dim=kwargs["edge_dim"],
         num_layers=kwargs["num_layers"],
-        sub_labels=sub_labels,
+        labels=sub_labels,
         y_pred_orig=target,
-        num_classes=len(labels.unique()),
+        num_classes=kwargs["num_classes"],
         beta=beta,
         device=device,
     )
-    cf_example = explainer.explain(
+    cf_example = explainer.explain_node(
         node_idx=node_idx,
         cf_optimizer=optimizer,
         new_idx=new_idx,

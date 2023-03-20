@@ -75,6 +75,9 @@ class SynGraphDataset:
             self.dataset_params["width_basis"],
         )
 
+    def __len__(self):
+        return 1
+
     def build_syndata(self):
         """Generate synthetic graohs and convert them into Pytorch geometric Data object.
 

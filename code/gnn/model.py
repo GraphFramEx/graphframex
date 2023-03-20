@@ -66,6 +66,7 @@ class GNNBase(nn.Module):
         If the x and edge_index are in args, follow the args.
         In other case, find them in kwargs.
         """
+        edge_weight = None
         if args:
             if len(args) == 1:
                 data = args[0]
@@ -114,25 +115,25 @@ class GNNBase(nn.Module):
                         adj is not None
                     ), "forward's args is empty and required adj is not in kwargs"
                     if torch.is_tensor(adj):
-                        edge_index, edge_attr = from_adj_to_edge_index_torch(adj)
+                        edge_index, edge_weight = from_adj_to_edge_index_torch(adj)
                     else:
-                        edge_index, edge_attr = from_adj_to_edge_index_torch(
+                        edge_index, edge_weight = from_adj_to_edge_index_torch(
                             torch.from_numpy(adj)
                         )
                 if "adj" not in kwargs:
                     assert (
                         edge_index is not None
                     ), "forward's args is empty and required edge_index is not in kwargs"
-                    edge_attr = kwargs.get("edge_attr")
-                    if not edge_attr:
-                        edge_attr = torch.ones(
-                            (edge_index.shape[1], self.edge_dim),
-                            dtype=torch.float32,
-                            device=x.device,
-                        )
                 assert (
                     x is not None
                 ), "forward's args is empty and required node features x is not in kwargs"
+                edge_attr = kwargs.get("edge_attr")
+                if "edge_attr" not in kwargs:
+                    edge_attr = torch.ones(
+                        (edge_index.shape[1], self.edge_dim),
+                        dtype=torch.float32,
+                        device=x.device,
+                    )
                 batch = kwargs.get("batch")
                 if not batch:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
@@ -162,7 +163,9 @@ class GNNBase(nn.Module):
                         )
                 else:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
-        return x, edge_index, edge_attr, batch
+        if edge_weight is None:
+            edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32)
+        return x, edge_index, edge_attr, edge_weight, batch
 
 
 class GNN_basic(GNNBase):
@@ -184,7 +187,7 @@ class GNN_basic(GNNBase):
         raise NotImplementedError
 
     def forward(self, *args, **kwargs):
-        _, _, _, batch = self._argsparse(*args, **kwargs)
+        _, _, _, _, batch = self._argsparse(*args, **kwargs)
         # node embedding for GNN
         emb = self.get_emb(*args, **kwargs)
         x = self.readout_layer(emb, batch)
@@ -196,7 +199,7 @@ class GNN_basic(GNNBase):
         return F.cross_entropy(pred, label)
 
     def get_emb(self, *args, **kwargs):
-        x, edge_index, edge_attr, _ = self._argsparse(*args, **kwargs)
+        x, edge_index, edge_attr, edge_weight, _ = self._argsparse(*args, **kwargs)
         for layer in self.convs:
             x = layer(x, edge_index, edge_attr)
             x = F.relu(x)
@@ -207,7 +210,7 @@ class GNN_basic(GNNBase):
         return pred.argmax(dim=1)
 
     def get_prob(self, *args, **kwargs):
-        _, _, _, batch = self._argsparse(*args, **kwargs)
+        _, _, _, _, batch = self._argsparse(*args, **kwargs)
         # node embedding for GNN
         emb = self.get_emb(*args, **kwargs)
         x = self.readout_layer(emb, batch)

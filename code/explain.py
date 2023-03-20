@@ -425,10 +425,12 @@ class Explain(object):
         return self.explained_y, edge_masks, node_feat_masks, computation_time
 
     def clean_mask(self, edge_masks, node_feat_masks):
-        if edge_masks[0] is not None:
-            edge_masks = clean(edge_masks)
-        if node_feat_masks[0] is not None:
-            node_feat_masks = clean(node_feat_masks)
+        if edge_masks:
+            if edge_masks[0] is not None:
+                edge_masks = clean(edge_masks)
+        if node_feat_masks:
+            if node_feat_masks[0] is not None:
+                node_feat_masks = clean(node_feat_masks)
         return edge_masks, node_feat_masks
 
     def _transform(self, masks, param):

@@ -33,7 +33,12 @@ def main(args, args_group):
     args = get_data_args(dataset.data, args)
     dataset_params["num_classes"] = max(np.unique(dataset.data.y.cpu().numpy()))+1
     dataset_params["num_node_features"] = dataset.data.x.size(1)
-    model_params["edge_dim"] = dataset.data.edge_attr.size(1)
+    if len(dataset) > 1:
+        dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
+    else:
+        dataset_params["max_num_nodes"] = dataset.data.num_nodes
+    args.edge_dim = dataset.data.edge_attr.size(1)
+    model_params["edge_dim"] = args.edge_dim
     if eval(args.graph_classification):
         dataloader_params = {
             "batch_size": args.batch_size,
@@ -78,11 +83,13 @@ def main(args, args_group):
     additional_args = {
         "dataset_name": args.dataset_name,
         "dataset": dataset,
+        "model_name": args.model_name,
         "hidden_dim": args.hidden_dim,
         "num_top_edges": args.num_top_edges,
         "num_layers": args.num_layers,
         "dropout": args.dropout,
         "readout": args.readout,
+        "edge_dim": dataset.data.edge_attr.size(1),
         "num_node_features": args.num_node_features,
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,
@@ -110,7 +117,7 @@ def main(args, args_group):
         dataset_name=args.dataset_name,
         explainer_params={**args_group["explainer_params"], **additional_args},
         save_dir=None
-        if args.mask_save_dir is None
+        if eval(args.mask_save_dir) is None
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
         save_name=mask_save_name,
     )
@@ -134,7 +141,7 @@ def main(args, args_group):
         "time": float(format(np.mean(computation_time), ".4f")),
     }
 
-    if edge_masks[0] is None:
+    if (edge_masks is None) or (not edge_masks):
         raise ValueError("Edge masks are None")
     params_lst = [eval(i) for i in explainer.transf_params.split(",")]
     params_lst.insert(0, None)
@@ -252,7 +259,10 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
+            args.gamma,
+            args.milestones,
+            num_early_stop,
+        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50)
     
     elif args.dataset_name.startswith("ieee24"):
         (
@@ -266,7 +276,10 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", "True", 3, 20, 100, 0.01, 5e-3, 0.0, "max", 32)
+            args.gamma,
+            args.milestones,
+            num_early_stop,
+        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50)
     elif args.dataset_name.startswith("ieee39"):
         (
             args.groundtruth,
