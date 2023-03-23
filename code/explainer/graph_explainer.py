@@ -2,6 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
+import random
 from captum.attr import IntegratedGradients, Saliency
 from torch.autograd import Variable
 from torch_geometric.data import Data
@@ -26,7 +27,8 @@ from explainer.pgmexplainer import Graph_Explainer
 from explainer.subgraphx import SubgraphX
 from explainer.gradcam import GraphLayerGradCam
 from explainer.cfgnnexplainer import CFExplainer
-from explainer.graphcfe import GraphCFE
+from explainer.graphcfe import GraphCFE, train, test, baseline_cf, add_list_in_dict, compute_counterfactual
+from gendata import get_dataset, get_dataloader
 
 
 def get_all_convolution_layers(model):
@@ -328,26 +330,77 @@ def explain_cfgnnexplainer_graph(model, data, target, device, **kwargs):
 
 def explain_graphcfe_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
+    # data loader
+    explain_dataset = kwargs["dataset"]
+    dataloader_params = {
+        "batch_size": kwargs["batch_size"],
+        "random_split_flag": kwargs["random_split_flag"],
+        "data_split_ratio": kwargs["data_split_ratio"],
+        "seed": kwargs["seed"],
+    }
+    loader = get_dataloader(explain_dataset, **dataloader_params)
+    # y_cf
+    if kwargs["num_classes"] == 2:
+        y_cf_all = 1 - np.array(explain_dataset.data.y)
+    else:
+        y_cf_all = []
+        for y in np.array(explain_dataset.data.y):
+            y_cf_all.append(y+1 if y < kwargs["num_classes"] - 1 else 0)
+    y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+    # metrics
+    metrics = ['validity', 'proximity_x', 'proximity_a']
+
     subdir = os.path.join(kwargs["model_save_dir"], "graphcfe")
     os.makedirs(subdir, exist_ok=True)
     graphcfe_saving_path = os.path.join(subdir, f"graphcfe_{dataset_name}.pth")
+     # model
+    init_params = {'hidden_dim': kwargs["hidden_dim"], 'dropout': kwargs["dropout"], 'num_node_features': kwargs["num_node_features"], 'max_num_nodes': kwargs["max_num_nodes"]}
+    graphcfe_model = GraphCFE(init_params=init_params, device=device)
+
     if os.path.isfile(graphcfe_saving_path):
-        print("Load saved PGExplainer model...")
+        print("Load saved GraphCFE model...")
         state_dict = torch.load(graphcfe_saving_path)
-        graphcfe.load_state_dict(state_dict)
+        graphcfe_model.load_state_dict(state_dict)
     else:
-        data = sample_large_graph(data)
-        explain_train_data = kwargs["dataset"][:200]
-        print("y: ", explain_train_data.y)
-        if kwargs["num_classes"] == 2:
-            y_cf = 1 - np.array(explain_train_data.y)
-        else:
-            l = range(kwargs["num_classes"])
-            y_cf = [random.choice(l.remove(y)) for y in data.y]
-        y_cf = torch.FloatTensor(y_cf).to(device)
-        print("y_cf: ", y_cf)
-        graphcfe.train_explanation_network()
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+        graphcfe_model = graphcfe_model.to(device)
+        train_params = {'epochs': 2000, 'model': graphcfe_model, 'pred_model': model, 'optimizer': optimizer,
+                        'y_cf': y_cf_all,
+                        'train_loader': loader['train'], 'val_loader': loader['eval'], 'test_loader': loader['test'],
+                        'dataset': dataset_name, 'metrics': metrics, 'save_model': False}
+        train(train_params)
         print("Save GraphCFE model...")
-        torch.save(graphcfe.state_dict(), graphcfe_saving_path)
+        torch.save(graphcfe_model.state_dict(), graphcfe_saving_path)
+    # test
+    test_params = {'model': graphcfe_model, 'dataset': dataset_name, 'data_loader': loader['test'], 'pred_model': model,
+                       'metrics': metrics, 'y_cf': y_cf_all}
+    eval_results = test(test_params)
+    results_all_exp = {}
+    for k in metrics:
+        results_all_exp = add_list_in_dict(k, results_all_exp, eval_results[k].detach().cpu().numpy())
+    for k in eval_results:
+        if isinstance(eval_results[k], list):
+            print(k, ": ", eval_results[k])
+        else:
+            print(k, f": {eval_results[k]:.4f}")
+
+    # baseline
+    # num_rounds, type = 10, "random"
+    # eval_results = baseline_cf(dataset_name, data, metrics, y_cf, model, device, num_rounds=num_rounds, type=type)
+    
+    y_cf = data.y_cf
+    eval_results, edge_mask = compute_counterfactual(dataset_name, data, metrics, y_cf, graphcfe_model, model, device)
+    results_all_exp = {}
+    for k in metrics:
+        results_all_exp = add_list_in_dict(k, results_all_exp, eval_results[k].detach().cpu().numpy())
+    for k in eval_results:
+        if isinstance(eval_results[k], list):
+            print(k, ": ", eval_results[k])
+        else:
+            print(k, f": {eval_results[k]:.4f}")
+    return edge_mask, None
+
+
+    
     
     

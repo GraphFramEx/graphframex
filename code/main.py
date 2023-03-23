@@ -84,6 +84,7 @@ def main(args, args_group):
         "dataset_name": args.dataset_name,
         "dataset": dataset,
         "model_name": args.model_name,
+        "max_num_nodes": dataset_params["max_num_nodes"],
         "hidden_dim": args.hidden_dim,
         "num_top_edges": args.num_top_edges,
         "num_layers": args.num_layers,
@@ -115,7 +116,7 @@ def main(args, args_group):
         graph_classification=eval(args.graph_classification),
         list_test_idx=list_test_idx,
         dataset_name=args.dataset_name,
-        explainer_params={**args_group["explainer_params"], **additional_args},
+        explainer_params={**args_group["explainer_params"], **additional_args, **dataloader_params},
         save_dir=None
         if eval(args.mask_save_dir) is None
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),

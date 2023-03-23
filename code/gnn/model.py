@@ -135,8 +135,12 @@ class GNNBase(nn.Module):
                         device=x.device,
                     )
                 batch = kwargs.get("batch")
-                if not batch:
-                    batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                if torch.is_tensor(batch):
+                    if batch.size == 0:
+                        batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                else:
+                    if not batch:
+                        batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
 
             else:
                 x = data.x
@@ -201,7 +205,7 @@ class GNN_basic(GNNBase):
     def get_emb(self, *args, **kwargs):
         x, edge_index, edge_attr, edge_weight, _ = self._argsparse(*args, **kwargs)
         for layer in self.convs:
-            x = layer(x, edge_index, edge_attr)
+            x = layer(x, edge_index, edge_attr*edge_weight[:,None])
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
         return x

@@ -7,6 +7,7 @@ from torch_geometric.data import InMemoryDataset, Data, download_url, extract_zi
 import torch
 from torch_geometric.data import Data
 import numpy as np
+from utils.gen_utils import from_edge_index_to_adj, padded_datalist
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -97,7 +98,8 @@ class UK(InMemoryDataset):
         exp_mask = exp["explainations"]
 
         data_list = []
-
+        adj_list = []
+        max_num_nodes = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -144,6 +146,10 @@ class UK(InMemoryDataset):
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                if ydata == 0:
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                else:
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
 
             # Fill Data object, 1 Data object -> 1 graph
             data = Data(
@@ -152,7 +158,14 @@ class UK(InMemoryDataset):
                 edge_attr=f_totw,
                 y=ydata,
                 edge_mask=e_mask_post,
+                idx=i,
             )
+            if data_type == "Multiclass" or data_type == "multiclass":
+                data.y_cf = ydata_cf
+            
+            adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
+            adj_list.append(adj)
+            max_num_nodes = max(max_num_nodes, data.num_nodes)
             # append Data object to datalist
             data_list.append(data)
 
@@ -162,6 +175,7 @@ class UK(InMemoryDataset):
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
 
+        data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         torch.save(self.collate(data_list), self.processed_paths[0])
 
 
@@ -248,7 +262,8 @@ class IEEE24(InMemoryDataset):
         exp_mask = exp["explainations"]
 
         data_list = []
-
+        adj_list = []
+        max_num_nodes = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -295,6 +310,10 @@ class IEEE24(InMemoryDataset):
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                if ydata == 0:
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                else:
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
 
             # Fill Data object, 1 Data object -> 1 graph
             data = Data(
@@ -303,7 +322,14 @@ class IEEE24(InMemoryDataset):
                 edge_attr=f_totw,
                 y=ydata,
                 edge_mask=e_mask_post,
+                idx=i,
             )
+            if data_type == "Multiclass" or data_type == "multiclass":
+                data.y_cf = ydata_cf
+            
+            adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
+            adj_list.append(adj)
+            max_num_nodes = max(max_num_nodes, data.num_nodes)
             # append Data object to datalist
             data_list.append(data)
 
@@ -313,6 +339,7 @@ class IEEE24(InMemoryDataset):
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
 
+        data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         torch.save(self.collate(data_list), self.processed_paths[0])
 
 
@@ -399,7 +426,8 @@ class IEEE39(InMemoryDataset):
         exp_mask = exp["explainations"]
 
         data_list = []
-
+        adj_list = []
+        max_num_nodes = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -446,6 +474,10 @@ class IEEE39(InMemoryDataset):
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                if ydata == 0:
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                else:
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
 
             # Fill Data object, 1 Data object -> 1 graph
             data = Data(
@@ -454,7 +486,14 @@ class IEEE39(InMemoryDataset):
                 edge_attr=f_totw,
                 y=ydata,
                 edge_mask=e_mask_post,
+                idx=i,
             )
+            if data_type == "Multiclass" or data_type == "multiclass":
+                data.y_cf = ydata_cf
+            
+            adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
+            adj_list.append(adj)
+            max_num_nodes = max(max_num_nodes, data.num_nodes)
             # append Data object to datalist
             data_list.append(data)
 
@@ -464,4 +503,5 @@ class IEEE39(InMemoryDataset):
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
 
+        data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         torch.save(self.collate(data_list), self.processed_paths[0])

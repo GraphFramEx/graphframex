@@ -16,40 +16,8 @@ from code.utils.gen_utils import (
 from .model import GNN_basic, GNNPool
 from torch_geometric.nn import GCNConv
 import numpy as np
+from utils.gen_utils import get_existing_edge, get_new_edge
 
-
-def get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
-    keep_edge_idx = []
-    for i in range(len(new_edge_index.T)):
-        elmt = np.array(new_edge_index.T[i])
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==elmt,axis=1))[0]
-        if pos_new_edge.size > 0:
-            keep_edge_idx.append(pos_new_edge[0])
-    kept_edges = edge_index.T[keep_edge_idx]
-    kept_edges = np.array(kept_edges)
-    kept_edge_attr = edge_attr[keep_edge_idx]
-    kept_edge_weight = new_edge_weight[keep_edge_idx]
-    if kept_edges.ndim == 1:
-        kept_edges = kept_edges.reshape(0,2)
-    return(kept_edges, kept_edge_attr, kept_edge_weight)
-
-def get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
-    new_added_edges = []
-    new_added_edge_idx = []
-    for i in range(len(new_edge_index.T)):
-        elmt = np.array(new_edge_index.T[i])
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==elmt,axis=1))[0]
-        if pos_new_edge.size == 0:
-            new_added_edges.append(elmt)
-            new_added_edge_idx.append(i)
-    new_added_edges = np.array(new_added_edges)
-    mean_feat = np.mean(np.array(edge_attr),0)
-    var_feat = np.var(np.array(edge_attr),0)
-    new_added_edge_attr= np.array([np.random.normal(loc=mean_feat[i], scale=var_feat[i], size=(len(new_added_edges))) for i in range(edge_attr.shape[1])]).T
-    new_added_edge_weight = new_edge_weight[new_added_edge_idx]
-    if new_added_edges.ndim == 1:
-        new_added_edges = new_added_edges.reshape(0,2)
-    return(new_added_edges, new_added_edge_attr, new_added_edge_weight)
 
 
 class GNNPerturb(GNN_basic):
