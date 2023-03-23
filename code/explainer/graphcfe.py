@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch_geometric.nn.inits import reset
 from torch_geometric.nn import DenseGCNConv, DenseGraphConv
 import time
-from utils.gen_utils import from_edge_index_to_adj, from_adj_to_edge_index, from_adj_to_edge_index_torch, from_edge_index_to_adj_torch
+from utils.gen_utils import from_edge_index_to_adj, from_adj_to_edge_index, from_adj_to_edge_index_torch, from_edge_index_to_adj_torch, get_cf_edge_mask
 
 
 
@@ -328,9 +328,7 @@ def compute_counterfactual(dataset, data, metrics, y_cf, model, pred_model, devi
     eval_results = evaluate(eval_params)
 
     edge_index_cf, edge_attr_cf = from_adj_to_edge_index_torch(adj_reconst_binary[0])
-    print(edge_index_cf, edge_attr_cf)
-    print(data.edge_index)
-    edge_mask = get_cf_edge_mask(edge_index_cf, edge_index)
+    edge_mask = get_cf_edge_mask(edge_index_cf, data.edge_index)
     return eval_results, edge_mask
 
 

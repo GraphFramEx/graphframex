@@ -388,7 +388,10 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
     # num_rounds, type = 10, "random"
     # eval_results = baseline_cf(dataset_name, data, metrics, y_cf, model, device, num_rounds=num_rounds, type=type)
     
-    y_cf = data.y_cf
+    if hasattr(data, 'y_cf'):
+        y_cf = data.y_cf
+    else:
+        y_cf = 1 - data.y
     eval_results, edge_mask = compute_counterfactual(dataset_name, data, metrics, y_cf, graphcfe_model, model, device)
     results_all_exp = {}
     for k in metrics:
