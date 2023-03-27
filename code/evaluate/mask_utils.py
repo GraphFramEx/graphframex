@@ -217,7 +217,7 @@ def mask_to_shape(mask, edge_index, num_top_edges):
     """Modify the mask by selecting only the num_top_edges edges with the highest mask value."""
     indices = topk_edges_unique(mask, edge_index, num_top_edges)
     unimportant_indices = [i for i in range(len(mask)) if i not in indices]
-    new_mask = mask.clone()
+    new_mask = mask.copy()
     new_mask[unimportant_indices] = 0
     return new_mask
 

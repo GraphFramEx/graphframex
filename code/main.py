@@ -150,7 +150,7 @@ def main(args, args_group):
 
     if (edge_masks is None) or (not edge_masks):
         raise ValueError("Edge masks are None")
-    params_lst = [eval(i) for i in explainer.transf_params.split(",")]
+    params_lst = eval(explainer.transf_params)
     params_lst.insert(0, None)
     edge_masks_ori = edge_masks.copy()
     for i, param in enumerate(params_lst):
@@ -159,13 +159,28 @@ def main(args, args_group):
         # Compute mask properties
         edge_masks_properties = get_mask_properties(edge_masks)
         # Evaluate scores of the masks
-        accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
+        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
         if accuracy_scores is None:
             scores = {
                 key: value
                 for key, value in sorted(
                     infos.items()
                     | edge_masks_properties.items()
+                    | fidelity_scores.items()
+                    | params_transf.items()
+                )
+            }
+        if top_accuracy_scores is None:
+            scores = {
+                key: value
+                for key, value in sorted(
+                    infos.items()
+                    | {
+                        "top_acc": args.top_acc,
+                        "num_top_edges": args.num_top_edges,
+                    }.items()
+                    | edge_masks_properties.items()
+                    | accuracy_scores.items()
                     | fidelity_scores.items()
                     | params_transf.items()
                 )
@@ -180,6 +195,7 @@ def main(args, args_group):
                         "num_top_edges": args.num_top_edges,
                     }.items()
                     | edge_masks_properties.items()
+                    | top_accuracy_scores.items()
                     | accuracy_scores.items()
                     | fidelity_scores.items()
                     | params_transf.items()

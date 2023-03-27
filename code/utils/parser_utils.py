@@ -261,7 +261,7 @@ def arg_parse():
         "--transf_params",
         help="list of transformation degrees",
         type=str,
-        default="5,10",
+        default='[5,10]',
     )
     parser_explainer_params.add_argument(
         "--directed",

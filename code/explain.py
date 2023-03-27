@@ -87,6 +87,77 @@ class Explain(object):
             raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
         return G_true_list
 
+    def get_true_expl_size(self, edge_masks):
+        expl_size_list = []
+        for i in range(len(self.explained_y)):
+            edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
+            graph = (
+                self.dataset[self.explained_y[i]]
+                if self.graph_classification
+                else self.dataset.data
+            )
+            true_explanation = graph.edge_mask
+            n = len(np.where(true_explanation == 1)[0])
+            expl_size_list.append(n)
+        return expl_size_list
+
+    def _eval_top_acc(self, edge_masks):
+        print("Top Accuracy is being computed...")
+        scores = []
+        for i in range(len(self.explained_y)):
+            edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
+            graph = (
+                self.dataset[self.explained_y[i]]
+                if self.graph_classification
+                else self.dataset.data
+            )
+            if self.dataset_name.startswith(tuple(["ba", "tree"])):
+                G_true, role, true_edge_mask = get_ground_truth_syn(
+                    self.explained_y[i], self.data, self.dataset_name
+                )
+                G_expl = get_explanation_syn(
+                    graph, edge_mask, self.top_acc, self.num_top_edges
+                )
+                top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
+                top_balanced_acc = None
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
+                top_f1_score, top_recall, top_precision, top_balanced_acc = np.nan, np.nan, np.nan, np.nan
+                if graph.edge_mask is not None:
+                    true_explanation = graph.edge_mask
+                    n = len(np.where(true_explanation == 1)[0])
+                    if n > 0:
+                        pred_explanation = np.zeros(len(edge_mask))
+                        mask = edge_mask.detach().numpy().copy()
+                        if eval(self.directed):
+                            unimportant_indices = (-mask).argsort()[n+1:]
+                            mask[unimportant_indices] = 0
+                        else:
+                            mask = mask_to_shape(mask, graph.edge_index, n)
+                        pred_explanation[mask > 0] = 1
+                        top_precision = sklearn.metrics.precision_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_recall = sklearn.metrics.recall_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_f1_score = sklearn.metrics.f1_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_balanced_acc = sklearn.metrics.balanced_accuracy_score(true_explanation, pred_explanation)
+            else:
+                raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
+            entry = {"top_recall": top_recall, "top_precision": top_precision, "top_f1_score": top_f1_score, "top_balanced_acc": top_balanced_acc}
+            scores.append(entry)
+        scores = list_to_dict(scores)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            try:
+                accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
+            except RuntimeWarning:
+                accuracy_scores = {}
+        return accuracy_scores
+            
+
     def _eval_acc(self, edge_masks):
         scores = []
         num_explained_y_with_acc = 0
@@ -107,7 +178,7 @@ class Explain(object):
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
             elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
-                f1_score, recall, precision = np.nan, np.nan, np.nan
+                f1_score, recall, precision, balanced_acc = np.nan, np.nan, np.nan, np.nan
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
@@ -123,13 +194,11 @@ class Explain(object):
                         f1_score = sklearn.metrics.f1_score(
                             true_explanation, pred_explanation, pos_label=1
                         )
+                        balanced_acc = sklearn.metrics.balanced_accuracy_score(true_explanation, pred_explanation)
                         num_explained_y_with_acc += 1
-                        # print("true is 1", np.where(true_explanation == 1)[0])
-                        # print("pred is 1", np.where(pred_explanation == 1)[0])
-                        # print(recall, precision, f1_score)
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
-            entry = {"recall": recall, "precision": precision, "f1_score": f1_score}
+            entry = {"recall": recall, "precision": precision, "f1_score": f1_score, "balanced_acc": balanced_acc}
             scores.append(entry)
         scores = list_to_dict(scores)
         with warnings.catch_warnings():
@@ -165,10 +234,11 @@ class Explain(object):
         )
         if self.groundtruth:
             accuracy_scores = self._eval_acc(edge_masks)
+            top_accuracy_scores = self._eval_top_acc(edge_masks) if self.top_acc else None
         else:
             accuracy_scores = None
         fidelity_scores = self._eval_fid(related_preds)
-        return accuracy_scores, fidelity_scores
+        return top_accuracy_scores, accuracy_scores, fidelity_scores
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
         related_preds = []
@@ -435,9 +505,9 @@ class Explain(object):
 
     def _transform(self, masks, param):
         """Transform masks according to the given strategy (topk, threshold, sparsity) and level."""
-        if param is None:
-            return masks
         new_masks = []
+        if (param is None) | (self.mask_transformation=="None"):
+            return masks
         for i in range(len(self.explained_y)):
             mask = masks[i].copy()
             idx = self.explained_y[i]
@@ -448,7 +518,7 @@ class Explain(object):
             )
             if self.mask_transformation == "topk":
                 if eval(self.directed):
-                    unimportant_indices = (-mask).argsort()[param:]
+                    unimportant_indices = (-mask).argsort()[param+1:]
                     mask[unimportant_indices] = 0
                 else:
                     mask = mask_to_shape(mask, edge_index, param)
