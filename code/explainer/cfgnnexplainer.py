@@ -149,7 +149,10 @@ class CFExplainer:
         y_pred_new_actual = torch.argmax(output_actual[self.new_idx])
 
         # loss_pred indicator should be based on y_pred_new_actual NOT y_pred_new!
-        (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.loss(
+        # (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.loss(
+            # output[self.new_idx], self.y_pred_orig, y_pred_new_actual
+        # )
+        (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.cf_loss(
             output[self.new_idx], self.y_pred_orig, y_pred_new_actual
         )
         loss_total.backward()
@@ -210,8 +213,11 @@ class CFExplainer:
         y_pred_new_actual = torch.argmax(output_actual)
         
         # loss_pred indicator should be based on y_pred_new_actual NOT y_pred_new!
-        (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.loss(
-            output.squeeze(0), self.y_pred_orig.squeeze(0), y_pred_new_actual
+        # (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.loss(
+            # output.squeeze(0), self.y_pred_orig.squeeze(0), y_pred_new_actual
+        # )
+        (loss_total, loss_pred, loss_graph_dist, cf_adj) = self.cf_model.cf_loss(
+            output.squeeze(0), self.y_pred_orig, y_pred_new_actual
         )
         loss_total.backward()
         clip_grad_norm(self.cf_model.parameters(), 2.0)

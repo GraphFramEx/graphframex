@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import random
 import torch
 import torch.nn.functional as F
 import random
@@ -287,7 +288,8 @@ def explain_gnnlrp_graph(model, data, target, device, **kwargs):
 
 
 def explain_cfgnnexplainer_graph(model, data, target, device, **kwargs):
-    n_momentum, num_epochs, beta, optimizer, lr = 0.9, 1000, 0.5, "SGD", 0.01
+    n_momentum, num_epochs, beta, optimizer, lr = 0.9, 500, 0, "SGD", 0.1
+    model.eval()
     features, labels = data.x, data.y
     adj = to_dense_adj(data.edge_index, max_num_nodes=data.x.shape[0]).squeeze(0)
     # adj = from_edge_index_to_adj(data.edge_index, data.edge_attr, data.x.shape[0])
@@ -330,23 +332,28 @@ def explain_cfgnnexplainer_graph(model, data, target, device, **kwargs):
 
 def explain_graphcfe_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
+    # y_cf
+    if kwargs["num_classes"] == 2:
+        y_cf_all = 1 - np.array(kwargs["dataset"].data.y)
+    else:
+        y_cf_all = []
+        for y in np.array(kwargs["dataset"].data.y):
+            y_cf_all.append(y+1 if y < kwargs["num_classes"] - 1 else 0)
+    y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+
     # data loader
-    explain_dataset = kwargs["dataset"]
+    print("length dataset: ", len(kwargs["dataset"]))
+    train_size = min(len(kwargs["dataset"]), 500)
+    explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
+    explain_dataset = kwargs["dataset"][explain_dataset_idx]
     dataloader_params = {
-        "batch_size": kwargs["batch_size"],
+        "batch_size": 32, # kwargs["batch_size"],
         "random_split_flag": kwargs["random_split_flag"],
         "data_split_ratio": kwargs["data_split_ratio"],
         "seed": kwargs["seed"],
     }
     loader = get_dataloader(explain_dataset, **dataloader_params)
-    # y_cf
-    if kwargs["num_classes"] == 2:
-        y_cf_all = 1 - np.array(explain_dataset.data.y)
-    else:
-        y_cf_all = []
-        for y in np.array(explain_dataset.data.y):
-            y_cf_all.append(y+1 if y < kwargs["num_classes"] - 1 else 0)
-    y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+    
     # metrics
     metrics = ['validity', 'proximity_x', 'proximity_a']
 

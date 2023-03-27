@@ -30,9 +30,12 @@ def main(args, args_group):
     )
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
-    args = get_data_args(dataset.data, args)
+    args = get_data_args(dataset, args)
     dataset_params["num_classes"] = max(np.unique(dataset.data.y.cpu().numpy()))+1
     dataset_params["num_node_features"] = dataset.data.x.size(1)
+    print("num_classes:", dataset_params["num_classes"])
+    print("num_node_features:", dataset_params["num_node_features"])
+    print("dataset length:", len(dataset))
     if len(dataset) > 1:
         dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
     else:
@@ -95,6 +98,9 @@ def main(args, args_group):
         "num_classes": args.num_classes,
         "model_save_dir": args.model_save_dir,
     }
+    if eval(args.graph_classification):
+        additional_args.update(dataloader_params)
+
     mask_save_name = "mask_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
         args.dataset_name,
         args.model_name,
@@ -116,9 +122,9 @@ def main(args, args_group):
         graph_classification=eval(args.graph_classification),
         list_test_idx=list_test_idx,
         dataset_name=args.dataset_name,
-        explainer_params={**args_group["explainer_params"], **additional_args, **dataloader_params},
+        explainer_params={**args_group["explainer_params"], **additional_args},
         save_dir=None
-        if eval(args.mask_save_dir) is None
+        if args.mask_save_dir=="None"
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
         save_name=mask_save_name,
     )
@@ -210,7 +216,21 @@ if __name__ == "__main__":
     parser, args = arg_parse()
     args = get_graph_size_args(args)
 
-    if args.dataset_name.startswith(tuple(["ba", "tree"])):
+    if args.dataset_name=="ba_2motifs":
+        (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+        ) = ("True", "True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max", 32)
+
+    if (args.dataset_name.startswith(tuple(["ba", "tree"]))) & (args.dataset_name!="ba_2motifs"):
         (
             args.groundtruth,
             args.graph_classification,

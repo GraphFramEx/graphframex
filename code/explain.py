@@ -236,7 +236,7 @@ class Explain(object):
                         self.model.get_prob(
                             x_masked,
                             data.edge_index,
-                            data.edge_attr * edge_mask,
+                            data.edge_attr * edge_mask[:, None]
                         )
                         .cpu()
                         .detach()
@@ -246,7 +246,7 @@ class Explain(object):
                         self.model.get_prob(
                             x_maskout,
                             data.edge_index,
-                            data.edge_attr * (1 - edge_mask),
+                            data.edge_attr * (1 - edge_mask)[:, None],
                         )
                         .cpu()
                         .detach()
@@ -314,12 +314,12 @@ class Explain(object):
                     masked_probs = self.model.get_prob(
                         x_masked,
                         self.data.edge_index,
-                        self.data.edge_attr * edge_mask,
+                        self.data.edge_attr * edge_mask[:, None],
                     )
                     maskout_probs = self.model.get_prob(
                         x_maskout,
                         self.data.edge_index,
-                        self.data.edge_attr * (1 - edge_mask),
+                        self.data.edge_attr * (1 - edge_mask)[:, None],
                     )
                 edge_mask = edge_mask.cpu().detach().numpy()
 

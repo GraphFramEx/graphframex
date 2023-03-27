@@ -193,6 +193,39 @@ class GNNPerturb(GNN_basic):
         loss_total = pred_same * loss_pred + self.beta * loss_graph_dist
         return loss_total, loss_pred, loss_graph_dist, cf_adj
 
+    def cf_loss(self, output, y_pred_orig, y_pred_new_actual):
+        pred_same = (y_pred_new_actual == y_pred_orig).float()
+        # Need dim >=2 for F.nll_loss to work
+        if output.ndim < 2:
+            output = output.unsqueeze(0)
+
+        if self.edge_additions:
+            cf_adj = self.P
+        else:
+            cf_adj = self.P * self.adj
+        cf_adj.requires_grad = (
+            True  # Need to change this otherwise loss_graph_dist has no gradient
+        )
+        # Want negative in front to maximize loss instead of minimizing it to find CFs
+        '''
+        loss function: -log(1-softmax(Pred)[i]) * label[i] sum over i
+        pred: [N, num_class]
+        label: [N, ]
+        '''
+        print("output", output)
+        bsz, C = output.size()
+        inf_diag = torch.diag(-torch.ones((C)) / 0).unsqueeze(0).repeat(bsz, 1, 1).to(output.device)
+        neg_prop = (output.unsqueeze(1).expand(bsz, C, C) + inf_diag).logsumexp(-1) -output.logsumexp(-1).unsqueeze(1).repeat(1, C)
+        criterion = torch.nn.NLLLoss()
+        loss_pred = criterion(neg_prop, y_pred_orig)
+        loss_graph_dist = (
+            sum(sum(abs(cf_adj - self.adj))) / 2
+        )  # Number of edges changed (symmetrical)
+
+        # Zero-out loss_pred with pred_same if prediction flips
+        loss_total = pred_same * loss_pred + self.beta * loss_graph_dist
+        return loss_total, loss_pred, loss_graph_dist, cf_adj
+
     def get_pred_label(self, pred):
         return pred.argmax(dim=1)
 
