@@ -96,7 +96,7 @@ class Explain(object):
                 if self.graph_classification
                 else self.dataset.data
             )
-            if self.dataset_name.startswith(tuple(["ba", "tree"])):
+            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (self.dataset_name != "ba_2motifs"):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
                 )
@@ -105,8 +105,8 @@ class Explain(object):
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
-                top_f1_score, top_recall, top_precision, top_balanced_acc = np.nan, np.nan, np.nan, np.nan
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ba_2motifs"])):
+                top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
@@ -118,6 +118,7 @@ class Explain(object):
                             mask[unimportant_indices] = 0
                         else:
                             mask = mask_to_shape(mask, graph.edge_index, n)
+                        top_roc_auc_score = sklearn.metrics.roc_auc_score(true_explanation, mask)
                         pred_explanation[mask > 0] = 1
                         top_precision = sklearn.metrics.precision_score(
                             true_explanation, pred_explanation, pos_label=1
@@ -131,7 +132,7 @@ class Explain(object):
                         top_balanced_acc = sklearn.metrics.balanced_accuracy_score(true_explanation, pred_explanation)
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
-            entry = {"top_recall": top_recall, "top_precision": top_precision, "top_f1_score": top_f1_score, "top_balanced_acc": top_balanced_acc}
+            entry = {"top_roc_auc_score":top_roc_auc_score,"top_recall": top_recall, "top_precision": top_precision, "top_f1_score": top_f1_score, "top_balanced_acc": top_balanced_acc}
             scores.append(entry)
         scores = list_to_dict(scores)
         with warnings.catch_warnings():
@@ -153,7 +154,7 @@ class Explain(object):
                 if self.graph_classification
                 else self.dataset.data
             )
-            if self.dataset_name.startswith(tuple(["ba", "tree"])):
+            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (self.dataset_name != "ba_2motifs"):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
                 )
@@ -162,12 +163,13 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39"])):
-                f1_score, recall, precision, balanced_acc = np.nan, np.nan, np.nan, np.nan
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39","ba_2motifs"])):
+                f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
+                        roc_auc_score = sklearn.metrics.roc_auc_score(true_explanation, edge_mask)
                         pred_explanation = np.zeros(len(edge_mask))
                         pred_explanation[edge_mask > 0] = 1
                         precision = sklearn.metrics.precision_score(
@@ -183,7 +185,7 @@ class Explain(object):
                         num_explained_y_with_acc += 1
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
-            entry = {"recall": recall, "precision": precision, "f1_score": f1_score, "balanced_acc": balanced_acc}
+            entry = {"roc_auc_score":roc_auc_score, "recall": recall, "precision": precision, "f1_score": f1_score, "balanced_acc": balanced_acc}
             scores.append(entry)
         scores = list_to_dict(scores)
         with warnings.catch_warnings():
@@ -221,7 +223,7 @@ class Explain(object):
             accuracy_scores = self._eval_acc(edge_masks)
             top_accuracy_scores = self._eval_top_acc(edge_masks)
         else:
-            accuracy_scores, top_accuracy_scores = None, None
+            accuracy_scores, top_accuracy_scores = {}, {}
         fidelity_scores = self._eval_fid(related_preds)
         return top_accuracy_scores, accuracy_scores, fidelity_scores
 

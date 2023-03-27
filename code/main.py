@@ -160,44 +160,16 @@ def main(args, args_group):
         edge_masks_properties = get_mask_properties(edge_masks)
         # Evaluate scores of the masks
         top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
-        if accuracy_scores is None:
-            scores = {
-                key: value
-                for key, value in sorted(
-                    infos.items()
-                    | edge_masks_properties.items()
-                    | fidelity_scores.items()
-                    | params_transf.items()
-                )
-            }
-        if top_accuracy_scores is None:
-            scores = {
-                key: value
-                for key, value in sorted(
-                    infos.items()
-                    | {
-                        "num_top_edges": args.num_top_edges,
-                    }.items()
-                    | edge_masks_properties.items()
-                    | accuracy_scores.items()
-                    | fidelity_scores.items()
-                    | params_transf.items()
-                )
-            }
-        else:
-            scores = {
-                key: value
-                for key, value in sorted(
-                    infos.items()
-                    | {"num_top_edges": args.num_top_edges,
-                    }.items()
-                    | edge_masks_properties.items()
-                    | top_accuracy_scores.items()
-                    | accuracy_scores.items()
-                    | fidelity_scores.items()
-                    | params_transf.items()
-                )
-            }
+        eval_scores = {**top_accuracy_scores, **accuracy_scores, **fidelity_scores}
+        scores = {
+            key: value
+            for key, value in sorted(
+                infos.items()
+                | edge_masks_properties.items()
+                | eval_scores.items()
+                | params_transf.items()
+            )
+        }
         if i == 0:
             results = pd.DataFrame({k: [v] for k, v in scores.items()})
         else:
@@ -241,7 +213,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", "True", 3, 20, 1000, 0.001, 5e-3, 0.0, "max", 32)
+        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200)
 
     if (args.dataset_name.startswith(tuple(["ba", "tree"]))) & (args.dataset_name!="ba_2motifs"):
         (

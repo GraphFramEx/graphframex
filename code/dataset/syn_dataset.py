@@ -10,27 +10,8 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.utils import from_networkx
 from dataset.syn_utils.gengraph import *
 from torch_geometric.utils import dense_to_sparse
-from utils.gen_utils import padded_datalist
+from utils.gen_utils import padded_datalist, from_edge_index_to_adj
 
-
-def read_ba2motif_data(folder: str, prefix):
-    with open(os.path.join(folder, f"{prefix}.pkl"), 'rb') as f:
-        dense_edges, node_features, graph_labels = pickle.load(f)
-    data_list = []
-    adj_list = []
-    max_num_nodes = 0
-    for graph_idx in range(dense_edges.shape[0]):
-        print("graph_idx: ", graph_idx)
-        edge_index = dense_to_sparse(torch.from_numpy(dense_edges[graph_idx]))[0]
-        data = Data(x=torch.from_numpy(node_features[graph_idx]).float(),
-                              edge_index=edge_index,
-                              y=torch.from_numpy(np.where(graph_labels[graph_idx])[0]),
-                              idx=graph_idx)
-        data.edge_attr = torch.ones(data.edge_index.size(1))
-        max_num_nodes = max(max_num_nodes, data.num_nodes)
-        data_list.append(data)
-    data_list = padded_datalist(data_list, adj_list, max_num_nodes)
-    return data_list
 
 class SynGraphDataset(InMemoryDataset):
     r"""
@@ -97,7 +78,7 @@ class SynGraphDataset(InMemoryDataset):
             Data: converted synthetic Pytorch geometric Data object
         """
         if self.name.lower() == 'BA_2Motifs'.lower():
-            data_list = read_ba2motif_data(self.raw_dir, self.names[self.name][2])
+            data_list = self.read_ba2motif_data(self.raw_dir, self.names[self.name][2])
 
             if self.pre_filter is not None:
                 data_list = [self.get(idx) for idx in range(len(self))]
@@ -177,6 +158,27 @@ class SynGraphDataset(InMemoryDataset):
             frm_mask = (edge_index[0].unsqueeze(1) - connected_motif_nodes_tensor.unsqueeze(0) == 0).any(dim=1)
             to_mask = (edge_index[1].unsqueeze(1) - connected_motif_nodes_tensor.unsqueeze(0) == 0).any(dim=1)
             return torch.logical_and(frm_mask, to_mask)
+
+    def read_ba2motif_data(self, folder: str, prefix):
+        with open(os.path.join(folder, f"{prefix}.pkl"), 'rb') as f:
+            dense_edges, node_features, graph_labels = pickle.load(f)
+        data_list = []
+        adj_list = []
+        max_num_nodes = 0
+        for graph_idx in range(dense_edges.shape[0]):
+            edge_index = dense_to_sparse(torch.from_numpy(dense_edges[graph_idx]))[0]
+            data = Data(x=torch.from_numpy(node_features[graph_idx]).float(),
+                                edge_index=edge_index,
+                                y=torch.from_numpy(np.where(graph_labels[graph_idx])[0]),
+                                idx=graph_idx)
+            data.edge_attr = torch.ones(data.edge_index.size(1))
+            max_num_nodes = max(max_num_nodes, data.num_nodes)
+            data.edge_mask = self.gen_motif_edge_mask(data)
+            adj = from_edge_index_to_adj(data.edge_index, data.edge_attr, data.num_nodes)
+            adj_list.append(adj)
+            data_list.append(data)
+        data_list = padded_datalist(data_list, adj_list, max_num_nodes)
+        return data_list
 
 
     def __repr__(self):

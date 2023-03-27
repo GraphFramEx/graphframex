@@ -315,7 +315,7 @@ class MoleculeDataset(InMemoryDataset):
                     edge_index, edge_attr = edge_index[:, perm], edge_attr[perm]
 
                 adj = from_edge_index_to_adj(data.edge_index, data.edge_attr, data.num_nodes)
-                adj_list.add(adj)
+                adj_list.append(torch.from_numpy(adj).float())
                 data = Data(
                     x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles, idx = k, adj=adj
                 )
