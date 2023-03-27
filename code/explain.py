@@ -72,7 +72,6 @@ class Explain(object):
         self.directed = explainer_params["directed"]
         self.groundtruth = eval(explainer_params["groundtruth"])
         if self.groundtruth:
-            self.top_acc = explainer_params["top_acc"]
             self.num_top_edges = explainer_params["num_top_edges"]
 
     def get_ground_truth(self, **kwargs):
@@ -86,20 +85,6 @@ class Explain(object):
         else:
             raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
         return G_true_list
-
-    def get_true_expl_size(self, edge_masks):
-        expl_size_list = []
-        for i in range(len(self.explained_y)):
-            edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
-            graph = (
-                self.dataset[self.explained_y[i]]
-                if self.graph_classification
-                else self.dataset.data
-            )
-            true_explanation = graph.edge_mask
-            n = len(np.where(true_explanation == 1)[0])
-            expl_size_list.append(n)
-        return expl_size_list
 
     def _eval_top_acc(self, edge_masks):
         print("Top Accuracy is being computed...")
@@ -116,7 +101,7 @@ class Explain(object):
                     self.explained_y[i], self.data, self.dataset_name
                 )
                 G_expl = get_explanation_syn(
-                    graph, edge_mask, self.top_acc, self.num_top_edges
+                    graph, edge_mask, num_top_edges=self.num_top_edges, top_acc=True
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
@@ -173,7 +158,7 @@ class Explain(object):
                     self.explained_y[i], self.data, self.dataset_name
                 )
                 G_expl = get_explanation_syn(
-                    graph, edge_mask, self.top_acc, self.num_top_edges
+                    graph, edge_mask, num_top_edges=self.num_top_edges, top_acc=False
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
@@ -234,9 +219,9 @@ class Explain(object):
         )
         if self.groundtruth:
             accuracy_scores = self._eval_acc(edge_masks)
-            top_accuracy_scores = self._eval_top_acc(edge_masks) if self.top_acc else None
+            top_accuracy_scores = self._eval_top_acc(edge_masks)
         else:
-            accuracy_scores = None
+            accuracy_scores, top_accuracy_scores = None, None
         fidelity_scores = self._eval_fid(related_preds)
         return top_accuracy_scores, accuracy_scores, fidelity_scores
 

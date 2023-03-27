@@ -176,7 +176,6 @@ def main(args, args_group):
                 for key, value in sorted(
                     infos.items()
                     | {
-                        "top_acc": args.top_acc,
                         "num_top_edges": args.num_top_edges,
                     }.items()
                     | edge_masks_properties.items()
@@ -190,9 +189,7 @@ def main(args, args_group):
                 key: value
                 for key, value in sorted(
                     infos.items()
-                    | {
-                        "top_acc": args.top_acc,
-                        "num_top_edges": args.num_top_edges,
+                    | {"num_top_edges": args.num_top_edges,
                     }.items()
                     | edge_masks_properties.items()
                     | top_accuracy_scores.items()

@@ -7,7 +7,7 @@ import numpy as np
 from evaluate.mask_utils import mask_to_shape
 
 
-def get_explanation_syn(data, edge_mask, top_acc, num_top_edges):
+def get_explanation_syn(data, edge_mask, num_top_edges, top_acc):
     """Create an explanation graph from the edge_mask.
     Args:
         data (Pytorch data object): the initial graph as Data object

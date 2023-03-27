@@ -228,12 +228,6 @@ def arg_parse():
         default="mix",
     )  # ["correct", "wrong", "mix"]
     parser_explainer_params.add_argument(
-        "--top_acc",
-        help="Top accuracy for synthetic dataset only",
-        type=str,
-        default="False",
-    )
-    parser_explainer_params.add_argument(
         "--explained_target",
         help="the class you only want to explain; None otherwise",
         type=int,
