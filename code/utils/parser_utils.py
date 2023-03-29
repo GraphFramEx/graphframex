@@ -46,21 +46,13 @@ def get_graph_size_args(args):
 
 
 def get_data_args(dataset, args):
-    if args.dataset_name == "mutag":
-        args.num_classes = 2
-        args.num_node_features = 7
-    elif args.dataset_name.startswith(tuple(["ba", "tree"])):
-        if args.dataset_name=="ba_2motifs":
-            args.num_classes = max(np.unique(dataset.data.y.cpu().numpy()))+1
-        else:
-            args.num_classes = dataset.data.num_classes
-        args.num_node_features = dataset.data.x.size(1)
-    else:
-        args.num_classes = max(np.unique(dataset.data.y.cpu().numpy()))+1
-        args.num_node_features = dataset.data.x.size(1)
-
+    assert dataset.data.y.ndim == 1 # make sure it is a one class problem
+    args.num_classes = max(np.unique(dataset.data.y.cpu().numpy()))+1
+    args.num_node_features = dataset.data.x.size(1)
+    
     if dataset.data.edge_attr.ndim == 1:
         dataset.data.edge_attr = torch.unsqueeze(dataset.data.edge_attr, 1)
+    
     args.edge_dim = dataset.data.edge_attr.size(1)
     args.datatype = "binary" if args.num_classes == 2 else "multiclass"
     return args

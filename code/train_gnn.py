@@ -55,6 +55,8 @@ class TrainModel(object):
     def _train_batch(self, data, labels):
         logits = self.model(data=data)
         if self.graph_classification:
+            print("logits", logits.shape)
+            print("labels", labels.shape)
             loss = self.__loss__(logits, labels)
         else:
             loss = self.__loss__(logits[data.train_mask], labels[data.train_mask])

@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data, InMemoryDataset, download_url
-from utils.gen_utils import padded_datalist
+from utils.gen_utils import padded_datalist, from_edge_index_to_adj
 
 try:
     from rdkit import Chem
@@ -313,12 +313,11 @@ class MoleculeDataset(InMemoryDataset):
                 if edge_index.numel() > 0:
                     perm = (edge_index[0] * x.size(0) + edge_index[1]).argsort()
                     edge_index, edge_attr = edge_index[:, perm], edge_attr[perm]
-
-                adj = from_edge_index_to_adj(data.edge_index, data.edge_attr, data.num_nodes)
-                adj_list.append(torch.from_numpy(adj).float())
                 data = Data(
-                    x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles, idx = k, adj=adj
+                    x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles, idx = k
                 )
+                adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
+                adj_list.append(adj)
 
                 if self.pre_filter is not None and not self.pre_filter(data):
                     continue
@@ -326,7 +325,7 @@ class MoleculeDataset(InMemoryDataset):
                 if self.pre_transform is not None:
                     data = self.pre_transform(data)
 
-                max_num_node = max(max_num_node, data.num_nodes)
+                max_num_nodes = max(max_num_nodes, data.num_nodes)
                 data_list.append(data)
                 k += 1
             

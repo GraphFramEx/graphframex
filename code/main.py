@@ -31,8 +31,8 @@ def main(args, args_group):
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset, args)
-    dataset_params["num_classes"] = max(np.unique(dataset.data.y.cpu().numpy()))+1
-    dataset_params["num_node_features"] = dataset.data.x.size(1)
+    dataset_params["num_classes"] = args.num_classes
+    dataset_params["num_node_features"] =args.num_node_features
     print("num_classes:", dataset_params["num_classes"])
     print("num_node_features:", dataset_params["num_node_features"])
     print("dataset length:", len(dataset))
@@ -215,7 +215,7 @@ if __name__ == "__main__":
             args.batch_size,
         ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200)
 
-    if (args.dataset_name.startswith(tuple(["ba", "tree"]))) & (args.dataset_name!="ba_2motifs"):
+    if (args.dataset_name.startswith(tuple(["ba_", "tree_"]))) & (args.dataset_name!="ba_2motifs"):
         (
             args.groundtruth,
             args.graph_classification,
@@ -240,7 +240,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
         ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
-    elif args.dataset_name == "mutag":
+    elif args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
         (
             args.groundtruth,
             args.graph_classification,
@@ -252,7 +252,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 32)
+        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64)
     elif args.dataset_name.startswith("uk"):
         (
             args.groundtruth,
