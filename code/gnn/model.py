@@ -168,7 +168,7 @@ class GNNBase(nn.Module):
                 else:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
         if edge_weight is None:
-            edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32)
+            edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
         return x, edge_index, edge_attr, edge_weight, batch
 
 

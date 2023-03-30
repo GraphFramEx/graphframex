@@ -91,6 +91,7 @@ class TrainModel(object):
                 batch = batch.to(self.device)
                 loss, batch_preds = self._eval_batch(batch, batch.y)
                 losses.append(loss)
+                batch_preds, batch.y = batch_preds.cpu(), batch.y.cpu()
                 accs.append(batch_preds == batch.y)
                 balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
                 f1_scores.append(f1_score(batch.y, batch_preds, average="weighted"))
@@ -101,6 +102,7 @@ class TrainModel(object):
         else:
             data = self.dataset.data.to(self.device)
             eval_loss, preds = self._eval_batch(data, data.y, mask=data.val_mask)
+            preds, data.y = preds.cpu(), data.y.cpu()
             eval_acc = (preds == data.y).float().mean().item()
             eval_balanced_acc = balanced_accuracy_score(data.y, preds)
             eval_f1_score = f1_score(data.y, preds, average="weighted")
@@ -120,6 +122,7 @@ class TrainModel(object):
                 loss, batch_preds = self._eval_batch(batch, batch.y)
                 losses.append(loss)
                 preds.append(batch_preds)
+                batch_preds, batch.y = batch_preds.cpu(), batch.y.cpu()
                 accs.append(batch_preds == batch.y)
                 balanced_accs.append(balanced_accuracy_score(batch.y, batch_preds))
                 f1_scores.append(f1_score(batch.y, batch_preds, average="weighted"))
@@ -131,6 +134,7 @@ class TrainModel(object):
         else:
             data = self.dataset.data.to(self.device)
             test_loss, preds = self._eval_batch(data, data.y, mask=data.test_mask)
+            preds, y = preds.cpu(), data.y.cpu()
             test_acc = (preds == data.y).float().mean().item()
             test_balanced_acc = balanced_accuracy_score(data.y, preds)
             test_f1_score = f1_score(data.y, preds, average="weighted")

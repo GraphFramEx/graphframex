@@ -524,10 +524,10 @@ class Explain(object):
                 batch_size=len(self.dataset),
                 shuffle=True,
             )
-            data = next(iter(dataloader))
+            data = next(iter(dataloader)).to(self.device)
             logits = self.model(data)
-            pred_labels = logits.argmax(-1)[self.list_test_idx]
-            true_labels = self.dataset.data.y[self.list_test_idx]
+            pred_labels = logits.argmax(-1).cpu().numpy()[self.list_test_idx]
+            true_labels = self.dataset.data.y.cpu().numpy()[self.list_test_idx]
             if self.pred_type == "correct":
                 list_idx = np.where(pred_labels == true_labels)[0]
             elif self.pred_type == "wrong":
@@ -542,7 +542,7 @@ class Explain(object):
                 replace=False,
             )
         else:
-            logits = self.model(data=self.data)
+            logits = self.model(self.data)
             pred_labels = logits.argmax(-1).cpu().numpy()[self.list_test_idx]
             true_labels = self.data.y.cpu().numpy()[self.list_test_idx]
             if self.pred_type == "correct":
