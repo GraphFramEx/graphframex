@@ -393,9 +393,11 @@ def get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
 def get_cf_edge_mask(new_edge_index, edge_index):
     cmn_edge_idx = []
     edge_mask = torch.ones(edge_index.shape[1])
-    for i in range(len(new_edge_index.T)):
-        elmt = np.array(new_edge_index.T[i])
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==elmt,axis=1))[0]
+    new_edges = new_edge_index.T.cpu().numpy()
+    existing_edges = edge_index.T.cpu().numpy()
+    for i in range(len(new_edges)):
+        elmt = np.array(new_edges[i])
+        pos_new_edge = np.where(np.all(existing_edges==elmt,axis=1))[0]
         if pos_new_edge.size > 0:
             cmn_edge_idx.append(pos_new_edge[0])
     edge_mask[cmn_edge_idx] = 0

@@ -11,7 +11,6 @@ import time
 from utils.gen_utils import from_edge_index_to_adj, from_adj_to_edge_index, from_adj_to_edge_index_torch, from_edge_index_to_adj_torch, get_cf_edge_mask
 
 
-
 class GraphCFE(nn.Module):
     def __init__(self, init_params, device):
         super(GraphCFE, self).__init__()
@@ -256,7 +255,7 @@ def test(params):
         features = features.reshape(-1,max_num_nodes,features.size(1))
         adj = adj.reshape(-1,max_num_nodes,max_num_nodes)
         orin_index = data.idx
-        y_cf = y_cf_all[orin_index]
+        y_cf = y_cf_all[orin_index].to(device)
         y_cf = y_cf.reshape(-1,1)
         bs = len(orin_index)
         batch_padded = []

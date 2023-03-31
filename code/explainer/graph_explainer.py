@@ -368,10 +368,11 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
         print("Load saved GraphCFE model...")
         state_dict = torch.load(graphcfe_saving_path)
         graphcfe_model.load_state_dict(state_dict)
+        graphcfe_model = graphcfe_model.to(device)
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
         graphcfe_model = graphcfe_model.to(device)
-        train_params = {'epochs': 2000, 'model': graphcfe_model, 'pred_model': model, 'optimizer': optimizer,
+        train_params = {'epochs': 4000, 'model': graphcfe_model, 'pred_model': model, 'optimizer': optimizer,
                         'y_cf': y_cf_all,
                         'train_loader': loader['train'], 'val_loader': loader['eval'], 'test_loader': loader['test'],
                         'dataset': dataset_name, 'metrics': metrics, 'save_model': False}

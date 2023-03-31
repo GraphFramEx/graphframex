@@ -137,30 +137,62 @@ class UK(InMemoryDataset):
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
                 ).view(1, -1)
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
                 )
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+            if data_type == "Binary_DNS" or data_type == "binary_dns":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 1):
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+                else:
+                    continue
+            
             if data_type == "Multiclass" or data_type == "multiclass":
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                # Fill Data object, 1 Data object -> 1 graph
+                data = Data(
+                    x=x,
+                    edge_index=edge_iw,
+                    edge_attr=f_totw,
+                    y=ydata,
+                    edge_mask=e_mask_post,
+                    idx=i,
+                )
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:
                     ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
-
-            # Fill Data object, 1 Data object -> 1 graph
-            data = Data(
-                x=x,
-                edge_index=edge_iw,
-                edge_attr=f_totw,
-                y=ydata,
-                edge_mask=e_mask_post,
-                idx=i,
-            )
-            if data_type == "Multiclass" or data_type == "multiclass":
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
@@ -301,30 +333,62 @@ class IEEE24(InMemoryDataset):
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
                 ).view(1, -1)
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
                 )
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+            if data_type == "Binary_DNS" or data_type == "binary_dns":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 1):
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+                else:
+                    continue
+            
             if data_type == "Multiclass" or data_type == "multiclass":
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                # Fill Data object, 1 Data object -> 1 graph
+                data = Data(
+                    x=x,
+                    edge_index=edge_iw,
+                    edge_attr=f_totw,
+                    y=ydata,
+                    edge_mask=e_mask_post,
+                    idx=i,
+                )
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:
                     ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
-
-            # Fill Data object, 1 Data object -> 1 graph
-            data = Data(
-                x=x,
-                edge_index=edge_iw,
-                edge_attr=f_totw,
-                y=ydata,
-                edge_mask=e_mask_post,
-                idx=i,
-            )
-            if data_type == "Multiclass" or data_type == "multiclass":
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
@@ -465,30 +529,62 @@ class IEEE39(InMemoryDataset):
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
                 ).view(1, -1)
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
                 )
+                data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+            if data_type == "Binary_DNS" or data_type == "binary_dns":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 1):
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=i,
+                    )
+                else:
+                    continue
+            
             if data_type == "Multiclass" or data_type == "multiclass":
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
                 ).view(1, -1)
+                # Fill Data object, 1 Data object -> 1 graph
+                data = Data(
+                    x=x,
+                    edge_index=edge_iw,
+                    edge_attr=f_totw,
+                    y=ydata,
+                    edge_mask=e_mask_post,
+                    idx=i,
+                )
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:
                     ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
-
-            # Fill Data object, 1 Data object -> 1 graph
-            data = Data(
-                x=x,
-                edge_index=edge_iw,
-                edge_attr=f_totw,
-                y=ydata,
-                edge_mask=e_mask_post,
-                idx=i,
-            )
-            if data_type == "Multiclass" or data_type == "multiclass":
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)

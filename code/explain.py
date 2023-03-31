@@ -107,12 +107,13 @@ class Explain(object):
                 top_balanced_acc = None
             elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ba_2motifs"])):
                 top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
+                edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
                         pred_explanation = np.zeros(len(edge_mask))
-                        mask = edge_mask.detach().numpy().copy()
+                        mask = edge_mask.copy()
                         if eval(self.directed):
                             unimportant_indices = (-mask).argsort()[n+1:]
                             mask[unimportant_indices] = 0
@@ -165,6 +166,7 @@ class Explain(object):
                 num_explained_y_with_acc += 1
             elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39","ba_2motifs"])):
                 f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
+                edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
                     true_explanation = graph.edge_mask
                     n = len(np.where(true_explanation == 1)[0])
@@ -232,6 +234,7 @@ class Explain(object):
         for i in range(self.num_explained_y):
             explained_y_idx = self.explained_y[i]
             data = self.dataset[explained_y_idx]
+            data = data.to(self.device)
             data.batch = torch.zeros(data.x.shape[0], dtype=int, device=data.x.device)
             ori_prob_idx = self.model.get_prob(data).cpu().detach().numpy()[0]
             if node_feat_masks[0] is not None:
