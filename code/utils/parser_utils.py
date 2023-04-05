@@ -1,11 +1,13 @@
 import argparse
 import numpy as np
 import torch
+import random
 from utils.path import DATA_DIR, LOG_DIR, MODEL_DIR, RESULT_DIR, MASK_DIR
 
 
 def fix_random_seed(seed):
     np.random.seed(seed)
+    random.seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
 
@@ -308,3 +310,4 @@ def create_args_group(parser, args):
         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
         arg_groups[group.title] = group_dict
     return arg_groups
+

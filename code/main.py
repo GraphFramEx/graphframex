@@ -1,9 +1,9 @@
 import os
-from evaluate.mask_utils import get_mask_properties
-from explain import Explain
+from explain import explain_main
 import torch
 import numpy as np
 import pandas as pd
+import random
 from gnn.model import get_gnnNets
 from train_gnn import TrainModel
 from gendata import get_dataset
@@ -33,6 +33,18 @@ def main(args, args_group):
     args = get_data_args(dataset, args)
     dataset_params["num_classes"] = args.num_classes
     dataset_params["num_node_features"] =args.num_node_features
+
+     # Select unseen data to test generalization capacity
+    if eval(args.graph_classification):
+        n, num_test = len(dataset), 10
+        list_index = random.sample(range(n), num_test)
+        unseen_mask = np.zeros(n, dtype=bool)
+        unseen_mask[list_index] = True
+        unseen_dataset = dataset[unseen_mask]
+        unseen_dataset.data, unseen_dataset.slices = dataset.collate([data for data in unseen_dataset])
+        dataset = dataset[~unseen_mask]
+        dataset.data, dataset.slices = dataset.collate([data for data in dataset])
+        
     print("num_classes:", dataset_params["num_classes"])
     print("num_node_features:", dataset_params["num_node_features"])
     print("dataset length:", len(dataset))
@@ -40,8 +52,11 @@ def main(args, args_group):
         dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
     else:
         dataset_params["max_num_nodes"] = dataset.data.num_nodes
+    args.max_num_nodes = dataset_params["max_num_nodes"]
     args.edge_dim = dataset.data.edge_attr.size(1)
     model_params["edge_dim"] = args.edge_dim
+
+    
     if eval(args.graph_classification):
         dataloader_params = {
             "batch_size": args.batch_size,
@@ -83,118 +98,10 @@ def main(args, args_group):
         )
     _, _, _, _, _ = trainer.test()
 
-    additional_args = {
-        "dataset_name": args.dataset_name,
-        "dataset": dataset,
-        "model_name": args.model_name,
-        "max_num_nodes": dataset_params["max_num_nodes"],
-        "hidden_dim": args.hidden_dim,
-        "num_top_edges": args.num_top_edges,
-        "num_layers": args.num_layers,
-        "dropout": args.dropout,
-        "readout": args.readout,
-        "edge_dim": dataset.data.edge_attr.size(1),
-        "num_node_features": args.num_node_features,
-        "num_classes": args.num_classes,
-        "model_save_dir": args.model_save_dir,
-    }
+    explain_main(dataset, trainer.model, device, args)
     if eval(args.graph_classification):
-        additional_args.update(dataloader_params)
+        explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
 
-    mask_save_name = "mask_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
-        args.dataset_name,
-        args.model_name,
-        args.explainer_name,
-        args.focus,
-        args.num_explained_y,
-        args.explained_target,
-        args.pred_type,
-        args.seed,
-    )
-    if args.explained_target is None:
-        list_test_idx = range(0, len(dataset.data.y))
-    else:
-        list_test_idx = np.where(dataset.data.y == args.explained_target)[0]
-    explainer = Explain(
-        model=trainer.model,
-        dataset=dataset,
-        device=device,
-        graph_classification=eval(args.graph_classification),
-        list_test_idx=list_test_idx,
-        dataset_name=args.dataset_name,
-        explainer_params={**args_group["explainer_params"], **additional_args},
-        save_dir=None
-        if args.mask_save_dir=="None"
-        else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
-        save_name=mask_save_name,
-    )
-
-    (
-        explained_y,
-        edge_masks,
-        node_feat_masks,
-        computation_time,
-    ) = explainer.compute_mask()
-    edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
-
-    infos = {
-        "dataset": args.dataset_name,
-        "model": args.model_name,
-        "datatype": args.datatype,
-        "explainer": args.explainer_name,
-        "focus": args.focus,
-        "mask_nature": args.mask_nature,
-        "pred_type": args.pred_type,
-        "time": float(format(np.mean(computation_time), ".4f")),
-    }
-
-    if (edge_masks is None) or (not edge_masks):
-        raise ValueError("Edge masks are None")
-    params_lst = eval(explainer.transf_params)
-    params_lst.insert(0, None)
-    edge_masks_ori = edge_masks.copy()
-    for i, param in enumerate(params_lst):
-        params_transf = {explainer.mask_transformation: param}
-        edge_masks = explainer._transform(edge_masks_ori, param)
-        # Compute mask properties
-        edge_masks_properties = get_mask_properties(edge_masks)
-        # Evaluate scores of the masks
-        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
-        eval_scores = {**top_accuracy_scores, **accuracy_scores, **fidelity_scores}
-        scores = {
-            key: value
-            for key, value in sorted(
-                infos.items()
-                | edge_masks_properties.items()
-                | eval_scores.items()
-                | params_transf.items()
-            )
-        }
-        if i == 0:
-            results = pd.DataFrame({k: [v] for k, v in scores.items()})
-        else:
-            results = results.append(scores, ignore_index=True)
-    ### Save results ###
-    save_path = os.path.join(
-        args.result_save_dir, args.dataset_name, args.explainer_name
-    )
-    os.makedirs(save_path, exist_ok=True)
-    results.to_csv(
-        os.path.join(
-            save_path,
-            "results_{}_{}_{}_{}_{}_{}_target{}_{}_{}.csv".format(
-                args.dataset_name,
-                args.model_name,
-                args.explainer_name,
-                args.focus,
-                args.mask_nature,
-                args.num_explained_y,
-                args.explained_target,
-                args.pred_type,
-                args.seed,
-            ),
-        )
-    )
 
 
 if __name__ == "__main__":

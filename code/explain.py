@@ -4,6 +4,7 @@ import sklearn.metrics
 import torch
 import pickle
 import numpy as np
+import pandas as pd
 import warnings
 from evaluate.fidelity import (
     fidelity_acc,
@@ -23,7 +24,7 @@ from evaluate.accuracy import (
     get_explanation_syn,
     get_scores,
 )
-from evaluate.mask_utils import mask_to_shape, clean, control_sparsity
+from evaluate.mask_utils import mask_to_shape, clean, control_sparsity, get_mask_properties
 from explainer.node_explainer import *
 from explainer.graph_explainer import *
 from pathlib import Path
@@ -36,9 +37,7 @@ class Explain(object):
         model,
         dataset,
         device,
-        graph_classification,
         list_test_idx,
-        dataset_name,
         explainer_params,
         save_dir=None,
         save_name="mask",
@@ -46,9 +45,8 @@ class Explain(object):
         self.model = model
         self.dataset = dataset  # train_mask, eval_mask, test_mask
         self.data = dataset.data
-        self.dataset_name = dataset_name
+        self.dataset_name = explainer_params["dataset_name"]
         self.device = device
-
         self.save = save_dir is not None
         self.save_dir = save_dir
         self.save_name = save_name
@@ -56,7 +54,7 @@ class Explain(object):
             check_dir(self.save_dir)
 
         self.explainer_params = explainer_params
-        self.graph_classification = graph_classification
+        self.graph_classification = eval(explainer_params["graph_classification"])
         self.task = "_graph" if self.graph_classification else "_node"
 
         self.list_test_idx = list_test_idx
@@ -406,7 +404,7 @@ class Explain(object):
         return related_preds
 
     def _compute_graph(self, explained_y_idx):
-        data = self.dataset[explained_y_idx]
+        data = self.dataset[explained_y_idx].to(self.device)
         if self.focus == "phenomenon":
             target = data.y
         else:
@@ -428,7 +426,8 @@ class Explain(object):
             targets = self.data.y
         else:
             self.model.eval()
-            out = self.model(data=self.data)
+            data = self.data.to(self.device)
+            out = self.model(data=data)
             targets = torch.LongTensor(out.argmax(dim=1).detach().cpu().numpy()).to(
                 self.device
             )
@@ -578,3 +577,115 @@ class Explain(object):
         explained_y, edge_masks, node_feat_masks, computation_time = tuple(w_list)
         self.explained_y = explained_y
         return explained_y, edge_masks, node_feat_masks, computation_time
+
+
+def get_mask_dir_path(args, unseen=False):
+    unseen_str = "_unseen" if unseen else ""
+    mask_save_name = "mask{}_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
+        unseen_str,
+        args.dataset_name,
+        args.model_name,
+        args.explainer_name,
+        args.focus,
+        args.num_explained_y,
+        args.explained_target,
+        args.pred_type,
+        args.seed,
+    )
+    return mask_save_name
+
+
+def explain_main(dataset, model, device, args, unseen=False):
+
+    mask_save_name = get_mask_dir_path(args)
+
+    if unseen:
+        args.prediction_type = "mix"
+        args.mask_save_dir="None"
+        args.num_explained_y = len(dataset)
+    
+    if (args.explained_target is None) | (unseen):
+        list_test_idx = range(0, len(dataset.data.y))
+    else:
+        list_test_idx = np.where(dataset.data.y == args.explained_target)[0]
+    explainer = Explain(
+        model=model,
+        dataset=dataset,
+        device=device,
+        list_test_idx=list_test_idx,
+        explainer_params=vars(args),
+        save_dir=None
+        if args.mask_save_dir=="None"
+        else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
+        save_name=mask_save_name,
+    )
+
+    (
+        explained_y,
+        edge_masks,
+        node_feat_masks,
+        computation_time,
+    ) = explainer.compute_mask()
+    edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
+
+    infos = {
+        "dataset": args.dataset_name,
+        "model": args.model_name,
+        "datatype": args.datatype,
+        "explainer": args.explainer_name,
+        "focus": args.focus,
+        "mask_nature": args.mask_nature,
+        "pred_type": args.pred_type,
+        "time": float(format(np.mean(computation_time), ".4f")),
+    }
+
+    if (edge_masks is None) or (not edge_masks):
+        raise ValueError("Edge masks are None")
+    params_lst = eval(explainer.transf_params)
+    params_lst.insert(0, None)
+    edge_masks_ori = edge_masks.copy()
+    for i, param in enumerate(params_lst):
+        params_transf = {explainer.mask_transformation: param}
+        edge_masks = explainer._transform(edge_masks_ori, param)
+        # Compute mask properties
+        edge_masks_properties = get_mask_properties(edge_masks)
+        # Evaluate scores of the masks
+        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
+        eval_scores = {**top_accuracy_scores, **accuracy_scores, **fidelity_scores}
+        scores = {
+            key: value
+            for key, value in sorted(
+                infos.items()
+                | edge_masks_properties.items()
+                | eval_scores.items()
+                | params_transf.items()
+            )
+        }
+        if i == 0:
+            results = pd.DataFrame({k: [v] for k, v in scores.items()})
+        else:
+            results = results.append(scores, ignore_index=True)
+    ### Save results ###
+    save_path = os.path.join(
+        args.result_save_dir, args.dataset_name, args.explainer_name
+    )
+    os.makedirs(save_path, exist_ok=True)
+    unseen_str = "_unseen" if unseen else ""
+    results.to_csv(
+        os.path.join(
+            save_path,
+            "results{}_{}_{}_{}_{}_{}_{}_target{}_{}_{}.csv".format(
+                unseen_str,
+                args.dataset_name,
+                args.model_name,
+                args.explainer_name,
+                args.focus,
+                args.mask_nature,
+                args.num_explained_y,
+                args.explained_target,
+                args.pred_type,
+                args.seed,
+            ),
+        )
+    )
+
