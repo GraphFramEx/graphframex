@@ -43,14 +43,14 @@ def padded_datalist(data_list, adj_list, max_num_nodes):
 def padding_graphs(adj, max_num_nodes):
     num_nodes = adj.shape[0]
     adj_padded = np.eye((max_num_nodes))
-    adj_padded[:num_nodes, :num_nodes] = adj
+    adj_padded[:num_nodes, :num_nodes] = adj.cpu()
     return torch.tensor(adj_padded, dtype=torch.long)
 
 def padding_features(features, max_num_nodes):
     feat_dim = features.shape[1]
     num_nodes = features.shape[0]
     features_padded = np.zeros((max_num_nodes, feat_dim))
-    features_padded[:num_nodes] = features
+    features_padded[:num_nodes] = features.cpu()
     return torch.tensor(features_padded, dtype=torch.float)
 
 

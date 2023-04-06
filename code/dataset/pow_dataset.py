@@ -100,6 +100,7 @@ class UK(InMemoryDataset):
         data_list = []
         adj_list = []
         max_num_nodes = 0
+        index = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -143,8 +144,9 @@ class UK(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
@@ -155,8 +157,9 @@ class UK(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Binary_DNS" or data_type == "binary_dns":
                 # do argmax
                 ydata = torch.tensor(
@@ -170,8 +173,30 @@ class UK(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
+                        idx=index,
                     )
+                    index += 1
+                else:
+                    continue
+
+            if data_type == "Binary_CF" or data_type == "binary_cf":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 2):
+                    if ydata==2:
+                        ydata=1
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=index,
+                    )
+                    index += 1
                 else:
                     continue
             
@@ -187,8 +212,9 @@ class UK(InMemoryDataset):
                     edge_attr=f_totw,
                     y=ydata,
                     edge_mask=e_mask_post,
-                    idx=i,
+                    idx=index,
                 )
+                index += 1
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:
@@ -296,6 +322,7 @@ class IEEE24(InMemoryDataset):
         data_list = []
         adj_list = []
         max_num_nodes = 0
+        index = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -339,8 +366,9 @@ class IEEE24(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
@@ -351,8 +379,9 @@ class IEEE24(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Binary_DNS" or data_type == "binary_dns":
                 # do argmax
                 ydata = torch.tensor(
@@ -366,8 +395,30 @@ class IEEE24(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
+                        idx=index,
                     )
+                    index += 1
+                else:
+                    continue
+
+            if data_type == "Binary_CF" or data_type == "binary_cf":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 2):
+                    if ydata==2:
+                        ydata=1
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=index,
+                    )
+                    index += 1
                 else:
                     continue
             
@@ -383,8 +434,9 @@ class IEEE24(InMemoryDataset):
                     edge_attr=f_totw,
                     y=ydata,
                     edge_mask=e_mask_post,
-                    idx=i,
+                    idx=index,
                 )
+                index += 1
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:
@@ -492,6 +544,7 @@ class IEEE39(InMemoryDataset):
         data_list = []
         adj_list = []
         max_num_nodes = 0
+        index = 0
         # MAIN data processing loop
         for i in range(len(node_f)):
             # node feat
@@ -535,8 +588,9 @@ class IEEE39(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Regression" or data_type == "regression":
                 ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
                     1, -1
@@ -547,8 +601,9 @@ class IEEE39(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
-                    )
+                        idx=index,
+                )
+                index += 1
             if data_type == "Binary_DNS" or data_type == "binary_dns":
                 # do argmax
                 ydata = torch.tensor(
@@ -562,8 +617,30 @@ class IEEE39(InMemoryDataset):
                         edge_attr=f_totw,
                         y=ydata,
                         edge_mask=e_mask_post,
-                        idx=i,
+                        idx=index,
                     )
+                    index += 1
+                else:
+                    continue
+
+            if data_type == "Binary_CF" or data_type == "binary_cf":
+                # do argmax
+                ydata = torch.tensor(
+                    np.argmax(of_mc[i][0]), dtype=torch.int, device=device
+                ).view(1, -1)
+                if (ydata == 0) | (ydata == 2):
+                    if ydata==2:
+                        ydata=1
+                    # Fill Data object, 1 Data object -> 1 graph
+                    data = Data(
+                        x=x,
+                        edge_index=edge_iw,
+                        edge_attr=f_totw,
+                        y=ydata,
+                        edge_mask=e_mask_post,
+                        idx=index,
+                    )
+                    index += 1
                 else:
                     continue
             
@@ -579,8 +656,9 @@ class IEEE39(InMemoryDataset):
                     edge_attr=f_totw,
                     y=ydata,
                     edge_mask=e_mask_post,
-                    idx=i,
+                    idx=index,
                 )
+                index += 1
                 if ydata == 0:
                     ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
                 else:

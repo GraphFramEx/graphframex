@@ -4,6 +4,7 @@ import random
 import torch
 import torch.nn.functional as F
 import random
+import time
 from captum.attr import IntegratedGradients, Saliency
 from torch.autograd import Variable
 from torch_geometric.data import Data
@@ -245,6 +246,7 @@ def explain_gradcam_graph(model, data, target, device, **kwargs):
 
 
 def explain_pgexplainer_graph(model, data, target, device, **kwargs):
+    seed = kwargs['seed']
     pgexplainer = PGExplainer(
         model,
         in_channels=kwargs["hidden_dim"] * 2,
@@ -255,16 +257,20 @@ def explain_pgexplainer_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
     subdir = os.path.join(kwargs["model_save_dir"], "pgexplainer")
     os.makedirs(subdir, exist_ok=True)
-    pgexplainer_saving_path = os.path.join(subdir, f"pgexplainer_{dataset_name}.pth")
+    pgexplainer_saving_path = os.path.join(subdir, f"pgexplainer_{dataset_name}_{seed}.pth")
     if os.path.isfile(pgexplainer_saving_path):
         print("Load saved PGExplainer model...")
         state_dict = torch.load(pgexplainer_saving_path)
         pgexplainer.load_state_dict(state_dict)
     else:
         data = sample_large_graph(data)
+        t0 = time.time()
         pgexplainer.train_explanation_network(kwargs["dataset"][:200])
+        train_time = time.time() - t0
         print("Save PGExplainer model...")
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
+        with open(os.path.join(subdir, f"pgexplainer_train_time.json"), "w") as f:
+            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
     embed = model.get_emb(data=data)
     _, edge_mask = pgexplainer.explain(
         data.x, data.edge_index, data.edge_attr, embed=embed, tmp=1.0, training=False
@@ -332,17 +338,10 @@ def explain_cfgnnexplainer_graph(model, data, target, device, **kwargs):
 
 def explain_graphcfe_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
-    # y_cf
-    if kwargs["num_classes"] == 2:
-        y_cf_all = 1 - np.array(kwargs["dataset"].data.y)
-    else:
-        y_cf_all = []
-        for y in np.array(kwargs["dataset"].data.y):
-            y_cf_all.append(y+1 if y < kwargs["num_classes"] - 1 else 0)
-    y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+    y_cf_all = kwargs['y_cf_all']
+    seed = kwargs["seed"]
 
     # data loader
-    print("length dataset: ", len(kwargs["dataset"]))
     train_size = min(len(kwargs["dataset"]), 500)
     explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
     explain_dataset = kwargs["dataset"][explain_dataset_idx]
@@ -359,7 +358,7 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
 
     subdir = os.path.join(kwargs["model_save_dir"], "graphcfe")
     os.makedirs(subdir, exist_ok=True)
-    graphcfe_saving_path = os.path.join(subdir, f"graphcfe_{dataset_name}.pth")
+    graphcfe_saving_path = os.path.join(subdir, f"graphcfe_{dataset_name}_{seed}.pth")
      # model
     init_params = {'hidden_dim': kwargs["hidden_dim"], 'dropout': kwargs["dropout"], 'num_node_features': kwargs["num_node_features"], 'max_num_nodes': kwargs["max_num_nodes"]}
     graphcfe_model = GraphCFE(init_params=init_params, device=device)
@@ -376,9 +375,13 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
                         'y_cf': y_cf_all,
                         'train_loader': loader['train'], 'val_loader': loader['eval'], 'test_loader': loader['test'],
                         'dataset': dataset_name, 'metrics': metrics, 'save_model': False}
+        t0 = time.time()
         train(train_params)
+        train_time = time.time() - t0
         print("Save GraphCFE model...")
         torch.save(graphcfe_model.state_dict(), graphcfe_saving_path)
+        with open(os.path.join(subdir, f"graphcfe_train_time.json"), "w") as f:
+            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
     # test
     test_params = {'model': graphcfe_model, 'dataset': dataset_name, 'data_loader': loader['test'], 'pred_model': model,
                        'metrics': metrics, 'y_cf': y_cf_all}

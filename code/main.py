@@ -34,6 +34,14 @@ def main(args, args_group):
     dataset_params["num_classes"] = args.num_classes
     dataset_params["num_node_features"] =args.num_node_features
 
+    if args.num_classes == 2:
+        y_cf_all = 1 - np.array(dataset.data.y)
+    else:
+        y_cf_all = []
+        for y in np.array(dataset.data.y):
+            y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
+    args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+
      # Select unseen data to test generalization capacity
     if eval(args.graph_classification):
         n, num_test = len(dataset), 10
@@ -58,10 +66,11 @@ def main(args, args_group):
 
     
     if eval(args.graph_classification):
+        args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
         dataloader_params = {
             "batch_size": args.batch_size,
             "random_split_flag": eval(args.random_split_flag),
-            "data_split_ratio": [args.train_ratio, args.val_ratio, args.test_ratio],
+            "data_split_ratio": args.data_split_ratio,
             "seed": args.seed,
         }
     model = get_gnnNets(

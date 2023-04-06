@@ -39,15 +39,17 @@ def get_dataset(dataset_root, **kwargs):
             datatype = "multiclass"
         elif dataset_name.lower().endswith("bin_dns"):
             datatype = "binary_dns"
+        elif dataset_name.lower().endswith("bin_cf"):
+            datatype = "binary_cf"
         elif dataset_name.lower().endswith("bin"): # binary
             datatype = "binary"
         else:
             raise ValueError(f"{dataset_name} is not defined.")
-        if dataset_name.lower() in ["uk_mc", "uk_bin", "uk_bin_dns"]:
+        if dataset_name.lower() in ["uk_mc", "uk_bin", "uk_bin_dns", "uk_bin_cf"]:
             return UK(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee24_mc", "ieee24_bin", "ieee24_bin_dns"]:
+        elif dataset_name.lower() in ["ieee24_mc", "ieee24_bin", "ieee24_bin_dns", "ieee24_bin_cf"]:
             return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin", "ieee39_bin_dns"]:
+        elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin", "ieee39_bin_dns", "ieee39_bin_cf"]:
             return IEEE39(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ukcontrnd_mc", "ukcontrnd_bin"]:
             return UKContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
