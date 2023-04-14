@@ -47,7 +47,7 @@ class TrainModel(object):
 
         if self.graph_classification:
             dataloader_params = kwargs.get("dataloader_params")
-            self.loader = get_dataloader(dataset, **dataloader_params)
+            self.loader, _, _, _ = get_dataloader(dataset, **dataloader_params)
 
     def __loss__(self, logits, labels):
         return F.cross_entropy(logits, labels)

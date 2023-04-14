@@ -107,7 +107,7 @@ class Explain(object):
                 top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
-                    true_explanation = graph.edge_mask
+                    true_explanation = graph.edge_mask.cpu().numpy()
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
                         pred_explanation = np.zeros(len(edge_mask))
@@ -166,7 +166,7 @@ class Explain(object):
                 f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
-                    true_explanation = graph.edge_mask
+                    true_explanation = graph.edge_mask.cpu().numpy()
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
                         roc_auc_score = sklearn.metrics.roc_auc_score(true_explanation, edge_mask)
@@ -608,7 +608,7 @@ def explain_main(dataset, model, device, args, unseen=False):
     if (args.explained_target is None) | (unseen):
         list_test_idx = range(0, len(dataset.data.y))
     else:
-        list_test_idx = np.where(dataset.data.y == args.explained_target)[0]
+        list_test_idx = np.where(dataset.data.y.cpu().numpy() == args.explained_target)[0]
     explainer = Explain(
         model=model,
         dataset=dataset,

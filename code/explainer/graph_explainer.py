@@ -5,6 +5,9 @@ import torch
 import torch.nn.functional as F
 import random
 import time
+import json
+import dill
+import argparse
 from captum.attr import IntegratedGradients, Saliency
 from torch.autograd import Variable
 from torch_geometric.data import Data
@@ -30,6 +33,9 @@ from explainer.subgraphx import SubgraphX
 from explainer.gradcam import GraphLayerGradCam
 from explainer.cfgnnexplainer import CFExplainer
 from explainer.graphcfe import GraphCFE, train, test, baseline_cf, add_list_in_dict, compute_counterfactual
+from explainer.gflowexplainer import GFlowExplainer, gflow_parse_args
+from explainer.rcexplainer import RCExplainer_Batch, train_rcexplainer
+from explainer.explainer_utils import test_policy
 from gendata import get_dataset, get_dataloader
 
 
@@ -351,7 +357,7 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
         "data_split_ratio": kwargs["data_split_ratio"],
         "seed": kwargs["seed"],
     }
-    loader = get_dataloader(explain_dataset, **dataloader_params)
+    loader, _, _, _ = get_dataloader(explain_dataset, **dataloader_params)
     
     # metrics
     metrics = ['validity', 'proximity_x', 'proximity_a']
@@ -414,7 +420,90 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
             print(k, f": {eval_results[k]:.4f}")
     return edge_mask, None
 
+def function_with_args_and_default_kwargs(dict_args, optional_args=None):
+    parser = argparse.ArgumentParser()
+    # add some arguments
+    # add the other arguments
+    for k, v in dict_args.items():
+        parser.add_argument('--' + k, default=v)
+    # args = parser.parse_args(optional_args)
+    return parser
 
+def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
+    dataset_name = kwargs["dataset_name"]
+    seed = kwargs["seed"]
+    gflowexplainer = GFlowExplainer(model, device)
+    subdir = os.path.join(kwargs["model_save_dir"], "gflowexplainer")
+    os.makedirs(subdir, exist_ok=True)
+    gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{seed}.pickle")
+    parser = function_with_args_and_default_kwargs(dict_args=kwargs, optional_args=None)
+    print("parser: ", parser)
+    train_params = gflow_parse_args(parser)
+    if os.path.isfile(gflowexplainer_saving_path):
+        print("Load saved GFlowExplainer model...")
+        gflowexplainer_model = dill.load(open(gflowexplainer_saving_path, "rb"))
+        gflowexplainer_model = gflowexplainer_model.to(device)
+    else:
+        train_size = min(len(kwargs["dataset"]), 500)
+        explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
+        explain_dataset = kwargs["dataset"][explain_dataset_idx]
+        t0 = time.time()
+        gflowexplainer_model = gflowexplainer.train_explainer(train_params, explain_dataset, **kwargs)
+        train_time = time.time() - t0
+        print("Save GFlowExplainer model...")
+        # Save the file
+        dill.dump(gflowexplainer_model, file = open(gflowexplainer_saving_path, "wb"))
+        with open(os.path.join(subdir, f"gflowexplainer_train_time.json"), "w") as f:
+            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
+
+    # foward_multisteps - origin of this function?
+    _, edge_mask = gflowexplainer_model.foward_multisteps(data, gflowexplainer.model)
+    # convert removal priority into importance score: rank 3 --> importance score 3/num_edges
+    edge_mask = edge_mask/len(edge_mask)
+    # edge_mask[i]: indicate the edge of the i-th removal
+    # edge_mask = [0,6,3,2,5,4,1] --> [0,1] should be removed first (rank 0), [6,0] should be removed second (rank 1)
+    # edge_index = [[0,0,2,3,4,5,6], [1,2,3,4,5,6,0]]
+    return edge_mask, None
+
+def explain_rcexplainer_graph(model, data, target, device, **kwargs):
+    dataset_name = kwargs["dataset_name"]
+    seed = kwargs["seed"]
+    rcexplainer = RCExplainer_Batch(model, device, kwargs['num_classes'], hidden_size=16)
+    subdir = os.path.join(kwargs["model_save_dir"], "rcexplainer")
+    os.makedirs(subdir, exist_ok=True)
+    rcexplainer_saving_path = os.path.join(subdir, f"rcexplainer_{dataset_name}_{seed}.pickle")
+    if os.path.isfile(rcexplainer_saving_path):
+        print("Load saved RCExplainer model...")
+        rcexplainer_model = dill.load(open(rcexplainer_saving_path, "rb"))
+        rcexplainer_model = rcexplainer_model.to(device)
+    else:
+       # data loader
+        train_size = min(len(kwargs["dataset"]), 500)
+        explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
+        explain_dataset = kwargs["dataset"][explain_dataset_idx]
+        dataloader_params = {
+            "batch_size": 32, # kwargs["batch_size"],
+            "random_split_flag": kwargs["random_split_flag"],
+            "data_split_ratio": kwargs["data_split_ratio"],
+            "seed": kwargs["seed"],
+        }
+        loader, train_dataset, _, test_dataset = get_dataloader(explain_dataset, **dataloader_params)
+        t0 = time.time()
+        lr, weight_decay, topk_ratio = 0.01, 1e-5, 1.0
+        rcexplainer_model = train_rcexplainer(rcexplainer, train_dataset, test_dataset, loader, dataloader_params['batch_size'], lr, weight_decay, topk_ratio)
+        train_time = time.time() - t0
+        print("Save RCExplainer model...")
+        dill.dump(rcexplainer_model, file = open(rcexplainer_saving_path, "wb"))
+        with open(os.path.join(subdir, f"rcexplainer_train_time.json"), "w") as f:
+            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
     
+    max_budget = data.num_edges
+    state = torch.zeros(max_budget, dtype=torch.bool)
+    data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
+    edge_ranking = test_policy(rcexplainer_model, model, data, device)
+    edge_mask = 1 - edge_ranking/len(edge_ranking)
+    # edge_mask[i]: indicate the i-th edge to be added in the search process, i.e. that gives the highest reward.
+    return edge_mask, None
+ 
     
     

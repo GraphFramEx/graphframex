@@ -1,4 +1,5 @@
 import torch
+from torch import default_generator, randperm
 from torch.utils.data import random_split, Subset
 from torch_geometric.data import DataLoader
 from dataset import (
@@ -94,19 +95,37 @@ def get_dataloader(
         
         from functools import partial
 
-        train, eval, test = random_split(
-            dataset,
-            lengths=[num_train, num_eval, num_test],
-            generator=default_generator.manual_seed(seed),
-        )
+        lengths = [num_train, num_eval, num_test]
+        indices = randperm(sum(lengths), generator=default_generator.manual_seed(seed)).tolist()
+        train_indices = indices[:num_train]
+        dev_indices = indices[num_train : num_train + num_eval]
+        test_indices = indices[num_train + num_eval :]
+
+        # train, eval, test = random_split(
+            # dataset,
+            # lengths=[num_train, num_eval, num_test],
+            # generator=default_generator.manual_seed(seed),
+        #)
+
+    train = Subset(dataset, train_indices)
+    eval = Subset(dataset, dev_indices)
+    test = Subset(dataset, test_indices)
     
+    train_dataset = dataset[train_indices]
+    eval_dataset = dataset[dev_indices]
+    test_dataset = dataset[test_indices]
+    
+    # train.data, train.slices = train.collate([data for data in train])
+    # eval.data, eval.slices = eval.collate([data for data in eval])
+    # test.data, test.slices = test.collate([data for data in test])
 
     dataloader = dict()
     dataloader["train"] = DataLoader(train, batch_size=batch_size, shuffle=True)
     dataloader["eval"] = DataLoader(eval, batch_size=batch_size, shuffle=False)
     dataloader["test"] = DataLoader(test, batch_size=batch_size, shuffle=False)
     
-    return dataloader
+    return dataloader, train_dataset, eval_dataset, test_dataset
+
 
 
 if __name__ == "__main__":

@@ -137,7 +137,7 @@ class UK(InMemoryDataset):
             if data_type == "Binary" or data_type == "binary":
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
-                ).view(1, -1)
+                ).view(-1)
                 data = Data(
                         x=x,
                         edge_index=edge_iw,
@@ -148,9 +148,7 @@ class UK(InMemoryDataset):
                 )
                 index += 1
             if data_type == "Regression" or data_type == "regression":
-                ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(
-                    1, -1
-                )
+                ydata = torch.tensor(of_reg[i][0], dtype=torch.int, device=device).view(-1)
                 data = Data(
                         x=x,
                         edge_index=edge_iw,
@@ -164,7 +162,7 @@ class UK(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 if (ydata == 0) | (ydata == 1):
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
@@ -183,10 +181,10 @@ class UK(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 if (ydata == 0) | (ydata == 2):
                     if ydata==2:
-                        ydata=1
+                        ydata = torch.tensor(1, dtype=torch.int, device=device).view(-1)#.view(1,-1)
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
                         x=x,
@@ -204,7 +202,7 @@ class UK(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 # Fill Data object, 1 Data object -> 1 graph
                 data = Data(
                     x=x,
@@ -216,9 +214,9 @@ class UK(InMemoryDataset):
                 )
                 index += 1
                 if ydata == 0:
-                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device).view(-1)
                 else:
-                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device).view(-1)
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
@@ -359,7 +357,7 @@ class IEEE24(InMemoryDataset):
             if data_type == "Binary" or data_type == "binary":
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
-                ).view(1, -1)
+                ).view(-1)
                 data = Data(
                         x=x,
                         edge_index=edge_iw,
@@ -386,7 +384,7 @@ class IEEE24(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 if (ydata == 0) | (ydata == 1):
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
@@ -405,10 +403,10 @@ class IEEE24(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
-                if (ydata == 0) | (ydata == 2):
+                ).view(-1)#.view(-1)
+                if (ydata == 0) or (ydata == 2):
                     if ydata==2:
-                        ydata=1
+                        ydata = torch.tensor(1, dtype=torch.int, device=device).view(-1)#.view(-1)
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
                         x=x,
@@ -426,7 +424,7 @@ class IEEE24(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 # Fill Data object, 1 Data object -> 1 graph
                 data = Data(
                     x=x,
@@ -438,9 +436,9 @@ class IEEE24(InMemoryDataset):
                 )
                 index += 1
                 if ydata == 0:
-                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device).view(-1)
                 else:
-                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device).view(-1)
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
@@ -465,7 +463,7 @@ class IEEE39(InMemoryDataset):
     raw_path = "ieee39+expmask/"
 
     def __init__(
-        self, root, name, datatype="binary", transform=None, pre_transform=None
+        self, root, name, datatype="Binary", transform=None, pre_transform=None
     ):
 
         self.datatype = datatype
@@ -581,7 +579,7 @@ class IEEE39(InMemoryDataset):
             if data_type == "Binary" or data_type == "binary":
                 ydata = torch.tensor(
                     of_bi[i][0], dtype=torch.float, device=device
-                ).view(1, -1)
+                ).view(-1)
                 data = Data(
                         x=x,
                         edge_index=edge_iw,
@@ -608,7 +606,7 @@ class IEEE39(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 if (ydata == 0) | (ydata == 1):
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
@@ -627,10 +625,10 @@ class IEEE39(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
-                if (ydata == 0) | (ydata == 2):
+                ).view(-1)#.view(-1)
+                if (ydata == 0) or (ydata == 2):
                     if ydata==2:
-                        ydata=1
+                        ydata = torch.tensor(1, dtype=torch.int, device=device).view(-1)#.view(1,-1)
                     # Fill Data object, 1 Data object -> 1 graph
                     data = Data(
                         x=x,
@@ -648,7 +646,7 @@ class IEEE39(InMemoryDataset):
                 # do argmax
                 ydata = torch.tensor(
                     np.argmax(of_mc[i][0]), dtype=torch.int, device=device
-                ).view(1, -1)
+                ).view(-1)
                 # Fill Data object, 1 Data object -> 1 graph
                 data = Data(
                     x=x,
@@ -660,9 +658,9 @@ class IEEE39(InMemoryDataset):
                 )
                 index += 1
                 if ydata == 0:
-                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(1, dtype=torch.int, device=device).view(-1)
                 else:
-                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device)
+                    ydata_cf = torch.tensor(-1, dtype=torch.int, device=device).view(-1)
                 data.y_cf = ydata_cf
             
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)

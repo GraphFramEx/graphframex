@@ -34,11 +34,12 @@ def main(args, args_group):
     dataset_params["num_classes"] = args.num_classes
     dataset_params["num_node_features"] =args.num_node_features
 
+    data_y = dataset.data.y.cpu().numpy()
     if args.num_classes == 2:
-        y_cf_all = 1 - np.array(dataset.data.y)
+        y_cf_all = 1 - data_y
     else:
         y_cf_all = []
-        for y in np.array(dataset.data.y):
+        for y in data_y:
             y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
     args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
 

@@ -210,6 +210,15 @@ class GNN_basic(GNNBase):
             x = F.dropout(x, self.dropout, training=self.training)
         return x
 
+    def get_graph_rep(self, *args, **kwargs):
+        x, edge_index, edge_attr, edge_weight, batch = self._argsparse(*args, **kwargs)
+        for layer in self.convs:
+            x = layer(x, edge_index, edge_attr*edge_weight[:,None])
+            x = F.relu(x)
+            x = F.dropout(x, self.dropout, training=self.training)
+        x = self.readout_layer(x, batch)
+        return x
+
     def get_pred_label(self, pred):
         return pred.argmax(dim=1)
 
