@@ -21,7 +21,7 @@ def gflow_parse_args(parser):
     parser.add_argument('--balanced_loss', type=bool, default=False)
     parser.add_argument('--verbose', type=int, default=10)
     parser.add_argument('--n_conv', type=int, default=3)
-    parser.add_argument('--n_hidden', type=int, default=16)
+    parser.add_argument('--n_hidden', type=int, default=20)
     parser.add_argument('--n_out_stem', type=int, default=1)
     parser.add_argument('--n_out_graph', type=int, default=1)
     parser.add_argument('--n_thread', type=int, default=8)

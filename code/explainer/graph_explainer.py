@@ -25,6 +25,7 @@ from utils.gen_utils import (
     normalize_adj,
     sample_large_graph,
 )
+from utils.io_utils import write_to_json
 from gnn.model import GCNConv, GATConv, GINEConv, TransformerConv
 
 from explainer.gnnexplainer import TargetedGNNExplainer
@@ -275,8 +276,10 @@ def explain_pgexplainer_graph(model, data, target, device, **kwargs):
         train_time = time.time() - t0
         print("Save PGExplainer model...")
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
-        with open(os.path.join(subdir, f"pgexplainer_train_time.json"), "w") as f:
-            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
+        train_time_file = os.path.join(subdir, f"pgexplainer_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        write_to_json(entry, train_time_file)
+
     embed = model.get_emb(data=data)
     _, edge_mask = pgexplainer.explain(
         data.x, data.edge_index, data.edge_attr, embed=embed, tmp=1.0, training=False
@@ -386,8 +389,9 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
         train_time = time.time() - t0
         print("Save GraphCFE model...")
         torch.save(graphcfe_model.state_dict(), graphcfe_saving_path)
-        with open(os.path.join(subdir, f"graphcfe_train_time.json"), "w") as f:
-            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
+        train_time_file = os.path.join(subdir, f"graphcfe_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        write_to_json(entry, train_time_file)
     # test
     test_params = {'model': graphcfe_model, 'dataset': dataset_name, 'data_loader': loader['test'], 'pred_model': model,
                        'metrics': metrics, 'y_cf': y_cf_all}
@@ -432,12 +436,12 @@ def function_with_args_and_default_kwargs(dict_args, optional_args=None):
 def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
     seed = kwargs["seed"]
+    # hidden_dim = kwargs["hidden_dim"]
     gflowexplainer = GFlowExplainer(model, device)
     subdir = os.path.join(kwargs["model_save_dir"], "gflowexplainer")
     os.makedirs(subdir, exist_ok=True)
     gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{seed}.pickle")
     parser = function_with_args_and_default_kwargs(dict_args=kwargs, optional_args=None)
-    print("parser: ", parser)
     train_params = gflow_parse_args(parser)
     if os.path.isfile(gflowexplainer_saving_path):
         print("Load saved GFlowExplainer model...")
@@ -453,8 +457,9 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
         print("Save GFlowExplainer model...")
         # Save the file
         dill.dump(gflowexplainer_model, file = open(gflowexplainer_saving_path, "wb"))
-        with open(os.path.join(subdir, f"gflowexplainer_train_time.json"), "w") as f:
-            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
+        train_time_file = os.path.join(subdir, f"gflowexplainer_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        write_to_json(entry, train_time_file)
 
     # foward_multisteps - origin of this function?
     _, edge_mask = gflowexplainer_model.foward_multisteps(data, gflowexplainer.model)
@@ -494,8 +499,9 @@ def explain_rcexplainer_graph(model, data, target, device, **kwargs):
         train_time = time.time() - t0
         print("Save RCExplainer model...")
         dill.dump(rcexplainer_model, file = open(rcexplainer_saving_path, "wb"))
-        with open(os.path.join(subdir, f"rcexplainer_train_time.json"), "w") as f:
-            json.dump({"dataset": dataset_name, "train_time": train_time, "seed": seed}, f)
+        train_time_file = os.path.join(subdir, f"rcexplainer_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        write_to_json(entry, train_time_file)
     
     max_budget = data.num_edges
     state = torch.zeros(max_budget, dtype=torch.bool)

@@ -167,7 +167,7 @@ class SynGraphDataset(InMemoryDataset):
         max_num_nodes = 0
         for graph_idx in range(dense_edges.shape[0]):
             edge_index = dense_to_sparse(torch.from_numpy(dense_edges[graph_idx]))[0]
-            data = Data(x=torch.from_numpy(node_features[graph_idx]).float(),
+            data = Data(x=torch.ones((node_features[graph_idx].shape[0], 1),dtype=torch.float32),
                                 edge_index=edge_index,
                                 y=torch.from_numpy(np.where(graph_labels[graph_idx])[0]),
                                 idx=graph_idx)

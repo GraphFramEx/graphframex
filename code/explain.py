@@ -630,6 +630,7 @@ def explain_main(dataset, model, device, args, unseen=False):
     edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
 
     infos = {
+        "seed": args.seed,
         "dataset": args.dataset_name,
         "model": args.model_name,
         "datatype": args.datatype,
