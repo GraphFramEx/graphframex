@@ -328,6 +328,7 @@ def compute_counterfactual(dataset, data, metrics, y_cf, model, pred_model, devi
 
     edge_index_cf, edge_attr_cf = from_adj_to_edge_index_torch(adj_reconst_binary[0])
     edge_mask = get_cf_edge_mask(edge_index_cf, data.edge_index)
+    # The explanation is the edges that are not counterfactual edges
     return eval_results, edge_mask
 
 

@@ -400,6 +400,7 @@ def get_cf_edge_mask(new_edge_index, edge_index):
         pos_new_edge = np.where(np.all(existing_edges==elmt,axis=1))[0]
         if pos_new_edge.size > 0:
             cmn_edge_idx.append(pos_new_edge[0])
+    # The explanation is the edges that are not counterfactual edges
     edge_mask[cmn_edge_idx] = 0
     return(edge_mask)
 

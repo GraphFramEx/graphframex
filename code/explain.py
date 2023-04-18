@@ -581,7 +581,7 @@ class Explain(object):
 
 def get_mask_dir_path(args, unseen=False):
     unseen_str = "_unseen" if unseen else ""
-    mask_save_name = "mask{}_{}_{}_{}_{}_{}_target{}_{}_{}.pkl".format(
+    mask_save_name = "mask{}_{}_{}_{}_{}_{}_target{}_{}_{}_{}.pkl".format(
         unseen_str,
         args.dataset_name,
         args.model_name,
@@ -591,6 +591,7 @@ def get_mask_dir_path(args, unseen=False):
         args.explained_target,
         args.pred_type,
         args.seed,
+        args.device
     )
     return mask_save_name
 
@@ -677,7 +678,7 @@ def explain_main(dataset, model, device, args, unseen=False):
     results.to_csv(
         os.path.join(
             save_path,
-            "results{}_{}_{}_{}_{}_{}_{}_target{}_{}_{}.csv".format(
+            "results{}_{}_{}_{}_{}_{}_{}_target{}_{}_{}_{}.csv".format(
                 unseen_str,
                 args.dataset_name,
                 args.model_name,
@@ -688,6 +689,7 @@ def explain_main(dataset, model, device, args, unseen=False):
                 args.explained_target,
                 args.pred_type,
                 args.seed,
+                str(device)
             ),
         )
     )
