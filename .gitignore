@@ -139,6 +139,7 @@ csv/
 configs/
 clutils/
 figures/
+results/
 code/explainer/gnnlrp.py
 code/explainer/graphsvx.py
 code/explainer/zorro.py

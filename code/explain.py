@@ -639,6 +639,7 @@ def explain_main(dataset, model, device, args, unseen=False):
         "mask_nature": args.mask_nature,
         "pred_type": args.pred_type,
         "time": float(format(np.mean(computation_time), ".4f")),
+        "device": str(device),
     }
 
     if (edge_masks is None) or (not edge_masks):

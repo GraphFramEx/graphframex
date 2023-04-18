@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import torch
+import pandas as pd
 import shutil
 import warnings
 import numpy as np
@@ -19,6 +20,7 @@ import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR
 from gnn.model import get_gnnNets
 from sklearn.metrics import balanced_accuracy_score, f1_score
+from torch_geometric.data import Batch
 
 
 class TrainModel(object):
@@ -248,20 +250,34 @@ def train_gnn(args, args_group):
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset, args)
     dataset_params["num_classes"] = args.num_classes
-    dataset_params["num_node_features"] = dataset.data.x.size(1)
-    model_params["edge_dim"] = dataset.data.edge_attr.size(1)
+    dataset_params["num_node_features"] =args.num_node_features
+
+    print("num_classes:", dataset_params["num_classes"])
+    print("num_node_features:", dataset_params["num_node_features"])
+    print("dataset length:", len(dataset))
+    if len(dataset) > 1:
+        dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
+    else:
+        dataset_params["max_num_nodes"] = dataset.data.num_nodes
+    args.max_num_nodes = dataset_params["max_num_nodes"]
+    args.edge_dim = dataset.data.edge_attr.size(1)
+    model_params["edge_dim"] = args.edge_dim
+
+    
     if eval(args.graph_classification):
+        args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
         dataloader_params = {
             "batch_size": args.batch_size,
             "random_split_flag": eval(args.random_split_flag),
-            "data_split_ratio": [args.train_ratio, args.val_ratio, args.test_ratio],
+            "data_split_ratio": args.data_split_ratio,
             "seed": args.seed,
         }
-
     model = get_gnnNets(
         dataset_params["num_node_features"], dataset_params["num_classes"], model_params
     )
-
+    model_save_name = f"{args.model_name}_{args.num_layers}l"
+    if args.dataset_name.startswith(tuple(["uk", "ieee"])):
+        model_save_name = f"{args.datatype}_" + model_save_name
     if eval(args.graph_classification):
         trainer = TrainModel(
             model=model,
@@ -269,7 +285,7 @@ def train_gnn(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l_{args.hidden_dim}h_{args.lr}lr_{args.dropout}d_{args.readout}r",
+            save_name=model_save_name,
             dataloader_params=dataloader_params,
         )
     else:
@@ -279,7 +295,7 @@ def train_gnn(args, args_group):
             device=device,
             graph_classification=eval(args.graph_classification),
             save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=f"{args.model_name}_{args.num_layers}l_{args.hidden_dim}h_{args.lr}lr_{args.dropout}d_{args.readout}r",
+            save_name=model_save_name,
         )
     if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
         trainer.load_model()
@@ -289,14 +305,34 @@ def train_gnn(args, args_group):
             optimizer_params=args_group["optimizer_params"],
         )
     _, _, _, _, _ = trainer.test()
-
+    
+    """
+    # save gnn predictions
+    probs = trainer.model(Batch.from_data_list(dataset).to(device)).cpu()
+    preds = probs.argmax(dim=1).cpu().numpy()
+    labels = pd.DataFrame(columns=["gnn_label"], data=preds)
+    labels['true_label'] = [data.y.item() for data in dataset]
+    labels['idx'] = [data.idx.item() for data in dataset]
+    labels.to_csv(os.path.join(args.data_save_dir, args.dataset_name, f"{trainer.save_name}_predictions.csv"), index=False)
+    """
+    # save gnn latent space features
+    graph_embs = []
+    for data in dataset:
+        data.to(device)
+        node_emb = trainer.model.get_emb(data).cpu()
+        graph_emb = node_emb.mean(dim=0).cpu().detach().numpy()
+        graph_embs.append(graph_emb)
+    graph_emb_feat = pd.DataFrame(graph_embs)
+    graph_emb_feat['idx'] = [data.idx.item() for data in dataset]
+    graph_emb_feat['true_label'] = [data.y.item() for data in dataset]
+    graph_emb_feat.to_csv(os.path.join(args.data_save_dir, args.dataset_name, f"{trainer.save_name}_embeddings.csv"), index=False)
+    
 
 if __name__ == "__main__":
     parser, args = arg_parse()
     args = get_graph_size_args(args)
 
-    # Fill in the default parameters for the architecture and the training of the model here
-    if args.dataset_name == "uk":
+    if args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
         (
             args.groundtruth,
             args.graph_classification,
@@ -308,7 +344,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 32, 200, 0.001, 0.0, 0.0, "max", 128)
+        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64)
 
     args_group = create_args_group(parser, args)
     train_gnn(args, args_group)

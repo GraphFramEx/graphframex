@@ -277,9 +277,9 @@ def explain_pgexplainer_graph(model, data, target, device, **kwargs):
         print("Save PGExplainer model...")
         torch.save(pgexplainer.state_dict(), pgexplainer_saving_path)
         train_time_file = os.path.join(subdir, f"pgexplainer_train_time.json")
-        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
-
+        
     embed = model.get_emb(data=data)
     _, edge_mask = pgexplainer.explain(
         data.x, data.edge_index, data.edge_attr, embed=embed, tmp=1.0, training=False
@@ -390,7 +390,7 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
         print("Save GraphCFE model...")
         torch.save(graphcfe_model.state_dict(), graphcfe_saving_path)
         train_time_file = os.path.join(subdir, f"graphcfe_train_time.json")
-        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
     # test
     test_params = {'model': graphcfe_model, 'dataset': dataset_name, 'data_loader': loader['test'], 'pred_model': model,
@@ -442,6 +442,7 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
     os.makedirs(subdir, exist_ok=True)
     gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{seed}.pickle")
     parser = function_with_args_and_default_kwargs(dict_args=kwargs, optional_args=None)
+    parser.n_hidden = kwargs["hidden_dim"]
     train_params = gflow_parse_args(parser)
     if os.path.isfile(gflowexplainer_saving_path):
         print("Load saved GFlowExplainer model...")
@@ -458,7 +459,7 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
         # Save the file
         dill.dump(gflowexplainer_model, file = open(gflowexplainer_saving_path, "wb"))
         train_time_file = os.path.join(subdir, f"gflowexplainer_train_time.json")
-        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
 
     # foward_multisteps - origin of this function?
@@ -473,10 +474,10 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
 def explain_rcexplainer_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
     seed = kwargs["seed"]
-    rcexplainer = RCExplainer_Batch(model, device, kwargs['num_classes'], hidden_size=16)
+    rcexplainer = RCExplainer_Batch(model, device, kwargs['num_classes'], hidden_size=kwargs['hidden_dim'])
     subdir = os.path.join(kwargs["model_save_dir"], "rcexplainer")
     os.makedirs(subdir, exist_ok=True)
-    rcexplainer_saving_path = os.path.join(subdir, f"rcexplainer_{dataset_name}_{seed}.pickle")
+    rcexplainer_saving_path = os.path.join(subdir, f"rcexplainer_{dataset_name}_{seed}_{device}.pickle")
     if os.path.isfile(rcexplainer_saving_path):
         print("Load saved RCExplainer model...")
         rcexplainer_model = dill.load(open(rcexplainer_saving_path, "rb"))
@@ -500,7 +501,7 @@ def explain_rcexplainer_graph(model, data, target, device, **kwargs):
         print("Save RCExplainer model...")
         dill.dump(rcexplainer_model, file = open(rcexplainer_saving_path, "wb"))
         train_time_file = os.path.join(subdir, f"rcexplainer_train_time.json")
-        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed}
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
     
     max_budget = data.num_edges
