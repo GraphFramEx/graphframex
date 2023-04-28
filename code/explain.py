@@ -6,6 +6,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import warnings
+import json
 from evaluate.fidelity import (
     fidelity_acc,
     fidelity_acc_inv,
@@ -15,6 +16,18 @@ from evaluate.fidelity import (
     fidelity_gnn_prob_inv,
     fidelity_prob,
     fidelity_prob_inv,
+)
+import collections
+import random
+from gnn.model import get_gnnNets
+from train_gnn import TrainModel
+from gendata import get_dataset
+from utils.parser_utils import (
+    arg_parse,
+    create_args_group,
+    fix_random_seed,
+    get_data_args,
+    get_graph_size_args,
 )
 from utils.io_utils import check_dir
 from utils.gen_utils import list_to_dict
@@ -103,7 +116,7 @@ class Explain(object):
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ba_2motifs"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs"])):
                 top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
@@ -162,7 +175,7 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39","ba_2motifs"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs"])):
                 f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
@@ -229,7 +242,7 @@ class Explain(object):
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
         related_preds = []
-        for i in range(self.num_explained_y):
+        for i in range(len(self.explained_y)):
             explained_y_idx = self.explained_y[i]
             data = self.dataset[explained_y_idx]
             data = data.to(self.device)
@@ -540,7 +553,7 @@ class Explain(object):
                 raise ValueError("pred_type must be correct, wrong or mix.")
             explained_y = np.random.choice(
                 list_idx,
-                size=min(self.num_explained_y, len(self.dataset)),
+                size=min(len(list_idx), self.num_explained_y, len(self.dataset)),
                 replace=False,
             )
         else:
@@ -557,8 +570,9 @@ class Explain(object):
                 raise ValueError("pred_type must be correct, wrong or mix.")
             print("Number of explanable entities: ", len(list_idx))
             explained_y = np.random.choice(
-                list_idx, size=min(self.num_explained_y, len(list_idx)), replace=False
+                list_idx, size=min(self.num_explained_y, len(list_idx), self.data.num_nodes), replace=False
             )
+        print("Number of explained entities: ", len(explained_y))
         return explained_y
 
     def save_mask(self, explained_y, edge_masks, node_feat_masks, computation_time):
@@ -579,7 +593,7 @@ class Explain(object):
         return explained_y, edge_masks, node_feat_masks, computation_time
 
 
-def get_mask_dir_path(args, unseen=False):
+def get_mask_dir_path(args, device, unseen=False):
     unseen_str = "_unseen" if unseen else ""
     mask_save_name = "mask{}_{}_{}_{}_{}_{}_target{}_{}_{}_{}.pkl".format(
         unseen_str,
@@ -590,15 +604,15 @@ def get_mask_dir_path(args, unseen=False):
         args.num_explained_y,
         args.explained_target,
         args.pred_type,
-        args.seed,
-        args.device
+        str(device),
+        args.seed
     )
     return mask_save_name
 
 
 def explain_main(dataset, model, device, args, unseen=False):
 
-    mask_save_name = get_mask_dir_path(args)
+    mask_save_name = get_mask_dir_path(args, device)
     args.dataset = dataset
 
     if unseen:
@@ -610,6 +624,7 @@ def explain_main(dataset, model, device, args, unseen=False):
         list_test_idx = range(0, len(dataset.data.y))
     else:
         list_test_idx = np.where(dataset.data.y.cpu().numpy() == args.explained_target)[0]
+    print("Number of explanable entities: ", len(list_test_idx))
     explainer = Explain(
         model=model,
         dataset=dataset,
@@ -688,9 +703,136 @@ def explain_main(dataset, model, device, args, unseen=False):
                 args.num_explained_y,
                 args.explained_target,
                 args.pred_type,
-                args.seed,
-                str(device)
+                str(device),
+                args.seed
             ),
         )
     )
 
+if __name__=='__main__':
+
+    parser, args = arg_parse()
+    args = get_graph_size_args(args)
+
+    (args.groundtruth,
+        args.graph_classification,
+        args.num_layers,
+        args.hidden_dim,
+        args.num_epochs,
+        args.lr,
+        args.weight_decay,
+        args.dropout,
+        args.readout,
+        args.batch_size,
+    ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64)
+    args_group = create_args_group(parser, args)
+
+    fix_random_seed(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    dataset_params = args_group["dataset_params"]
+    model_params = args_group["model_params"]
+
+    dataset = get_dataset(
+        dataset_root=args.data_save_dir,
+        **dataset_params,
+    )
+    dataset.data.x = dataset.data.x.float()
+    dataset.data.y = dataset.data.y.squeeze().long()
+    args = get_data_args(dataset, args)
+    dataset_params["num_classes"] = args.num_classes
+    dataset_params["num_node_features"] =args.num_node_features
+
+    data_y = dataset.data.y.cpu().numpy()
+    if args.num_classes == 2:
+        y_cf_all = 1 - data_y
+    else:
+        y_cf_all = []
+        for y in data_y:
+            y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
+    args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+
+    
+    print("num_classes:", dataset_params["num_classes"])
+    print("num_node_features:", dataset_params["num_node_features"])
+    print("dataset length:", len(dataset))
+    if len(dataset) > 1:
+        dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
+    else:
+        dataset_params["max_num_nodes"] = dataset.data.num_nodes
+    args.max_num_nodes = dataset_params["max_num_nodes"]
+    args.edge_dim = dataset.data.edge_attr.size(1)
+    model_params["edge_dim"] = args.edge_dim
+
+    
+    if eval(args.graph_classification):
+        args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
+        dataloader_params = {
+            "batch_size": args.batch_size,
+            "random_split_flag": eval(args.random_split_flag),
+            "data_split_ratio": args.data_split_ratio,
+            "seed": args.seed,
+        }
+    model = get_gnnNets(
+        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
+    )
+    model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
+    if args.dataset_name.startswith(tuple(["uk", "ieee"])):
+        model_save_name = f"{args.datatype}_" + model_save_name
+    if eval(args.graph_classification):
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=model_save_name,
+            dataloader_params=dataloader_params,
+        )
+    else:
+        trainer = TrainModel(
+            model=model,
+            dataset=dataset,
+            device=device,
+            graph_classification=eval(args.graph_classification),
+            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
+            save_name=model_save_name,
+        )
+    if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
+        trainer.load_model()
+    else:
+        trainer.train(
+            train_params=args_group["train_params"],
+            optimizer_params=args_group["optimizer_params"],
+        )
+    _, _, _, _, _ = trainer.test()
+    
+    mask_save_name = get_mask_dir_path(args, device)
+    args.dataset = dataset
+    list_test_idx = range(0, len(dataset.data.y))
+    print("Number of explanable entities: ", len(list_test_idx))
+    explainer = Explain(
+        model=model,
+        dataset=dataset,
+        device=device,
+        list_test_idx=list_test_idx,
+        explainer_params=vars(args),
+        save_dir=None
+        if args.mask_save_dir=="None"
+        else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
+        save_name=mask_save_name,
+    )
+
+    (
+        explained_y,
+        edge_masks,
+        node_feat_masks,
+        computation_time,
+    ) = explainer.compute_mask()
+    edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
+
+
+    dict_mask = dict(zip(explained_y,edge_masks))
+    ordered_dict_mask = collections.OrderedDict(sorted(dict_mask.items()))
+    d = {int(key): value.tolist() for key, value in ordered_dict_mask.items()}
+    json.dump(d, open(os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name, mask_save_name.replace(".pkl", ".json")), "w"))

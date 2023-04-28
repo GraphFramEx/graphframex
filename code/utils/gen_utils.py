@@ -368,7 +368,7 @@ def get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
     kept_edge_weight = new_edge_weight[keep_edge_idx]
     if kept_edges.ndim == 1:
         kept_edges = kept_edges.reshape(0,2)
-    return(kept_edges, kept_edge_attr, kept_edge_weight)
+    return(keep_edge_idx, kept_edges, kept_edge_attr, kept_edge_weight)
 
 
 def get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
@@ -387,7 +387,7 @@ def get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
     new_added_edge_weight = new_edge_weight[new_added_edge_idx]
     if new_added_edges.ndim == 1:
         new_added_edges = new_added_edges.reshape(0,2)
-    return(new_added_edges, new_added_edge_attr, new_added_edge_weight)
+    return(new_added_edge_idx, new_added_edges, new_added_edge_attr, new_added_edge_weight)
 
 
 def get_cf_edge_mask(new_edge_index, edge_index):

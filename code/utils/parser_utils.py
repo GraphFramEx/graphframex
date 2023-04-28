@@ -114,6 +114,13 @@ def arg_parse():
         type=str,
         default="False",
     )
+    # generalization capacity - test on unseen graphs
+    parser.add_argument(
+        "--unseen",
+        help="Split the dataset into data and unseen data and test on unseen data",
+        type=str,
+        default="False",
+    )
 
     # dataset parameters
     parser_dataset_params = parser.add_argument_group("dataset_params")
@@ -130,7 +137,7 @@ def arg_parse():
     parser_dataset_params.add_argument(
         "--num_basis", help="number of nodes in the base graph", type=int
     )
-    parser_dataset_params.add_argument("--datatype", help="the type of classification (binary or multiclass) for the powergrid datasets (uk, ieee24, ieee39)", type=str, default="binary")
+    parser_dataset_params.add_argument("--datatype", help="the type of classification (binary or multiclass) for the powergrid datasets (uk, ieee24, ieee39, ieee118)", type=str, default="binary")
     parser_dataset_params.add_argument("--num_classes", help="output_dim", type=int)
     parser_dataset_params.add_argument(
         "--num_node_features", help="input_dim", type=int

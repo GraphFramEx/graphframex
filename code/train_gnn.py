@@ -275,10 +275,11 @@ def train_gnn(args, args_group):
     model = get_gnnNets(
         dataset_params["num_node_features"], dataset_params["num_classes"], model_params
     )
-    model_save_name = f"{args.model_name}_{args.num_layers}l"
+    model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
     if args.dataset_name.startswith(tuple(["uk", "ieee"])):
         model_save_name = f"{args.datatype}_" + model_save_name
     if eval(args.graph_classification):
+        print("model_save_name:", model_save_name)
         trainer = TrainModel(
             model=model,
             dataset=dataset,

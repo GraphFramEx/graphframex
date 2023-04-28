@@ -2,7 +2,7 @@ import torch.nn.functional as F
 from torch.distributions import Bernoulli, Categorical
 import torch
 
-from explainer.explainer_utils.reorganizer import relabel_graph, filter_correct_data
+from explainer.explainer_utils.rcexplainer.reorganizer import relabel_graph, filter_correct_data
 
 from tqdm import tqdm
 from torch_scatter import scatter_max

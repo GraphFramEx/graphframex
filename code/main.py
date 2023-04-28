@@ -44,8 +44,8 @@ def main(args, args_group):
     args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
 
      # Select unseen data to test generalization capacity
-    if eval(args.graph_classification):
-        n, num_test = len(dataset), 10
+    if eval(args.unseen) and eval(args.graph_classification):
+        n, num_test = len(dataset), int(len(dataset)*0.1)
         list_index = random.sample(range(n), num_test)
         unseen_mask = np.zeros(n, dtype=bool)
         unseen_mask[list_index] = True
@@ -77,7 +77,7 @@ def main(args, args_group):
     model = get_gnnNets(
         dataset_params["num_node_features"], dataset_params["num_classes"], model_params
     )
-    model_save_name = f"{args.model_name}_{args.num_layers}l"
+    model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
     if args.dataset_name.startswith(tuple(["uk", "ieee"])):
         model_save_name = f"{args.datatype}_" + model_save_name
     if eval(args.graph_classification):
@@ -109,7 +109,7 @@ def main(args, args_group):
     _, _, _, _, _ = trainer.test()
 
     explain_main(dataset, trainer.model, device, args)
-    if eval(args.graph_classification):
+    if eval(args.unseen) and eval(args.graph_classification):
         explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
 
 
@@ -130,7 +130,8 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200)
+            args.unseen
+        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "True")
 
     if (args.dataset_name.startswith(tuple(["ba_", "tree_"]))) & (args.dataset_name!="ba_2motifs"):
         (
@@ -157,7 +158,7 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
         ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
-    elif args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
+    elif args.dataset_name.lower() in ["mutag", "mutag_large", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
         (
             args.groundtruth,
             args.graph_classification,
@@ -169,25 +170,9 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
-        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64)
-    elif args.dataset_name.startswith("uk"):
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.gamma,
-            args.milestones,
-            num_early_stop,
-        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50)
-    
-    elif args.dataset_name.startswith("ieee24"):
+            args.unseen
+        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64, "True")
+    elif args.dataset_name.startswith(tuple(["uk", "ieee24"])):
         (
             args.groundtruth,
             args.graph_classification,
@@ -201,9 +186,10 @@ if __name__ == "__main__":
             args.batch_size,
             args.gamma,
             args.milestones,
-            num_early_stop,
-        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50)
-    elif args.dataset_name.startswith("ieee39"):
+            args.num_early_stop,
+            args.unseen
+        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50, "False")
+    elif args.dataset_name.startswith(tuple(["ieee39", "ieee118"])):
         (
             args.groundtruth,
             args.graph_classification,
@@ -217,6 +203,7 @@ if __name__ == "__main__":
             args.batch_size,
             args.gamma,
             args.milestones,
-        ) = ("True", "True", 3, 32, 100, 0.001, 0.0000, 0.0, "max", 128, 0.1, [30, 50, 75])
+            args.unseen
+        ) = ("True", "True", 3, 32, 100, 0.001, 0.0000, 0.0, "max", 128, 0.1, [30, 50, 75], "False")
     args_group = create_args_group(parser, args)
     main(args, args_group)

@@ -66,7 +66,6 @@ class GNNBase(nn.Module):
         If the x and edge_index are in args, follow the args.
         In other case, find them in kwargs.
         """
-        edge_weight = None
         if args:
             if len(args) == 1:
                 data = args[0]
@@ -84,7 +83,10 @@ class GNNBase(nn.Module):
                     batch = data.batch
                 else:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
-
+                if hasattr(data, "edge_weight") and data.edge_weight is not None:
+                    edge_weight = data.edge_weight
+                else:
+                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
             elif len(args) == 2:
                 x, edge_index = args[0], args[1]
                 batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
@@ -93,13 +95,16 @@ class GNNBase(nn.Module):
                     dtype=torch.float32,
                     device=x.device,
                 )
+                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
 
             elif len(args) == 3:
                 x, edge_index, edge_attr = args[0], args[1], args[2]
                 batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
 
             elif len(args) == 4:
                 x, edge_index, edge_attr, batch = args[0], args[1], args[2], args[3]
+                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
             else:
                 raise ValueError(
                     f"forward's args should take 1, 2 or 3 arguments but got {len(args)}"
@@ -110,7 +115,8 @@ class GNNBase(nn.Module):
                 x = kwargs.get("x")
                 edge_index = kwargs.get("edge_index")
                 adj = kwargs.get("adj")
-                if not edge_index:
+                edge_weight = kwargs.get("edge_weight")
+                if "edge_index" not in kwargs:
                     assert (
                         adj is not None
                     ), "forward's args is empty and required adj is not in kwargs"
@@ -141,6 +147,8 @@ class GNNBase(nn.Module):
                 else:
                     if not batch:
                         batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                if "edge_weight" not in kwargs:
+                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
 
             else:
                 x = data.x
@@ -167,8 +175,12 @@ class GNNBase(nn.Module):
                         )
                 else:
                     batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
-        if edge_weight is None:
-            edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                if hasattr(data, "edge_weight"):
+                    edge_weight = data.edge_weight
+                    if edge_weight is None:
+                        edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                else:
+                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
         return x, edge_index, edge_attr, edge_weight, batch
 
 
@@ -325,13 +337,13 @@ class TRANSFORMER(GNN_basic):
     def get_layers(self):
         self.convs = nn.ModuleList()
         current_dim = self.input_dim
-        #for l in range(self.num_layers):
-            #self.convs.append(
-                #TransformerConv(current_dim, self.hidden_dim, edge_dim=self.edge_dim)
-            #)
-            #current_dim = self.hidden_dim
-
         for l in range(self.num_layers):
+            self.convs.append(
+                TransformerConv(current_dim, self.hidden_dim, edge_dim=self.edge_dim)
+            )
+            current_dim = self.hidden_dim
+
+        """for l in range(self.num_layers):
             if l == 0:
                 self.convs.append(
                 TransformerConv(current_dim, self.hidden_dim, heads=4, edge_dim=self.edge_dim)#, concat=False)
@@ -340,7 +352,7 @@ class TRANSFORMER(GNN_basic):
                 current_dim = self.hidden_dim * 4
                 self.convs.append(
                 TransformerConv(current_dim, current_dim, edge_dim=self.edge_dim)#, concat=False)
-                )
+                )"""
         # FC layers
         self.mlps = nn.Linear(current_dim, self.output_dim)
         return

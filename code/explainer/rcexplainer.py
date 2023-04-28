@@ -5,8 +5,8 @@ from torch_geometric.utils import softmax
 from torch_scatter import scatter_max
 import os.path as osp
 from torch_geometric.data import DataLoader
-from explainer.explainer_utils.reorganizer import *
-from explainer.explainer_utils.rc_train import *
+from explainer.explainer_utils.rcexplainer.reorganizer import *
+from explainer.explainer_utils.rcexplainer.rc_train import *
 import copy
 
 class RCExplainer_Batch(torch.nn.Module):
@@ -69,7 +69,6 @@ class RCExplainer_Batch(torch.nn.Module):
 
             ava_action_reps = torch.cat([ava_node_reps[ava_edge_index[0]],
                                          ava_node_reps[ava_edge_index[1]]], dim=1).to(self.device)
-
         ava_action_reps = self.edge_action_rep_generator(ava_action_reps)
 
         ava_action_batch = graph.batch[ava_edge_index[0]]
@@ -131,6 +130,6 @@ def train_rcexplainer(rc_explainer, train_dataset, test_dataset, loader, batch_s
                                                               batch_size=1)
     optimizer = rc_explainer.get_optimizer(lr=lr, weight_decay=weight_decay)
     rc_explainer, best_acc_auc, best_acc_curve, best_pre, best_rec = train_policy(rc_explainer, model, device,
-                                                                                  train_loader, test_loader, optimizer, topK_ratio=topk_ratio)
+                                                                                  train_loader, test_loader, optimizer, batch_size=batch_size, topK_ratio=topk_ratio)
     return rc_explainer
 

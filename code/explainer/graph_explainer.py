@@ -8,6 +8,7 @@ import time
 import json
 import dill
 import argparse
+from copy import deepcopy
 from captum.attr import IntegratedGradients, Saliency
 from torch.autograd import Variable
 from torch_geometric.data import Data
@@ -35,9 +36,14 @@ from explainer.gradcam import GraphLayerGradCam
 from explainer.cfgnnexplainer import CFExplainer
 from explainer.graphcfe import GraphCFE, train, test, baseline_cf, add_list_in_dict, compute_counterfactual
 from explainer.gflowexplainer import GFlowExplainer, gflow_parse_args
+from explainer.diffexplainer import DiffExplainer, diff_parse_args
 from explainer.rcexplainer import RCExplainer_Batch, train_rcexplainer
-from explainer.explainer_utils import test_policy
+from explainer.explainer_utils.rcexplainer.rc_train import test_policy
 from gendata import get_dataset, get_dataloader
+from explainer.gsat import GSAT, ExtractorMLP, gsat_get_config
+from explainer.explainer_utils.gsat import Writer, init_metric_dict, save_checkpoint, load_checkpoint
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 
 
 def get_all_convolution_layers(model):
@@ -264,7 +270,7 @@ def explain_pgexplainer_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
     subdir = os.path.join(kwargs["model_save_dir"], "pgexplainer")
     os.makedirs(subdir, exist_ok=True)
-    pgexplainer_saving_path = os.path.join(subdir, f"pgexplainer_{dataset_name}_{seed}.pth")
+    pgexplainer_saving_path = os.path.join(subdir, f"pgexplainer_{dataset_name}_{str(device)}_{seed}.pth")
     if os.path.isfile(pgexplainer_saving_path):
         print("Load saved PGExplainer model...")
         state_dict = torch.load(pgexplainer_saving_path)
@@ -367,7 +373,7 @@ def explain_graphcfe_graph(model, data, target, device, **kwargs):
 
     subdir = os.path.join(kwargs["model_save_dir"], "graphcfe")
     os.makedirs(subdir, exist_ok=True)
-    graphcfe_saving_path = os.path.join(subdir, f"graphcfe_{dataset_name}_{seed}.pth")
+    graphcfe_saving_path = os.path.join(subdir, f"graphcfe_{dataset_name}_{str(device)}_{seed}.pth")
      # model
     init_params = {'hidden_dim': kwargs["hidden_dim"], 'dropout': kwargs["dropout"], 'num_node_features': kwargs["num_node_features"], 'max_num_nodes': kwargs["max_num_nodes"]}
     graphcfe_model = GraphCFE(init_params=init_params, device=device)
@@ -440,10 +446,11 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
     gflowexplainer = GFlowExplainer(model, device)
     subdir = os.path.join(kwargs["model_save_dir"], "gflowexplainer")
     os.makedirs(subdir, exist_ok=True)
-    gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{seed}.pickle")
+    gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{str(device)}_{seed}.pickle")
     parser = function_with_args_and_default_kwargs(dict_args=kwargs, optional_args=None)
-    parser.n_hidden = kwargs["hidden_dim"]
     train_params = gflow_parse_args(parser)
+    train_params.n_hidden = kwargs["hidden_dim"]
+    train_params.n_input = kwargs["num_node_features"]
     if os.path.isfile(gflowexplainer_saving_path):
         print("Load saved GFlowExplainer model...")
         gflowexplainer_model = dill.load(open(gflowexplainer_saving_path, "rb"))
@@ -477,7 +484,7 @@ def explain_rcexplainer_graph(model, data, target, device, **kwargs):
     rcexplainer = RCExplainer_Batch(model, device, kwargs['num_classes'], hidden_size=kwargs['hidden_dim'])
     subdir = os.path.join(kwargs["model_save_dir"], "rcexplainer")
     os.makedirs(subdir, exist_ok=True)
-    rcexplainer_saving_path = os.path.join(subdir, f"rcexplainer_{dataset_name}_{seed}_{device}.pickle")
+    rcexplainer_saving_path = os.path.join(subdir, f"rcexplainer_{dataset_name}_{str(device)}_{seed}.pickle")
     if os.path.isfile(rcexplainer_saving_path):
         print("Load saved RCExplainer model...")
         rcexplainer_model = dill.load(open(rcexplainer_saving_path, "rb"))
@@ -513,4 +520,122 @@ def explain_rcexplainer_graph(model, data, target, device, **kwargs):
     return edge_mask, None
  
     
+    
+def explain_diffexplainer_graph(model, data, target, device, **kwargs):
+    dataset_name = kwargs["dataset_name"]
+    seed = kwargs["seed"]
+    diffexplainer = DiffExplainer(model, device)
+    
+    subdir = os.path.join(kwargs["model_save_dir"], "diffexplainer")
+    os.makedirs(subdir, exist_ok=True)
+    diffexplainer_saving_path = os.path.join(subdir, f"diffexplainer_{dataset_name}_{str(device)}_{seed}.pth")
+
+    parser = function_with_args_and_default_kwargs(dict_args=kwargs, optional_args=None)
+    train_params = diff_parse_args(parser)
+    train_params.n_hidden = kwargs["hidden_dim"]
+    train_params.feature_in = kwargs["num_node_features"]
+    train_params.noise_list = None
+    train_params.root = subdir
+
+    if os.path.isfile(diffexplainer_saving_path):
+        print("Load saved DiffExplainer model...")
+        diffexplainer  = torch.load(diffexplainer_saving_path)
+    else:
+        # data loader
+        train_size = min(len(kwargs["dataset"]), 500)
+        explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
+        explain_dataset = kwargs["dataset"][explain_dataset_idx]
+        dataloader_params = {
+            "batch_size": 32, # kwargs["batch_size"],
+            "random_split_flag": kwargs["random_split_flag"],
+            "data_split_ratio": kwargs["data_split_ratio"],
+            "seed": kwargs["seed"],
+        }
+        loader, train_dataset, _, test_dataset = get_dataloader(explain_dataset, **dataloader_params)
+
+        t0 = time.time()
+        diffexplainer.explain_graph_task(train_params, train_dataset, test_dataset)
+        train_time = time.time() - t0
+
+        print("Save DiffExplainer model...")
+        torch.save(diffexplainer, diffexplainer_saving_path)
+        
+        train_time_file = os.path.join(subdir, f"diffexplainer_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
+        write_to_json(entry, train_time_file)
+
+    # foward_multisteps - origin of this function?
+    data.num_graphs = 1
+    data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
+    explanatory_subgraph = diffexplainer.explanation_generate(train_params, data)
+    print("Explanatory subgraph: ", explanatory_subgraph)
+    print("Explanatory edges: ", explanatory_subgraph.edge_index)
+    print("Initial edges: ", data.edge_index)
+    edge_mask = filter_existing_edges(explanatory_subgraph.edge_index, data.edge_index)
+    print("Edge mask: ", edge_mask)
+    return edge_mask, None
+
+
+def explain_gsat_graph(model, data, target, device, **kwargs):
+    dataset_name = kwargs["dataset_name"]
+    seed = kwargs["seed"]
+    num_class = kwargs["num_classes"]
+
+    subdir = os.path.join(kwargs["model_save_dir"], "gsat")
+    os.makedirs(subdir, exist_ok=True)
+    gsat_saving_path = os.path.join(subdir, f"gsat_{dataset_name}_{str(device)}_{seed}.pt")
+
+    # config gsat training
+    shared_config, method_config = gsat_get_config()
+    multi_label = False
+    extractor = ExtractorMLP(kwargs['hidden_dim'], shared_config).to(device)
+    lr, wd = method_config['lr'], method_config.get('weight_decay', 0)
+    optimizer = torch.optim.Adam(list(extractor.parameters()) + list(model.parameters()), lr=lr, weight_decay=wd)
+    scheduler_config = method_config.get('scheduler', {})
+    scheduler = None if scheduler_config == {} else ReduceLROnPlateau(optimizer, mode='max', **scheduler_config)
+
+    writer = Writer(log_dir=subdir)
+    hparam_dict = {"dataset": dataset_name, "seed": seed, "device": str(device), "model": kwargs['model_name']}
+    metric_dict = deepcopy(init_metric_dict)
+    writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
+
+    # data loader
+    train_size = min(len(kwargs["dataset"]), 500)
+    explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
+    explain_dataset = kwargs["dataset"][explain_dataset_idx]
+    dataloader_params = {
+        "batch_size": kwargs["batch_size"],
+        "random_split_flag": kwargs["random_split_flag"],
+        "data_split_ratio": kwargs["data_split_ratio"],
+        "seed": kwargs["seed"],
+    }
+    loader, train_dataset, _, test_dataset = get_dataloader(explain_dataset, **dataloader_params)
+
+
+    if os.path.isfile(gsat_saving_path):
+        print("Load saved GSAT model...")
+        load_checkpoint(extractor, subdir, model_name=f'gsat_{dataset_name}_{str(device)}_{seed}')
+        gsat = GSAT(model, extractor, optimizer, scheduler, writer, device, subdir, dataset_name, num_class, multi_label, seed, method_config, shared_config)
+        
+
+    else:
+        print('====================================')
+        print('[INFO] Training GSAT...')
+        gsat = GSAT(model, extractor, optimizer, scheduler, writer, device, subdir, dataset_name, num_class, multi_label, seed, method_config, shared_config)
+        t0 = time.time()
+        metric_dict = gsat.train(loader, test_dataset, metric_dict, use_edge_attr=True)
+        train_time = time.time() - t0
+        writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
+        save_checkpoint(gsat.extractor, subdir, model_name=f'gsat_{dataset_name}_{str(device)}_{seed}')
+        
+        train_time_file = os.path.join(subdir, f"diffexplainer_train_time.json")
+        entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
+        write_to_json(entry, train_time_file)
+        
+
+    data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
+    edge_att, loss_dict, clf_logits = gsat.eval_one_batch(data, epoch=method_config['epochs'])
+    edge_mask = edge_att # attention scores
+    return edge_mask, None
+
     

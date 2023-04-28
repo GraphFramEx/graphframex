@@ -176,9 +176,6 @@ def graphs2batch(graphs, mdp):
 
 
 def create_agent(args, device):
-    if args.dataset_name == "mutag":
-        n_input = 7
-    if args.dataset_name == "ba_2motifs":
-        n_input = 1
+    n_input = args.n_input
     return GraphAgent(args.n_conv, args.n_hidden,
                       args.n_out_stem, args.n_out_graph, n_input).to(device)

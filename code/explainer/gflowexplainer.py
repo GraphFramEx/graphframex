@@ -7,9 +7,9 @@ import numpy as np
 
 import torch
 # get utils folder
-from explainer.explainer_utils.agent import create_agent
-from explainer.explainer_utils.mdp import create_mdps
-from explainer.explainer_utils.sampler import create_samplers
+from explainer.explainer_utils.gflowexplainer.agent import create_agent
+from explainer.explainer_utils.gflowexplainer.mdp import create_mdps
+from explainer.explainer_utils.gflowexplainer.sampler import create_samplers
 
 EPS = 1e-15
 
@@ -39,7 +39,6 @@ def gflow_parse_args(parser):
     parser.add_argument('--opt_epsilon', type=float, default=1e-08)
     parser.add_argument('--num_steps', type=int, default=10000)
     parser.add_argument('--N', type=int, default=1000)
-
     return parser.parse_args()
 
 

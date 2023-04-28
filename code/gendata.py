@@ -6,8 +6,10 @@ from dataset import (
     MoleculeDataset,
     SynGraphDataset,
     NCRealGraphDataset,
+    Mutag,
     IEEE24,
     IEEE39,
+    IEEE118,
     UK,
     IEEE24Cont,
     IEEE39Cont,
@@ -25,6 +27,8 @@ def get_dataset(dataset_root, **kwargs):
     print(f"Loading {dataset_name} dataset...")
     if dataset_name.lower() in list(MoleculeDataset.names.keys()):
         return MoleculeDataset(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower()=="mutag_large":
+        return Mutag(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
         dataset = NCRealGraphDataset(
             root=dataset_root, name=dataset_name, dataset_params=kwargs
@@ -35,7 +39,7 @@ def get_dataset(dataset_root, **kwargs):
         dataset = SynGraphDataset(root=dataset_root, name=dataset_name, transform=None, pre_transform=None, **kwargs)
         # dataset.process()
         return dataset
-    elif dataset_name.lower().startswith(tuple(["uk", "ieee24", "ieee39"])):
+    elif dataset_name.lower().startswith(tuple(["uk", "ieee24", "ieee39", "ieee118"])):
         if dataset_name.lower().endswith("mc"):
             datatype = "multiclass"
         elif dataset_name.lower().endswith("bin_dns"):
@@ -52,12 +56,16 @@ def get_dataset(dataset_root, **kwargs):
             return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin", "ieee39_bin_dns", "ieee39_bin_cf"]:
             return IEEE39(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee118_mc", "ieee118_bin", "ieee118_bin_dns", "ieee118_bin_cf"]:
+            return IEEE118(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ukcontrnd_mc", "ukcontrnd_bin"]:
             return UKContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ieee24contrnd_mc", "ieee24contrnd_bin"]:
             return IEEE24ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ieee39contrnd_mc", "ieee39contrnd_bin"]:
             return IEEE39ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+        elif dataset_name.lower() in ["ieee118contrnd_mc", "ieee118contrnd_bin"]:
+            return IEEE118ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
         else:
             raise ValueError(f"{dataset_name} is not defined.")
     else:
