@@ -241,6 +241,7 @@ class Explain(object):
         return top_accuracy_scores, accuracy_scores, fidelity_scores
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
+        print("Computing related predictions for graph classification")
         related_preds = []
         for i in range(len(self.explained_y)):
             explained_y_idx = self.explained_y[i]
@@ -264,11 +265,6 @@ class Explain(object):
 
             if edge_masks[0] is not None:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
-                """if self.mask_nature == "hard":
-                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).long()
-                    masked_data.edge_weight = new_edge_mask
-                    maskout_data.edge_weight = 1 - new_edge_mask
-                """
                 if self.mask_nature == "hard":
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
                         self.device
@@ -282,10 +278,16 @@ class Explain(object):
                     maskout_data.edge_attr = data.edge_attr[edge_mask <= 0].to(
                         self.device
                     )
-                else:
+                elif self.mask_nature == "soft_binary":
+                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).long()
+                    masked_data.edge_weight = new_edge_mask
+                    maskout_data.edge_weight = 1 - new_edge_mask
+                elif self.mask_nature == "soft":
                     new_edge_mask = edge_mask
                     masked_data.edge_weight = new_edge_mask
                     maskout_data.edge_weight = 1 - new_edge_mask
+                else:
+                    raise ValueError("Unknown mask nature: {}".format(self.mask_nature))
 
             masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
             maskout_prob_idx = self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
@@ -293,8 +295,8 @@ class Explain(object):
             true_label = data.y.cpu().item()
             pred_label = np.argmax(ori_prob_idx)
 
-            print("maskout_prob_idx", maskout_prob_idx)
-
+            print('masked_prob_idx', masked_prob_idx)
+            
             # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."\
             related_preds.append(
                 {
@@ -579,7 +581,7 @@ def get_mask_dir_path(args, device, unseen=False):
 
 def explain_main(dataset, model, device, args, unseen=False):
 
-    mask_save_name = get_mask_dir_path(args, device)
+    mask_save_name = get_mask_dir_path(args, device, unseen)
     args.dataset = dataset
 
     if unseen:
@@ -630,6 +632,7 @@ def explain_main(dataset, model, device, args, unseen=False):
     params_lst = eval(explainer.transf_params)
     params_lst.insert(0, None)
     edge_masks_ori = edge_masks.copy()
+    print('params list: ', params_lst)
     for i, param in enumerate(params_lst):
         params_transf = {explainer.mask_transformation: param}
         edge_masks = explainer._transform(edge_masks_ori, param)
@@ -691,7 +694,8 @@ if __name__=='__main__':
         args.dropout,
         args.readout,
         args.batch_size,
-    ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64)
+        args.unseen
+    ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64, "False")
     args_group = create_args_group(parser, args)
 
     fix_random_seed(args.seed)
@@ -774,7 +778,7 @@ if __name__=='__main__':
         )
     _, _, _, _, _ = trainer.test()
     
-    mask_save_name = get_mask_dir_path(args, device)
+    mask_save_name = get_mask_dir_path(args, device, eval(args.unseen))
     args.dataset = dataset
     list_test_idx = range(0, len(dataset.data.y))
     print("Number of explanable entities: ", len(list_test_idx))
