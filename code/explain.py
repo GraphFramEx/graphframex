@@ -278,7 +278,7 @@ class Explain(object):
                     maskout_data.edge_attr = data.edge_attr[edge_mask <= 0].to(
                         self.device
                     )
-                elif self.mask_nature == "soft_binary":
+                elif self.mask_nature == "hard_full":
                     new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).long()
                     masked_data.edge_weight = new_edge_mask
                     maskout_data.edge_weight = 1 - new_edge_mask
@@ -459,7 +459,7 @@ class Explain(object):
                     computation_time.append(duration_seconds)
                     final_explained_y.append(explained_y_idx)
             self.explained_y = final_explained_y
-            if self.save:
+            if (self.save_dir is not None) and self.save:
                 self.save_mask(
                     final_explained_y, edge_masks, node_feat_masks, computation_time
                 )
@@ -545,15 +545,13 @@ class Explain(object):
         return explained_y
 
     def save_mask(self, explained_y, edge_masks, node_feat_masks, computation_time):
-        if self.save_dir is None:
-            print("save_dir is None. Masks are not saved")
-            return
-        else:
-            save_path = os.path.join(self.save_dir, self.save_name)
-            with open(save_path, "wb") as f:
-                pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
+        assert self.save_dir is not None, "save_dir is None. Masks are not saved"
+        save_path = os.path.join(self.save_dir, self.save_name)
+        with open(save_path, "wb") as f:
+            pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
 
     def load_mask(self):
+        asser self.save_dir is not None, "save_dir is None. No mask to be loaded"
         save_path = os.path.join(self.save_dir, self.save_name)
         with open(save_path, "rb") as f:
             w_list = pickle.load(f)

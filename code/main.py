@@ -131,7 +131,7 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
             args.unseen
-        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "True")
+        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "False")
 
     if (args.dataset_name.startswith(tuple(["ba_", "tree_"]))) & (args.dataset_name!="ba_2motifs"):
         (
