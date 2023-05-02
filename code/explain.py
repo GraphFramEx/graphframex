@@ -264,31 +264,36 @@ class Explain(object):
 
             if edge_masks[0] is not None:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
+                """if self.mask_nature == "hard":
+                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).long()
+                    masked_data.edge_weight = new_edge_mask
+                    maskout_data.edge_weight = 1 - new_edge_mask
+                """
                 if self.mask_nature == "hard":
-                    hard_mask = np.where(edge_mask > 0, 1, 0)
-
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
                         self.device
                     )
-                    masked_data.edge_attr = data.edge_attr[:, edge_mask > 0].to(
+                    masked_data.edge_attr = data.edge_attr[edge_mask > 0].to(
                         self.device
                     )
                     maskout_data.edge_index = data.edge_index[:, edge_mask <= 0].to(
                         self.device
                     )
-                    maskout_data.edge_attr = data.edge_attr[:, edge_mask <= 0].to(
+                    maskout_data.edge_attr = data.edge_attr[edge_mask <= 0].to(
                         self.device
                     )
                 else:
-                    masked_data.edge_weight = edge_mask
-                    maskout_data.edge_weight = 1 - edge_mask
-                edge_mask = edge_mask.cpu().detach().numpy()
+                    new_edge_mask = edge_mask
+                    masked_data.edge_weight = new_edge_mask
+                    maskout_data.edge_weight = 1 - new_edge_mask
 
             masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
             maskout_prob_idx = self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
 
             true_label = data.y.cpu().item()
             pred_label = np.argmax(ori_prob_idx)
+
+            print("maskout_prob_idx", maskout_prob_idx)
 
             # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."\
             related_preds.append(
