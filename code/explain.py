@@ -259,71 +259,33 @@ class Explain(object):
             else:
                 x_masked, x_maskout = data.x, data.x
 
-            if edge_masks[0] is None:
-                if self.mask_nature == "hard":
-                    masked_prob_idx = (
-                        self.model.get_prob(x_masked, data.edge_index).cpu().detach().numpy()[0]
-                    )
-                    maskout_prob_idx = (
-                        self.model.get_prob(x_maskout, data.edge_index).cpu().detach().numpy()[0]
-                    )
-                else:
-                    masked_prob_idx = (
-                        self.model.get_prob(x_masked, data.edge_index, data.edge_attr)
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
-                    )
-                    maskout_prob_idx = (
-                        self.model.get_prob(x_maskout, data.edge_index, data.edge_attr)
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
-                    )
+            masked_data, maskout_data = data.clone(), data.clone()
+            masked_data.x, maskout_data.x = x_masked, x_maskout
 
-            else:
+            if edge_masks[0] is not None:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
                 if self.mask_nature == "hard":
-                    masked_edge_index = data.edge_index[:, edge_mask > 0].to(
+                    hard_mask = np.where(edge_mask > 0, 1, 0)
+
+                    masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
                         self.device
                     )
-                    maskout_edge_index = data.edge_index[:, edge_mask <= 0].to(
+                    masked_data.edge_attr = data.edge_attr[:, edge_mask > 0].to(
                         self.device
                     )
-                    masked_prob_idx = (
-                        self.model.get_prob(x_masked, masked_edge_index)
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
+                    maskout_data.edge_index = data.edge_index[:, edge_mask <= 0].to(
+                        self.device
                     )
-                    maskout_prob_idx = (
-                        self.model.get_prob(x_maskout, maskout_edge_index)
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
+                    maskout_data.edge_attr = data.edge_attr[:, edge_mask <= 0].to(
+                        self.device
                     )
                 else:
-                    masked_prob_idx = (
-                        self.model.get_prob(
-                            x_masked,
-                            data.edge_index,
-                            data.edge_attr * edge_mask[:, None]
-                        )
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
-                    )
-                    maskout_prob_idx = (
-                        self.model.get_prob(
-                            x_maskout,
-                            data.edge_index,
-                            data.edge_attr * (1 - edge_mask)[:, None],
-                        )
-                        .cpu()
-                        .detach()
-                        .numpy()[0]
-                    )
+                    masked_data.edge_weight = edge_mask
+                    maskout_data.edge_weight = 1 - edge_mask
                 edge_mask = edge_mask.cpu().detach().numpy()
+
+            masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
+            maskout_prob_idx = self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
 
             true_label = data.y.cpu().item()
             pred_label = np.argmax(ori_prob_idx)
