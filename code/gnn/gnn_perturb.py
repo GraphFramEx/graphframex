@@ -16,7 +16,7 @@ from code.utils.gen_utils import (
 from .model import GNN_basic, GNNPool
 from torch_geometric.nn import GCNConv
 import numpy as np
-from utils.gen_utils import get_existing_edge, get_new_edge
+from utils.gen_utils import get_existing_edges, get_new_edges
 
 
 
@@ -126,8 +126,8 @@ class GNNPerturb(GNN_basic):
         norm_adj = torch.mm(torch.mm(D_tilde_exp, A_tilde), D_tilde_exp)
         new_edge_index, new_edge_weight = from_adj_to_edge_index_torch(norm_adj)
         new_edge_weight = new_edge_weight.detach().numpy()
-        kept_edges, kept_edge_attr, kept_edge_weight = get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr)
-        new_added_edges, new_added_edge_attr, new_added_edge_weight = get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr)
+        kept_edges, kept_edge_attr, kept_edge_weight = get_existing_edges(new_edge_index, new_edge_weight, edge_index, edge_attr)
+        new_added_edges, new_added_edge_attr, new_added_edge_weight = get_new_edges(new_edge_index, new_edge_weight, edge_index, edge_attr)
         new_edge_index = torch.LongTensor(np.concatenate((kept_edges, new_added_edges),0).T)
         new_edge_attr = torch.FloatTensor(np.concatenate((kept_edge_attr, new_added_edge_attr),0))
         new_edge_weight = torch.FloatTensor(np.concatenate((kept_edge_weight, new_added_edge_weight),0))
@@ -157,8 +157,8 @@ class GNNPerturb(GNN_basic):
         norm_adj = torch.mm(torch.mm(D_tilde_exp, A_tilde), D_tilde_exp)
         new_edge_index, new_edge_weight = from_adj_to_edge_index_torch(norm_adj)
         new_edge_weight = new_edge_weight.detach().numpy()
-        kept_edges, kept_edge_attr, kept_edge_weight = get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr)
-        new_added_edges, new_added_edge_attr, new_added_edge_weight = get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr)
+        kept_edges, kept_edge_attr, kept_edge_weight = get_existing_edges(new_edge_index, new_edge_weight, edge_index, edge_attr)
+        new_added_edges, new_added_edge_attr, new_added_edge_weight = get_new_edges(new_edge_index, new_edge_weight, edge_index, edge_attr)
         new_edge_index = torch.LongTensor(np.concatenate((kept_edges, np.array(new_added_edges)),0).T)
         new_edge_attr = torch.FloatTensor(np.concatenate((kept_edge_attr, new_added_edge_attr),0))
         new_edge_weight = torch.FloatTensor(np.concatenate((kept_edge_weight, new_added_edge_weight),0))

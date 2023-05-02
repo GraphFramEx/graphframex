@@ -32,7 +32,7 @@ def diff_parse_args(parser):
     parser.add_argument('--data_size', type=int, default=-1)
 
     parser.add_argument('--threshold', type=float, default=0.5)
-    parser.add_argument('--alpha_cf', type=float, default=0.0)
+    parser.add_argument('--alpha_cf', type=float, default=0.5)
     parser.add_argument('--dropout_diff', type=float, default=0.001)
     parser.add_argument('--learning_rate_diff', type=float, default=1e-3)
     parser.add_argument('--lr_decay_diff', type=float, default=0.999)

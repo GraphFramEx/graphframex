@@ -46,6 +46,7 @@ class Mutag(InMemoryDataset):
         data_list = []
         adj_list = []
         max_num_nodes = 0
+        mol_idx = 0
         for i in range(original_labels.shape[0]):
             num_nodes = len(node_type_lists[i])
             edge_index = torch.tensor(edge_lists[i], dtype=torch.long).T
@@ -70,12 +71,13 @@ class Mutag(InMemoryDataset):
             if y.item() == 0 and len(signal_nodes) == 0:
                 continue
             
-            data = Data(x=x, y=y, edge_index=edge_index, node_label=node_label, edge_attr=edge_label, node_type=torch.tensor(node_type_lists[i]), idx=i)
+            data = Data(x=x, y=y, edge_index=edge_index, node_label=node_label, edge_attr=edge_label, node_type=torch.tensor(node_type_lists[i]), idx=mol_idx)
             max_num_nodes = max(max_num_nodes, num_nodes)
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
             
             adj_list.append(adj)
             data_list.append(data)
+            mol_idx += 1
 
         data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         data, slices = self.collate(data_list)

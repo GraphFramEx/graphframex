@@ -335,6 +335,20 @@ def create_vec_from_symm_matrix(matrix, P_vec_size):
     vector = matrix[idx[0], idx[1]]
     return vector
 
+def get_cmn_edges(new_edge_index, new_edge_weight, edge_index):
+    cmn_init_edge_idx, cmn_edges = [], []
+    cmn_edge_weight = np.zeros(edge_index.shape[1])
+    list_tuples = zip(*new_edge_index.cpu().numpy())
+    for d, (u, v) in enumerate(list_tuples):
+        pos_new_edge = np.where(np.all(np.array(edge_index.T)==(u,v),axis=1))[0]
+        if len(pos_new_edge) > 0:
+            idx_init = pos_new_edge[0]
+            cmn_init_edge_idx.append(idx_init)
+            cmn_edges.append([u, v])
+            cmn_edge_weight[idx_init] = new_edge_weight[d] 
+            #idx_init is the index of the edge in the initial edges that exists in the new edges.
+    return cmn_init_edge_idx, cmn_edges, cmn_edge_weight
+
 
 def filter_existing_edges(perturb_edges, edge_index):
     """Returns a mask of edges that are perturbed by CF-GNNExplainer and also exist in the original graph
@@ -352,10 +366,10 @@ def filter_existing_edges(perturb_edges, edge_index):
         u, v = list(edge_index[:, i])
         if (u, v) in list_tuples:
             edge_mask[i] = 1
-    return edge_mask
+    return edge_mask    
 
 
-def get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
+def get_existing_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
     keep_edge_idx = []
     for i in range(len(new_edge_index.T)):
         elmt = np.array(new_edge_index.T[i])
@@ -371,7 +385,7 @@ def get_existing_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
     return(keep_edge_idx, kept_edges, kept_edge_attr, kept_edge_weight)
 
 
-def get_new_edge(new_edge_index, new_edge_weight, edge_index, edge_attr):
+def get_new_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
     new_added_edges = []
     new_added_edge_idx = []
     for i in range(len(new_edge_index.T)):

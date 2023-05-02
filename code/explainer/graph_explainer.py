@@ -18,6 +18,7 @@ from code.explainer.pgexplainer import PGExplainer
 from code.utils.math_utils import sigmoid
 from utils.gen_utils import (
     filter_existing_edges,
+    get_cmn_edges,
     from_edge_index_to_adj_torch,
     from_adj_to_edge_index_torch,
     from_edge_index_to_adj,
@@ -568,11 +569,8 @@ def explain_diffexplainer_graph(model, data, target, device, **kwargs):
     data.num_graphs = 1
     data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
     explanatory_subgraph = diffexplainer.explanation_generate(train_params, data)
-    print("Explanatory subgraph: ", explanatory_subgraph)
-    print("Explanatory edges: ", explanatory_subgraph.edge_index)
-    print("Initial edges: ", data.edge_index)
-    edge_mask = filter_existing_edges(explanatory_subgraph.edge_index, data.edge_index)
-    print("Edge mask: ", edge_mask)
+    cmn_edge_idx, cmn_edges, cmn_edge_weight = get_cmn_edges(explanatory_subgraph.edge_index, explanatory_subgraph.edge_weight.cpu().detach().numpy(), data.edge_index)
+    edge_mask = cmn_edge_weight
     return edge_mask, None
 
 
@@ -628,7 +626,7 @@ def explain_gsat_graph(model, data, target, device, **kwargs):
         writer.add_hparams(hparam_dict=hparam_dict, metric_dict=metric_dict)
         save_checkpoint(gsat.extractor, subdir, model_name=f'gsat_{dataset_name}_{str(device)}_{seed}')
         
-        train_time_file = os.path.join(subdir, f"diffexplainer_train_time.json")
+        train_time_file = os.path.join(subdir, f"gsat_train_time.json")
         entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
         
