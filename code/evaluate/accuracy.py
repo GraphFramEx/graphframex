@@ -83,3 +83,4 @@ def get_best_scores(G1, G2_list):
         F1.append(f1_score)
     i_best = np.argmax(F1)
     return R[i_best], P[i_best], F1[i_best]
+

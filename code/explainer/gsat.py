@@ -44,7 +44,7 @@ def gsat_get_config():
 
 class GSAT(nn.Module):
 
-    def __init__(self, clf, extractor, optimizer, scheduler, writer, device, model_dir, dataset_name, num_class, multi_label, random_state,
+    def __init__(self, clf, extractor, optimizer, scheduler, device, model_dir, dataset_name, num_class, multi_label, random_state,
                  method_config, shared_config):
         super().__init__()
         self.clf = clf
@@ -52,7 +52,6 @@ class GSAT(nn.Module):
         self.optimizer = optimizer
         self.scheduler = scheduler
 
-        self.writer = writer
         self.device = device
         self.model_dir = model_dir
         self.dataset_name = dataset_name
@@ -143,7 +142,7 @@ class GSAT(nn.Module):
             data = process_data(data, use_edge_attr)
             att, loss_dict, clf_logits = run_one_batch(data.to(self.device), epoch)
 
-            exp_labels = data.edge_attr.data.cpu().reshape(-1)
+            exp_labels = data.edge_mask.data.cpu()
             precision_at_k = self.get_precision_at_k(att, exp_labels, self.k, data.batch, data.edge_index)
             desc, _, _, _, _, _ = self.log_epoch(epoch, phase, loss_dict, exp_labels, att, precision_at_k,
                                                  data.y.data.cpu(), clf_logits, batch=True)
@@ -170,7 +169,7 @@ class GSAT(nn.Module):
             train_res = self.run_one_epoch(loaders['train'], epoch, 'train', use_edge_attr)
             valid_res = self.run_one_epoch(loaders['eval'], epoch, 'valid', use_edge_attr)
             test_res = self.run_one_epoch(loaders['test'], epoch, 'test', use_edge_attr)
-            self.writer.add_scalar('gsat_train/lr', get_lr(self.optimizer), epoch)
+            # self.writer.add_scalar('gsat_train/lr', get_lr(self.optimizer), epoch)
 
             assert len(train_res) == 5
             main_metric_idx = 3 if 'ogb' in self.dataset_name else 2  # clf_roc or clf_acc
@@ -189,9 +188,9 @@ class GSAT(nn.Module):
                 # save_checkpoint(self.clf, self.model_dir, model_name='gsat_clf_epoch_' + str(epoch))
                 # save_checkpoint(self.extractor, self.model_dir, model_name='gsat_att_epoch_' + str(epoch))
 
-            for metric, value in metric_dict.items():
-                metric = metric.split('/')[-1]
-                self.writer.add_scalar(f'gsat_best/{metric}', value, epoch)
+            # for metric, value in metric_dict.items():
+                # metric = metric.split('/')[-1]
+                # self.writer.add_scalar(f'gsat_best/{metric}', value, epoch)
 
             # if epoch == self.epochs - 1:
                 # save_checkpoint(self.clf, self.model_dir, model_name='gsat_clf_epoch_' + str(epoch))
@@ -207,8 +206,8 @@ class GSAT(nn.Module):
     def log_epoch(self, epoch, phase, loss_dict, exp_labels, att, precision_at_k, clf_labels, clf_logits, batch):
         desc = f'[Seed {self.random_state}, Epoch: {epoch}]: gsat_{phase}........., ' if batch else f'[Seed {self.random_state}, Epoch: {epoch}]: gsat_{phase} finished, '
         for k, v in loss_dict.items():
-            if not batch:
-                self.writer.add_scalar(f'gsat_{phase}/{k}', v, epoch)
+            # if not batch:
+                # self.writer.add_scalar(f'gsat_{phase}/{k}', v, epoch)
             desc += f'{k}: {v:.3f}, '
         eval_desc, att_auroc, precision, clf_acc, clf_roc = self.get_eval_score(epoch, phase, exp_labels, att, precision_at_k, clf_labels, clf_logits, batch)
         desc += eval_desc
@@ -233,15 +232,15 @@ class GSAT(nn.Module):
             bkg_att_weights = att[exp_labels == 0]
             signal_att_weights = att[exp_labels == 1]
 
-        self.writer.add_histogram(f'gsat_{phase}/bkg_att_weights', bkg_att_weights, epoch)
-        self.writer.add_histogram(f'gsat_{phase}/signal_att_weights', signal_att_weights, epoch)
-        self.writer.add_scalar(f'gsat_{phase}/clf_acc/', clf_acc, epoch)
-        self.writer.add_scalar(f'gsat_{phase}/clf_roc/', clf_roc, epoch)
-        self.writer.add_scalar(f'gsat_{phase}/att_auroc/', att_auroc, epoch)
-        self.writer.add_scalar(f'gsat_{phase}/precision@{self.k}/', precision_at_k, epoch)
-        self.writer.add_scalar(f'gsat_{phase}/avg_bkg_att_weights/', bkg_att_weights.mean(), epoch)
-        self.writer.add_scalar(f'gsat_{phase}/avg_signal_att_weights/', signal_att_weights.mean(), epoch)
-        self.writer.add_pr_curve(f'PR_Curve/gsat_{phase}/', exp_labels, att, epoch)
+        # self.writer.add_histogram(f'gsat_{phase}/bkg_att_weights', bkg_att_weights, epoch)
+        # self.writer.add_histogram(f'gsat_{phase}/signal_att_weights', signal_att_weights, epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/clf_acc/', clf_acc, epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/clf_roc/', clf_roc, epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/att_auroc/', att_auroc, epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/precision@{# self.k}/', precision_at_k, epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/avg_bkg_att_weights/', bkg_att_weights.mean(), epoch)
+        # self.writer.add_scalar(f'gsat_{phase}/avg_signal_att_weights/', signal_att_weights.mean(), epoch)
+        # self.writer.add_pr_curve(f'PR_Curve/gsat_{phase}/', exp_labels, att, epoch)
 
         desc = f'clf_acc: {clf_acc:.3f}, clf_roc: {clf_roc:.3f}, ' + \
                f'att_roc: {att_auroc:.3f}, att_prec@{self.k}: {precision_at_k:.3f}'
@@ -303,7 +302,7 @@ class GSAT(nn.Module):
             fig, img = visualize_a_graph(viz_set[i].edge_index, edge_att, node_label, self.dataset_name, norm=self.viz_norm_att, mol_type=mol_type, coor=coor)
             imgs.append(img)
         imgs = np.stack(imgs)
-        self.writer.add_images(tag, imgs, epoch, dataformats='NHWC')
+        # self.writer.add_images(tag, imgs, epoch, dataformats='NHWC')
 
     def get_r(self, decay_interval, decay_r, current_epoch, init_r=0.9, final_r=0.5):
         r = init_r - current_epoch // decay_interval * decay_r

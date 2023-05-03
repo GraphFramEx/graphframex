@@ -15,6 +15,7 @@ from utils.parser_utils import (
     get_graph_size_args,
 )
 from pathlib import Path
+from torch_geometric.utils import degree
 
 
 def main(args, args_group):
@@ -42,6 +43,16 @@ def main(args, args_group):
         for y in data_y:
             y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
     args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
+
+    # Statistics of the dataset
+    # Number of graphs, number of node features, number of edge features, average number of nodes, average number of edges
+    info = {'num_graphs': len(dataset), 
+    'num_nf': args.num_node_features, 
+    'num_ef':args.edge_dim, 
+    'avg_num_nodes': np.mean([data.num_nodes for data in dataset]), 
+    'avg_num_edges': np.mean([data.edge_index.shape[1] for data in dataset]),
+    'avg_degree': np.mean([degree(data.edge_index[0]).mean().item() for data in dataset])}
+    print(info)
 
      # Select unseen data to test generalization capacity
     if eval(args.unseen) and eval(args.graph_classification):
@@ -108,9 +119,9 @@ def main(args, args_group):
         )
     _, _, _, _, _ = trainer.test()
 
-    explain_main(dataset, trainer.model, device, args)
-    if eval(args.unseen) and eval(args.graph_classification):
-        explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
+    explain_main(dataset, trainer.model, device, args, unseen=False)
+    #if eval(args.unseen) and eval(args.graph_classification):
+        #explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
 
 
 
@@ -131,7 +142,7 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
             args.unseen
-        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "False")
+        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "True")
 
     if (args.dataset_name.startswith(tuple(["ba_", "tree_"]))) & (args.dataset_name!="ba_2motifs"):
         (
@@ -158,8 +169,9 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
         ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
-    elif args.dataset_name.lower() in ["mutag", "mutag_large", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
-        (
+
+    elif args.dataset_name.lower() == "mutag_large":
+         (
             args.groundtruth,
             args.graph_classification,
             args.num_layers,
@@ -171,7 +183,22 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
             args.unseen
-        ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64, "True")
+        ) = ("True", "True", 3, 128, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
+
+    elif args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
+         (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+            args.unseen
+        ) = ("False", "True", 3, 128, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
     elif args.dataset_name.startswith(tuple(["uk", "ieee24"])):
         (
             args.groundtruth,

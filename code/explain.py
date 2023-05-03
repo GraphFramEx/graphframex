@@ -116,7 +116,7 @@ class Explain(object):
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large"])):
                 top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
@@ -175,7 +175,7 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large"])):
                 f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
@@ -241,7 +241,6 @@ class Explain(object):
         return top_accuracy_scores, accuracy_scores, fidelity_scores
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
-        print("Computing related predictions for graph classification")
         related_preds = []
         for i in range(len(self.explained_y)):
             explained_y_idx = self.explained_y[i]
@@ -294,8 +293,6 @@ class Explain(object):
 
             true_label = data.y.cpu().item()
             pred_label = np.argmax(ori_prob_idx)
-
-            print('masked_prob_idx', masked_prob_idx)
             
             # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."\
             related_preds.append(
@@ -551,7 +548,7 @@ class Explain(object):
             pickle.dump([explained_y, edge_masks, node_feat_masks, computation_time], f)
 
     def load_mask(self):
-        asser self.save_dir is not None, "save_dir is None. No mask to be loaded"
+        assert self.save_dir is not None, "save_dir is None. No mask to be loaded"
         save_path = os.path.join(self.save_dir, self.save_name)
         with open(save_path, "rb") as f:
             w_list = pickle.load(f)
@@ -578,14 +575,12 @@ def get_mask_dir_path(args, device, unseen=False):
 
 
 def explain_main(dataset, model, device, args, unseen=False):
-
-    mask_save_name = get_mask_dir_path(args, device, unseen)
     args.dataset = dataset
-
     if unseen:
         args.prediction_type = "mix"
-        args.mask_save_dir="None"
+        #args.mask_save_dir="None"
         args.num_explained_y = len(dataset)
+    mask_save_name = get_mask_dir_path(args, device, unseen)
     
     if (args.explained_target is None) | (unseen):
         list_test_idx = range(0, len(dataset.data.y))
@@ -630,7 +625,6 @@ def explain_main(dataset, model, device, args, unseen=False):
     params_lst = eval(explainer.transf_params)
     params_lst.insert(0, None)
     edge_masks_ori = edge_masks.copy()
-    print('params list: ', params_lst)
     for i, param in enumerate(params_lst):
         params_transf = {explainer.mask_transformation: param}
         edge_masks = explainer._transform(edge_masks_ori, param)

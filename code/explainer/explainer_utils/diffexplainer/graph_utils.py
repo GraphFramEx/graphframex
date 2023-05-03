@@ -173,8 +173,6 @@ def tensor2graph(graph_batch, score, mask_adj, threshold=0.5):
     edge_attr = graph_batch.edge_attr
     graph_batch_sub.edge_attr = torch.ones((edge_index.size(1), edge_attr.size(1))).to(edge_attr.device)
     graph_batch_sub.edge_weight = torch.sigmoid(score_tensor[edge_indices[0], edge_indices[1], edge_indices[2]])
-    print(graph_batch_sub.edge_weight.size())
-    print(graph_batch_sub.edge_index.size())
 
     return graph_batch_sub
 
