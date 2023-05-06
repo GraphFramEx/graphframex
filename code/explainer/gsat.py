@@ -142,7 +142,7 @@ class GSAT(nn.Module):
             data = process_data(data, use_edge_attr)
             att, loss_dict, clf_logits = run_one_batch(data.to(self.device), epoch)
 
-            exp_labels = data.edge_mask.data.cpu()
+            exp_labels = data.edge_label.data.cpu()
             precision_at_k = self.get_precision_at_k(att, exp_labels, self.k, data.batch, data.edge_index)
             desc, _, _, _, _, _ = self.log_epoch(epoch, phase, loss_dict, exp_labels, att, precision_at_k,
                                                  data.y.data.cpu(), clf_logits, batch=True)

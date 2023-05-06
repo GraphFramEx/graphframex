@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import math
 # from .visual import *
+import gc
 
 EPS = 1e-6
 from torch_geometric.loader import DataLoader
@@ -23,8 +24,8 @@ def diff_parse_args(parser):
     parser.add_argument('--verbose', type=int, default=10)
     parser.add_argument('--num_layers_diff', type=int, default=6)
     parser.add_argument('--layers_per_conv', type=int, default=1)
-    parser.add_argument('--train_batchsize', type=int, default=32)
-    parser.add_argument('--test_batchsize', type=int, default=32)
+    parser.add_argument('--train_batchsize', type=int, default=16)
+    parser.add_argument('--test_batchsize', type=int, default=16)
     parser.add_argument('--sigma_length', type=int, default=10)
     parser.add_argument('--epoch_diff', type=int, default=100)
     parser.add_argument('--feature_in', type=int)
@@ -320,6 +321,11 @@ class DiffExplainer(Explainer):
                 train_fid.append(fid_drop)
                 train_sparsity.append(modif_r.item())
                 train_remain.append(remain_r.item())
+                # free up unnecessary memory
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                else:
+                    gc.collect()
             scheduler.step(epoch)
             mean_train_loss = np.mean(train_losses)
             mean_train_loss_dist = np.mean(train_loss_dist)
@@ -335,6 +341,12 @@ class DiffExplainer(Explainer):
                              f'training fidelity drop: {mean_train_fidelity} | '
                              f'training acc: {mean_train_acc} | '
                              f'training average modification: {mean_train_sparsity} | '))
+
+            # free up unnecessary memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            else:
+                gc.collect()
             # evaluation
             if (epoch + 1) % args.verbose == 0:
                 test_losses = []
@@ -391,6 +403,12 @@ class DiffExplainer(Explainer):
                         test_fid.append(fid_drop)
                         test_sparsity.append(modif_r.item())
                         test_remain.append(reamin_r.item())
+
+                        # free up unnecessary memory
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                        else:
+                            gc.collect()
                 mean_test_loss = np.mean(test_losses)
                 mean_test_loss_dist = np.mean(test_loss_dist)
                 mean_test_loss_cf = np.mean(test_loss_cf)

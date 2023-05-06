@@ -1,6 +1,6 @@
 '''Adapted from https://github.com/bengioe/gflownet'''
 import copy
-
+import gc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -69,7 +69,12 @@ class GraphAgent(nn.Module):
                 selection[action] = True
                 selections.append(selection)
         edge_preds = self.estimate_edge_selection_prob(full_graph_rep, graph_reps, edge_reps_list, selections)
-            
+        
+        # free up unnecessary memory
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        else:
+            gc.collect()
         return edge_preds, None
 
     def estimate_edge_selection_prob(self, graph_rep, subgraph_reps, edge_reps_list, selections):

@@ -50,6 +50,7 @@ class Mutag(InMemoryDataset):
         for i in range(original_labels.shape[0]):
             num_nodes = len(node_type_lists[i])
             edge_index = torch.tensor(edge_lists[i], dtype=torch.long).T
+            edge_attr = torch.ones((edge_index.size(1), 1)).float()
 
             y = torch.tensor(graph_labels[i]).float().reshape(-1, 1)
             x = torch.tensor(original_features[i][:num_nodes]).float()
@@ -71,7 +72,7 @@ class Mutag(InMemoryDataset):
             if y.item() == 0 and len(signal_nodes) == 0:
                 continue
             
-            data = Data(x=x, y=y, edge_index=edge_index, node_label=node_label, edge_mask=edge_label, node_type=torch.tensor(node_type_lists[i]), idx=mol_idx)
+            data = Data(x=x, y=y, edge_index=edge_index, edge_attr=edge_attr, node_label=node_label, edge_mask=edge_label, node_type=torch.tensor(node_type_lists[i]), idx=mol_idx)
             max_num_nodes = max(max_num_nodes, num_nodes)
             adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
             

@@ -116,7 +116,7 @@ class Explain(object):
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large", "mnist"])):
                 top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
                 if graph.edge_mask is not None:
@@ -175,10 +175,12 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large"])):
+            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large", "mnist"])):
                 f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
                 edge_mask = edge_mask.cpu().numpy()
-                if graph.edge_mask is not None:
+                if graph.get('edge_mask', None) is None:
+                    print(f'No true explanation available for this graph {graph.idx} with label {graph.y}.')
+                else:
                     true_explanation = graph.edge_mask.cpu().numpy()
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
@@ -262,7 +264,7 @@ class Explain(object):
             masked_data, maskout_data = data.clone(), data.clone()
             masked_data.x, maskout_data.x = x_masked, x_maskout
 
-            if edge_masks[0] is not None:
+            if (edge_masks[i] is not None) and len(edge_masks[i])>0:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
                 if self.mask_nature == "hard":
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
@@ -278,7 +280,7 @@ class Explain(object):
                         self.device
                     )
                 elif self.mask_nature == "hard_full":
-                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).long()
+                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).float()
                     masked_data.edge_weight = new_edge_mask
                     maskout_data.edge_weight = 1 - new_edge_mask
                 elif self.mask_nature == "soft":
@@ -323,8 +325,8 @@ class Explain(object):
                     x_maskout = self.data.x * (1 - node_feat_mask)
             else:
                 x_masked, x_maskout = self.data.x, self.data.x
-
-            if edge_masks[0] is None:
+            print(len(edge_masks[i]))
+            if (edge_masks[i] is not None) and len(edge_masks[i])>0:
                 if self.mask_nature == "hard":
                     masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
                     maskout_probs = self.model.get_prob(x_maskout, self.data.edge_index)
@@ -450,7 +452,7 @@ class Explain(object):
                 edge_mask, node_feat_mask, duration_seconds = eval(
                     "self._compute" + self.task
                 )(explained_y_idx)
-                if edge_mask is not None:
+                if (edge_mask is not None) and len(edge_mask)>0:
                     edge_masks.append(edge_mask)
                     node_feat_masks.append(node_feat_mask)
                     computation_time.append(duration_seconds)
@@ -500,7 +502,7 @@ class Explain(object):
 
     def _get_explained_y(self):
         if self.graph_classification:
-            dataloader = DataLoader(
+            """dataloader = DataLoader(
                 self.dataset,
                 batch_size=len(self.dataset),
                 shuffle=True,
@@ -516,7 +518,8 @@ class Explain(object):
             elif self.pred_type == "mix":
                 list_idx = self.list_test_idx
             else:
-                raise ValueError("pred_type must be correct, wrong or mix.")
+                raise ValueError("pred_type must be correct, wrong or mix.")"""
+            list_idx = self.list_test_idx
             explained_y = np.random.choice(
                 list_idx,
                 size=min(len(list_idx), self.num_explained_y, len(self.dataset)),
@@ -715,10 +718,6 @@ if __name__=='__main__':
             y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
     args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
 
-    
-    print("num_classes:", dataset_params["num_classes"])
-    print("num_node_features:", dataset_params["num_node_features"])
-    print("dataset length:", len(dataset))
     if len(dataset) > 1:
         dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
     else:

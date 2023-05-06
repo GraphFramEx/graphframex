@@ -33,9 +33,14 @@ def topk_edges_unique(edge_mask, edge_index, num_top_edges):
 
 
 def normalize_mask(x):
-    if (np.nanmax(x) - np.nanmin(x)) == 0:
+    print("x", x)
+    print("np.size(x)", len(x))
+    if len(x) > 0 and not np.all(np.isnan(x)):
+        if (np.nanmax(x) - np.nanmin(x)) == 0:
+            return x
+        return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
+    else:
         return x
-    return (x - np.nanmin(x)) / (np.nanmax(x) - np.nanmin(x))
 
 
 def normalize_all_masks(masks):
@@ -47,7 +52,7 @@ def normalize_all_masks(masks):
 def clean(masks):
     """Clean masks by removing NaN, inf and too small values and normalizing"""
     for i in range(len(masks)):
-        if masks[i] is not None:
+        if (masks[i] is not None) and len(masks[i]) > 0:
             masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
             masks[i] = np.clip(masks[i], -10, 10)
             masks[i] = normalize_mask(masks[i])

@@ -540,7 +540,7 @@ def explain_diffexplainer_graph(model, data, target, device, **kwargs):
 
     if os.path.isfile(diffexplainer_saving_path):
         print("Load saved DiffExplainer model...")
-        diffexplainer  = torch.load(diffexplainer_saving_path)
+        diffexplainer  = torch.load(diffexplainer_saving_path, map_location=device)
     else:
         # data loader
         train_size = min(len(kwargs["dataset"]), 500)
@@ -569,7 +569,7 @@ def explain_diffexplainer_graph(model, data, target, device, **kwargs):
     data.num_graphs = 1
     data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
     explanatory_subgraph = diffexplainer.explanation_generate(train_params, data)
-    cmn_edge_idx, cmn_edges, cmn_edge_weight = get_cmn_edges(explanatory_subgraph.edge_index, explanatory_subgraph.edge_weight.cpu().detach().numpy(), data.edge_index)
+    cmn_edge_idx, cmn_edges, cmn_edge_weight = get_cmn_edges(explanatory_subgraph.edge_index, explanatory_subgraph.edge_weight.cpu().detach().numpy(), data.edge_index.cpu().detach().numpy())
     edge_mask = cmn_edge_weight
     return edge_mask, None
 
@@ -613,7 +613,9 @@ def explain_gsat_graph(model, data, target, device, **kwargs):
     if os.path.isfile(gsat_saving_path):
         print("Load saved GSAT model...")
         load_checkpoint(extractor, subdir, model_name=f'gsat_{dataset_name}_{str(device)}_{seed}')
+        extractor = extractor.to(device)
         gsat = GSAT(model, extractor, optimizer, scheduler, device, subdir, dataset_name, num_class, multi_label, seed, method_config, shared_config)
+
     else:
         print('====================================')
         print('[INFO] Training GSAT...')
@@ -630,6 +632,8 @@ def explain_gsat_graph(model, data, target, device, **kwargs):
         
 
     data.batch = torch.zeros(data.num_nodes, dtype=torch.long)
+    gsat.extractor = gsat.extractor.to(device)
+    data = data.to(device)
     edge_att, loss_dict, clf_logits = gsat.eval_one_batch(data, epoch=method_config['epochs'])
     edge_mask = edge_att # attention scores
     return edge_mask, None

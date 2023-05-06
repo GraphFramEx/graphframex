@@ -6,7 +6,9 @@ from dataset import (
     MoleculeDataset,
     SynGraphDataset,
     NCRealGraphDataset,
+    MNIST75sp,
     Mutag,
+    SentiGraphDataset,
     IEEE24,
     IEEE39,
     IEEE118,
@@ -29,6 +31,10 @@ def get_dataset(dataset_root, **kwargs):
         return MoleculeDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower()=="mutag_large":
         return Mutag(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower()=="mnist":
+        return MNIST75sp(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower()=="graphsst2":
+        return SentiGraphDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
         dataset = NCRealGraphDataset(
             root=dataset_root, name=dataset_name, dataset_params=kwargs

@@ -1,3 +1,5 @@
+from .mnist import MNIST75sp
+from .graphsst2 import SentiGraphDataset
 from .mutag_large import Mutag
 from .mol_dataset import MoleculeDataset
 from .nc_real_dataset import NCRealGraphDataset
@@ -11,6 +13,8 @@ __all__ = [
     "NCRealGraphDataset",
     "SynGraphDataset",
     "Mutag",
+    "MNIST75sp",
+    "SentiGraphDataset",
     "IEEE24",
     "IEEE39",
     "IEEE118",

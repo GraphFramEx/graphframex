@@ -244,9 +244,7 @@ class MoleculeDataset(InMemoryDataset):
                     idx = i-1,
                 )
                 if data_example.edge_attr is None:
-                    data_example.edge_attr = torch.ones(
-                        data_example.edge_index.size(1)
-                    ).float()
+                    data_example.edge_attr = torch.ones((data_example.edge_index.size(1), 1)).float()
                 max_num_nodes = max(max_num_nodes, data_example.num_nodes)
                 data_list.append(data_example)
         else:

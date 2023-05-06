@@ -51,7 +51,8 @@ def main(args, args_group):
     'num_ef':args.edge_dim, 
     'avg_num_nodes': np.mean([data.num_nodes for data in dataset]), 
     'avg_num_edges': np.mean([data.edge_index.shape[1] for data in dataset]),
-    'avg_degree': np.mean([degree(data.edge_index[0]).mean().item() for data in dataset])}
+    'avg_degree': np.mean([degree(data.edge_index[0]).mean().item() for data in dataset]),
+    'num_classes': args.num_classes,}
     print(info)
 
      # Select unseen data to test generalization capacity
@@ -64,10 +65,8 @@ def main(args, args_group):
         unseen_dataset.data, unseen_dataset.slices = dataset.collate([data for data in unseen_dataset])
         dataset = dataset[~unseen_mask]
         dataset.data, dataset.slices = dataset.collate([data for data in dataset])
+        args.num_explained_y = int(len(dataset)*0.1)
         
-    print("num_classes:", dataset_params["num_classes"])
-    print("num_node_features:", dataset_params["num_node_features"])
-    print("dataset length:", len(dataset))
     if len(dataset) > 1:
         dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
     else:
@@ -120,8 +119,8 @@ def main(args, args_group):
     _, _, _, _, _ = trainer.test()
 
     explain_main(dataset, trainer.model, device, args, unseen=False)
-    #if eval(args.unseen) and eval(args.graph_classification):
-        #explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
+    if eval(args.unseen) and eval(args.graph_classification):
+        explain_main(unseen_dataset, trainer.model, device, args, unseen=True)
 
 
 
@@ -170,7 +169,7 @@ if __name__ == "__main__":
             args.readout,
         ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
 
-    elif args.dataset_name.lower() == "mutag_large":
+    elif args.dataset_name.lower() in ["mutag_large", "mnist"]:
          (
             args.groundtruth,
             args.graph_classification,
@@ -182,8 +181,30 @@ if __name__ == "__main__":
             args.dropout,
             args.readout,
             args.batch_size,
+            args.gamma,
+            args.milestones,
+            args.num_early_stop,
             args.unseen
-        ) = ("True", "True", 3, 128, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
+        ) = ("True", "True", 3, 32, 200, 0.001, 5e-4, 0.0, "max", 64, 0.5, [70, 90, 120, 170], 50, "True")
+
+    elif args.dataset_name.lower()=="graphsst2":
+         (
+            args.groundtruth,
+            args.graph_classification,
+            args.num_layers,
+            args.hidden_dim,
+            args.num_epochs,
+            args.lr,
+            args.weight_decay,
+            args.dropout,
+            args.readout,
+            args.batch_size,
+            args.gamma,
+            args.milestones,
+            args.num_early_stop,
+            args.unseen
+        ) = ("False", "True", 3, 32, 200, 0.001, 5e-4, 0.0, "max", 64, 0.5, [70, 90, 120, 170], 50, "True")
+
 
     elif args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
          (
@@ -198,7 +219,7 @@ if __name__ == "__main__":
             args.readout,
             args.batch_size,
             args.unseen
-        ) = ("False", "True", 3, 128, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
+        ) = ("False", "True", 3, 32, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
     elif args.dataset_name.startswith(tuple(["uk", "ieee24"])):
         (
             args.groundtruth,

@@ -4,6 +4,7 @@ import argparse
 import pdb
 import time
 import numpy as np
+import gc
 
 import torch
 # get utils folder
@@ -56,6 +57,8 @@ class GFlowExplainer(torch.nn.Module):
         agent = create_agent(args, device=self.device)
         mdps = create_mdps(train_dataset, self.model, device=self.device)
         samplers = create_samplers(args.n_thread, args.mbsize, mdps, agent, args.sampling_model_prob)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         agent = self.train_agent(args, agent, self.model, samplers)
         return agent
 
@@ -136,6 +139,12 @@ class GFlowExplainer(torch.nn.Module):
             optimizer.step()
             scheduler.step()
             agent.training_steps = i + 1
+
+            # free up unnecessary memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            else:
+                gc.collect()
 
         sampler.stop_samplers_and_join()
         return agent

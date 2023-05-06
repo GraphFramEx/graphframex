@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch_geometric.nn.inits import reset
 from torch_geometric.nn import DenseGCNConv, DenseGraphConv
 import time
+import gc
 from utils.gen_utils import from_edge_index_to_adj, from_adj_to_edge_index, from_adj_to_edge_index_torch, from_edge_index_to_adj_torch, get_cf_edge_mask
 
 
@@ -385,6 +386,12 @@ def train(params):
             loss_cfe += loss_cfe_batch
             loss_kl_cf += loss_kl_batch_cf
 
+            # free up unnecessary memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            else:
+                gc.collect()
+
         # backward propagation
         loss, loss_kl, loss_sim, loss_cfe, loss_kl_cf = loss / batch_num, loss_kl/batch_num, loss_sim/batch_num, loss_cfe/batch_num, loss_kl_cf/batch_num
 
@@ -395,6 +402,12 @@ def train(params):
         else:
             ((loss_sim + loss_kl + alpha * loss_cfe)/ batch_num).backward()
         optimizer.step()
+
+        # free up unnecessary memory
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        else:
+            gc.collect()
 
         # evaluate
         if epoch % 100 == 0:

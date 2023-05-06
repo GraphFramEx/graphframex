@@ -29,8 +29,10 @@ def reorder_like(from_edge_index, to_edge_index, values):
 def process_data(data, use_edge_attr):
     if not use_edge_attr:
         data.edge_attr = None
-    if data.get('edge_attr', None) is None:
-        data.edge_attr = torch.zeros(data.edge_index.shape[1])
+    if data.get('edge_mask', None) is None:
+        data.edge_label = torch.zeros(data.edge_index.shape[1])
+    else:
+        data.edge_label = data.edge_mask
     return data
 
 
