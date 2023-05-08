@@ -33,8 +33,6 @@ def topk_edges_unique(edge_mask, edge_index, num_top_edges):
 
 
 def normalize_mask(x):
-    print("x", x)
-    print("np.size(x)", len(x))
     if len(x) > 0 and not np.all(np.isnan(x)):
         if (np.nanmax(x) - np.nanmin(x)) == 0:
             return x

@@ -343,10 +343,8 @@ def explain_cfgnnexplainer_graph(model, data, target, device, **kwargs):
         return None, None
     else:
         perturb_edges = cf_example[0][0]
-        print("Perturbed edges: ", perturb_edges)
         edge_mask = filter_existing_edges(perturb_edges, data.edge_index)
         if edge_mask:
-            print("Edge mask: ", edge_mask)
             return edge_mask, None
         else:
             return None, None
@@ -444,7 +442,6 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
     dataset_name = kwargs["dataset_name"]
     seed = kwargs["seed"]
     # hidden_dim = kwargs["hidden_dim"]
-    gflowexplainer = GFlowExplainer(model, device)
     subdir = os.path.join(kwargs["model_save_dir"], "gflowexplainer")
     os.makedirs(subdir, exist_ok=True)
     gflowexplainer_saving_path = os.path.join(subdir, f"gflowexplainer_{dataset_name}_{str(device)}_{seed}.pickle")
@@ -454,24 +451,27 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
     train_params.n_input = kwargs["num_node_features"]
     if os.path.isfile(gflowexplainer_saving_path):
         print("Load saved GFlowExplainer model...")
-        gflowexplainer_model = dill.load(open(gflowexplainer_saving_path, "rb"))
-        # gflowexplainer_model = gflowexplainer_model.to(device)
+        gflowexplainer_agent = create_agent(train_params, device)
+        state_dict = torch.load(gflowexplainer_saving_path)
+        gflowexplainer_agent.load_state_dict(state_dict)
+        gflowexplainer_agent = gflowexplainer_agent.to(device)
     else:
         train_size = min(len(kwargs["dataset"]), 500)
         explain_dataset_idx = random.sample(range(len(kwargs["dataset"])), k=train_size)
         explain_dataset = kwargs["dataset"][explain_dataset_idx]
+        gflowexplainer = GFlowExplainer(model, device)
         t0 = time.time()
-        gflowexplainer_model = gflowexplainer.train_explainer(train_params, explain_dataset, **kwargs)
+        gflowexplainer_agent = gflowexplainer.train_explainer(train_params, explain_dataset, **kwargs)
         train_time = time.time() - t0
         print("Save GFlowExplainer model...")
         # Save the file
-        dill.dump(gflowexplainer_model, file = open(gflowexplainer_saving_path, "wb"))
+        torch.save(gflowexplainer_agent.state_dict(), gflowexplainer_saving_path)
         train_time_file = os.path.join(subdir, f"gflowexplainer_train_time.json")
         entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
         write_to_json(entry, train_time_file)
 
     # foward_multisteps - origin of this function?
-    _, edge_mask = gflowexplainer_model.foward_multisteps(data, gflowexplainer.model)
+    _, edge_mask = gflowexplainer_agent.foward_multisteps(data, gflowexplainer.model)
     # convert removal priority into importance score: rank 3 --> importance score 3/num_edges
     edge_mask = edge_mask/len(edge_mask)
     # edge_mask[i]: indicate the edge of the i-th removal
@@ -585,7 +585,10 @@ def explain_gsat_graph(model, data, target, device, **kwargs):
 
     # config gsat training
     shared_config, method_config = gsat_get_config()
-    multi_label = False
+    if dataset_name == 'mnist':
+        multi_label = True
+    else:
+        multi_label = False
     extractor = ExtractorMLP(kwargs['hidden_dim'], shared_config).to(device)
     lr, wd = method_config['lr'], method_config.get('weight_decay', 0)
     optimizer = torch.optim.Adam(list(extractor.parameters()) + list(model.parameters()), lr=lr, weight_decay=wd)
