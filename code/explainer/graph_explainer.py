@@ -37,6 +37,7 @@ from explainer.gradcam import GraphLayerGradCam
 from explainer.cfgnnexplainer import CFExplainer
 from explainer.graphcfe import GraphCFE, train, test, baseline_cf, add_list_in_dict, compute_counterfactual
 from explainer.gflowexplainer import GFlowExplainer, gflow_parse_args
+from explainer.explainer_utils.gflowexplainer.agent import create_agent
 from explainer.diffexplainer import DiffExplainer, diff_parse_args
 from explainer.rcexplainer import RCExplainer_Batch, train_rcexplainer
 from explainer.explainer_utils.rcexplainer.rc_train import test_policy
@@ -465,6 +466,7 @@ def explain_gflowexplainer_graph(model, data, target, device, **kwargs):
         train_time = time.time() - t0
         print("Save GFlowExplainer model...")
         # Save the file
+        print('gflowexplainer_agent', gflowexplainer_agent)
         torch.save(gflowexplainer_agent.state_dict(), gflowexplainer_saving_path)
         train_time_file = os.path.join(subdir, f"gflowexplainer_train_time.json")
         entry = {"dataset": dataset_name, "train_time": train_time, "seed": seed, "device": str(device)}
