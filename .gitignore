@@ -136,7 +136,7 @@ dmypy.json
 data/
 model/
 csv/
-configs/
+config_euler/
 clutils/
 figures/
 results/
