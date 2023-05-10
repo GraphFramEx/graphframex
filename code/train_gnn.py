@@ -115,6 +115,7 @@ class TrainModel(object):
         self.model.load_state_dict(state_dict)
         self.model = self.model.to(self.device)
         self.model.eval()
+        print('self.graph_classification', self.graph_classification)
         if self.graph_classification:
             losses, preds, accs, balanced_accs, f1_scores = [], [], [], [], []
             for batch in self.loader["test"]:
@@ -249,19 +250,13 @@ def train_gnn(args, args_group):
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset, args)
-    dataset_params["num_classes"] = args.num_classes
-    dataset_params["num_node_features"] =args.num_node_features
-
-    print("num_classes:", dataset_params["num_classes"])
-    print("num_node_features:", dataset_params["num_node_features"])
-    print("dataset length:", len(dataset))
+    model_params["edge_dim"] = args.edge_dim
+    
     if len(dataset) > 1:
         dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
     else:
         dataset_params["max_num_nodes"] = dataset.data.num_nodes
     args.max_num_nodes = dataset_params["max_num_nodes"]
-    args.edge_dim = dataset.data.edge_attr.size(1)
-    model_params["edge_dim"] = args.edge_dim
 
     
     if eval(args.graph_classification):
@@ -273,7 +268,7 @@ def train_gnn(args, args_group):
             "seed": args.seed,
         }
     model = get_gnnNets(
-        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
+        args.num_node_features, args.num_classes, model_params
     )
     model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
     if args.dataset_name.startswith(tuple(["uk", "ieee"])):

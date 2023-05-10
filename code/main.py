@@ -1,6 +1,7 @@
 import os
 from explain import explain_main
 import torch
+import yaml
 import numpy as np
 import pandas as pd
 import random
@@ -18,6 +19,7 @@ from pathlib import Path
 from torch_geometric.utils import degree
 
 
+
 def main(args, args_group):
     fix_random_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,8 +34,7 @@ def main(args, args_group):
     dataset.data.x = dataset.data.x.float()
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset, args)
-    dataset_params["num_classes"] = args.num_classes
-    dataset_params["num_node_features"] =args.num_node_features
+    model_params["edge_dim"] = args.edge_dim
 
     data_y = dataset.data.y.cpu().numpy()
     if args.num_classes == 2:
@@ -68,14 +69,10 @@ def main(args, args_group):
         args.num_explained_y = int(len(dataset)*0.1)
         
     if len(dataset) > 1:
-        dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
+        args.max_num_nodes = max([d.num_nodes for d in dataset])
     else:
-        dataset_params["max_num_nodes"] = dataset.data.num_nodes
-    args.max_num_nodes = dataset_params["max_num_nodes"]
-    args.edge_dim = dataset.data.edge_attr.size(1)
-    model_params["edge_dim"] = args.edge_dim
+        args.max_num_nodes = dataset.data.num_nodes
 
-    
     if eval(args.graph_classification):
         args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
         dataloader_params = {
@@ -85,7 +82,7 @@ def main(args, args_group):
             "seed": args.seed,
         }
     model = get_gnnNets(
-        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
+        args.num_node_features, args.num_classes, model_params
     )
     model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
     if args.dataset_name.startswith(tuple(["uk", "ieee"])):
@@ -128,130 +125,18 @@ if __name__ == "__main__":
     parser, args = arg_parse()
     args = get_graph_size_args(args)
 
-    if args.dataset_name=="ba_2motifs":
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.unseen
-        ) = ("True", "True", 3, 20, 300, 0.001, 0.0000, 0.0, "max", 200, "True")
+    # Get the absolute path to the parent directory of the current file
+    parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-    if (args.dataset_name.startswith(tuple(["ba_", "tree_"]))) & (args.dataset_name!="ba_2motifs"):
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-        ) = ("True", "False", 3, 20, 1000, 0.001, 5e-3, 0.0, "identity")
+    # Load the config file
+    config_path = os.path.join(parent_dir, 'configs', 'dataset.yaml')
+    # read the configuration file
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # loop through the config and add any values to the parser as arguments
+    for key, value in config[args.dataset_name].items():
+        setattr(args, key, value)
 
-    elif args.dataset_name.startswith(tuple(["cora", "citeseer", "pubmed"])):
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-        ) = ("False", "False", 2, 16, 200, 0.01, 5e-4, 0.5, "identity")
-
-    elif args.dataset_name.lower() in ["mutag_large", "mnist"]:
-         (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.gamma,
-            args.milestones,
-            args.num_early_stop,
-            args.unseen
-        ) = ("True", "True", 3, 32, 200, 0.001, 5e-4, 0.0, "max", 64, 0.5, [70, 90, 120, 170], 50, "True")
-
-    elif args.dataset_name.lower()=="graphsst2":
-         (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.gamma,
-            args.milestones,
-            args.num_early_stop,
-            args.unseen
-        ) = ("False", "True", 3, 32, 200, 0.001, 5e-4, 0.0, "max", 64, 0.5, [70, 90, 120, 170], 50, "True")
-
-
-    elif args.dataset_name.lower() in ["mutag", "esol", "freesolv", "lipo", "pcba", "muv", "hiv", "bace", "bbbp", "tox21", "toxcast", "sider", "clintox"]:
-         (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.unseen
-        ) = ("False", "True", 3, 32, 300, 0.001, 5e-4, 0.0, "max", 64, "True")
-    elif args.dataset_name.startswith(tuple(["uk", "ieee24"])):
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.gamma,
-            args.milestones,
-            args.num_early_stop,
-            args.unseen
-        ) = ("True", "True", 3, 32, 200, 0.001, 0.0000, 0.0, "max", 128, 0.5, [70, 90, 120, 170], 50, "False")
-    elif args.dataset_name.startswith(tuple(["ieee39", "ieee118"])):
-        (
-            args.groundtruth,
-            args.graph_classification,
-            args.num_layers,
-            args.hidden_dim,
-            args.num_epochs,
-            args.lr,
-            args.weight_decay,
-            args.dropout,
-            args.readout,
-            args.batch_size,
-            args.gamma,
-            args.milestones,
-            args.unseen
-        ) = ("True", "True", 3, 32, 100, 0.001, 0.0000, 0.0, "max", 128, 0.1, [30, 50, 75], "False")
     args_group = create_args_group(parser, args)
     main(args, args_group)

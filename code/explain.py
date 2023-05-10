@@ -580,7 +580,7 @@ def get_mask_dir_path(args, device, unseen=False):
 def explain_main(dataset, model, device, args, unseen=False):
     args.dataset = dataset
     if unseen:
-        args.prediction_type = "mix"
+        args.pred_type = "mix"
         #args.mask_save_dir="None"
         args.num_explained_y = len(dataset)
     mask_save_name = get_mask_dir_path(args, device, unseen)
