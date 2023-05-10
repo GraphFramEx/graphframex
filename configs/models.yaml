@@ -1,0 +1,144 @@
+ba_house:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+ba_bottle:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+tree_grid:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+tree_cycle:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+ba_grid:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+ba_community:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+ba_2motifs:
+  num_gc_layers: 3
+  hidden_dim: 20
+  output_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.0
+texas:
+  num_gc_layers: 2
+  hidden_dim: 32
+  output_dim: 32
+  num_epochs: 400
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.2
+cornell:
+  num_gc_layers: 2
+  hidden_dim: 32
+  output_dim: 32
+  num_epochs: 400
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.2
+wisconsin:
+  num_gc_layers: 2
+  hidden_dim: 32
+  output_dim: 32
+  num_epochs: 400
+  lr: 0.001
+  weight_decay: 5e-3
+  dropout: 0.2
+cora:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+citeseer:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+pubmed:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+chameleon:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+squirrel:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+facebook:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+actor:
+  num_gc_layers: 2
+  hidden_dim: 16
+  output_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 5e-4
+  dropout: 0.5
+ebay:
+  num_gc_layers: 2
+  hidden_dim: 32
+  output_dim: 32
+  num_epochs: 500
+  lr: 0.001
+  weight_decay: 5e-4
+  dropout: 0.5

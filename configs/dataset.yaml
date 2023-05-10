@@ -1,0 +1,126 @@
+ba_2motifs:
+  groundtruth: "True"
+  graph_classification: "True"
+  num_layers: 3
+  hidden_dim: 20
+  num_epochs: 300
+  lr: 0.001
+  weight_decay: 0.0000
+  dropout: 0.0
+  readout: "max"
+  batch_size: 200
+  unseen: "True"
+
+common_params: &common_params
+  graph_classification: "True"
+  num_layers: 3
+  hidden_dim: 32
+  num_epochs: 200
+  lr: 0.001
+  weight_decay: 0.0005
+  dropout: 0.0
+  readout: "max"
+  batch_size: 64
+  gamma: 0.5
+  milestones: [70, 90, 120, 170]
+  num_early_stop: 50
+  unseen: "True"
+
+mutag_large:
+  <<: *common_params
+  groundtruth: "True"
+
+mnist:
+  <<: *common_params
+  groundtruth: "True"
+
+graphsst2:
+  <<: *common_params
+  groundtruth: "False"
+
+mutag:
+  <<: *common_params
+  groundtruth: "False"
+
+bbbp:
+  <<: *common_params
+  groundtruth: "False"
+
+common_params_powergrid: &common_params_powergrid
+  groundtruth: "True"
+  graph_classification: "True"
+  num_layers: 3
+  hidden_dim: 32
+  num_epochs: 200
+  lr: 0.001
+  weight_decay: 0.0
+  dropout: 0.0
+  readout: "max"
+  batch_size: 128
+  gamma: 0.5
+  milestones: [70, 90, 120, 170]
+  num_early_stop: 50
+  unseen: "False"
+
+uk_mc:
+  <<: *common_params_powergrid
+
+ieee24_mc:
+  <<: *common_params_powergrid
+
+ieee39_mc:
+  <<: *common_params_powergrid
+
+ieee118_mc:
+  <<: *common_params_powergrid
+
+common_params_syn: &common_params_syn
+  groundtruth: "True"
+  graph_classification: "False"
+  num_layers: 3
+  hidden_dim: 20
+  num_epochs: 1000
+  lr: 0.001
+  weight_decay: 0.005
+  dropout: 0.0
+  readout: "identity"
+  unseen: "False"
+
+ba_house:
+  <<: *common_params_syn
+
+ba_bottle:
+  <<: *common_params_syn
+
+tree_grid:
+  <<: *common_params_syn
+
+tree_cycle:
+  <<: *common_params_syn
+
+ba_grid:
+  <<: *common_params_syn
+
+ba_community:
+  <<: *common_params_syn
+
+common_params_citation: &common_params_citation
+  groundtruth: "False"
+  graph_classification: "False"
+  num_layers: 2
+  hidden_dim: 16
+  num_epochs: 200
+  lr: 0.01
+  weight_decay: 0.0005
+  dropout: 0.5
+  readout: "identity"
+  unseen: "False"
+
+cora:
+  <<: *common_params_citation
+
+citeseer:
+  <<: *common_params_citation
+
+pubmed:
+  <<: *common_params_citation
