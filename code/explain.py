@@ -264,7 +264,7 @@ class Explain(object):
             masked_data, maskout_data = data.clone(), data.clone()
             masked_data.x, maskout_data.x = x_masked, x_maskout
 
-            if (edge_masks[i] is not None) and len(edge_masks[i])>0:
+            if edge_masks[i] is not None and hasattr(edge_masks[i], '__len__') and len(edge_masks[i]) > 0:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
                 if self.mask_nature == "hard":
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
@@ -326,7 +326,7 @@ class Explain(object):
             else:
                 x_masked, x_maskout = self.data.x, self.data.x
             print(len(edge_masks[i]))
-            if (edge_masks[i] is not None) and len(edge_masks[i])>0:
+            if edge_masks[i] is not None and hasattr(edge_masks[i], '__len__') and len(edge_masks[i]) > 0:
                 if self.mask_nature == "hard":
                     masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
                     maskout_probs = self.model.get_prob(x_maskout, self.data.edge_index)
@@ -452,7 +452,7 @@ class Explain(object):
                 edge_mask, node_feat_mask, duration_seconds = eval(
                     "self._compute" + self.task
                 )(explained_y_idx)
-                if (edge_mask is not None) and len(edge_mask)>0:
+                if edge_mask is not None and hasattr(edge_mask, '__len__') and len(edge_mask) > 0:
                     edge_masks.append(edge_mask)
                     node_feat_masks.append(node_feat_mask)
                     computation_time.append(duration_seconds)
