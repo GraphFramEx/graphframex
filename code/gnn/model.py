@@ -30,7 +30,8 @@ def identity(x: torch.Tensor, batch: torch.Tensor):
 
 def cat_max_sum(x, batch):
     node_dim = x.shape[-1]
-    num_node = 25
+    bs = max(torch.unique(batch)) + 1
+    num_node = int(x.shape[0] / bs)
     x = x.reshape(-1, num_node, node_dim)
     return torch.cat([x.max(dim=1)[0], x.sum(dim=1)], dim=-1)
 
@@ -86,7 +87,9 @@ class GNNBase(nn.Module):
                 if hasattr(data, "edge_weight") and data.edge_weight is not None:
                     edge_weight = data.edge_weight
                 else:
-                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                    edge_weight = torch.ones(
+                        edge_index.shape[1], dtype=torch.float32, device=x.device
+                    )
 
             elif len(args) == 2:
                 x, edge_index = args[0], args[1]
@@ -96,16 +99,22 @@ class GNNBase(nn.Module):
                     dtype=torch.float32,
                     device=x.device,
                 )
-                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                edge_weight = torch.ones(
+                    edge_index.shape[1], dtype=torch.float32, device=x.device
+                )
 
             elif len(args) == 3:
                 x, edge_index, edge_attr = args[0], args[1], args[2]
                 batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
-                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                edge_weight = torch.ones(
+                    edge_index.shape[1], dtype=torch.float32, device=x.device
+                )
 
             elif len(args) == 4:
                 x, edge_index, edge_attr, batch = args[0], args[1], args[2], args[3]
-                edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                edge_weight = torch.ones(
+                    edge_index.shape[1], dtype=torch.float32, device=x.device
+                )
             else:
                 raise ValueError(
                     f"forward's args should take 1, 2 or 3 arguments but got {len(args)}"
@@ -144,12 +153,18 @@ class GNNBase(nn.Module):
                 batch = kwargs.get("batch")
                 if torch.is_tensor(batch):
                     if batch.size == 0:
-                        batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                        batch = torch.zeros(
+                            x.shape[0], dtype=torch.int64, device=x.device
+                        )
                 else:
                     if not batch:
-                        batch = torch.zeros(x.shape[0], dtype=torch.int64, device=x.device)
+                        batch = torch.zeros(
+                            x.shape[0], dtype=torch.int64, device=x.device
+                        )
                 if "edge_weight" not in kwargs:
-                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                    edge_weight = torch.ones(
+                        edge_index.shape[1], dtype=torch.float32, device=x.device
+                    )
 
             else:
                 x = data.x
@@ -179,9 +194,13 @@ class GNNBase(nn.Module):
                 if hasattr(data, "edge_weight"):
                     edge_weight = data.edge_weight
                     if edge_weight is None:
-                        edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                        edge_weight = torch.ones(
+                            edge_index.shape[1], dtype=torch.float32, device=x.device
+                        )
                 else:
-                    edge_weight = torch.ones(edge_index.shape[1], dtype=torch.float32, device=x.device)
+                    edge_weight = torch.ones(
+                        edge_index.shape[1], dtype=torch.float32, device=x.device
+                    )
         return x, edge_index, edge_attr, edge_weight, batch
 
 
@@ -207,6 +226,8 @@ class GNN_basic(GNNBase):
         _, _, _, _, batch = self._argsparse(*args, **kwargs)
         # node embedding for GNN
         emb = self.get_emb(*args, **kwargs)
+        print("batch", batch)
+        print("unique batch", max(torch.unique(batch)) + 1)
         x = self.readout_layer(emb, batch)
         self.logits = self.mlps(x)
         self.probs = F.softmax(self.logits, dim=1)
@@ -218,7 +239,7 @@ class GNN_basic(GNNBase):
     def get_emb(self, *args, **kwargs):
         x, edge_index, edge_attr, edge_weight, _ = self._argsparse(*args, **kwargs)
         for layer in self.convs:
-            x = layer(x, edge_index, edge_attr*edge_weight[:,None])
+            x = layer(x, edge_index, edge_attr * edge_weight[:, None])
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
         return x
@@ -226,7 +247,7 @@ class GNN_basic(GNNBase):
     def get_graph_rep(self, *args, **kwargs):
         x, edge_index, edge_attr, edge_weight, batch = self._argsparse(*args, **kwargs)
         for layer in self.convs:
-            x = layer(x, edge_index, edge_attr*edge_weight[:,None])
+            x = layer(x, edge_index, edge_attr * edge_weight[:, None])
             x = F.relu(x)
             x = F.dropout(x, self.dropout, training=self.training)
         x = self.readout_layer(x, batch)
@@ -261,7 +282,8 @@ class GAT(GNN_basic):
             )
             current_dim = self.hidden_dim
         # FC layers
-        self.mlps = nn.Linear(current_dim, self.output_dim)
+        mlp_dim = current_dim * 2 if self.readout == "cat_max_sum" else current_dim
+        self.mlps = nn.Linear(mlp_dim, self.output_dim)
         return
 
 
@@ -285,7 +307,8 @@ class GCN(GNN_basic):
             self.convs.append(GCNConv(current_dim, self.hidden_dim))
             current_dim = self.hidden_dim
         # FC layers
-        self.mlps = nn.Linear(current_dim, self.output_dim)
+        mlp_dim = current_dim * 2 if self.readout == "cat_max_sum" else current_dim
+        self.mlps = nn.Linear(mlp_dim, self.output_dim)
         return
 
 
@@ -318,7 +341,8 @@ class GIN(GNN_basic):
             )
             current_dim = self.hidden_dim
         # FC layers
-        self.mlps = nn.Linear(current_dim, self.output_dim)
+        mlp_dim = current_dim * 2 if self.readout == "cat_max_sum" else current_dim
+        self.mlps = nn.Linear(mlp_dim, self.output_dim)
         return
 
 
@@ -355,5 +379,6 @@ class TRANSFORMER(GNN_basic):
                 TransformerConv(current_dim, current_dim, edge_dim=self.edge_dim)#, concat=False)
                 )"""
         # FC layers
-        self.mlps = nn.Linear(current_dim, self.output_dim)
+        mlp_dim = current_dim * 2 if self.readout == "cat_max_sum" else current_dim
+        self.mlps = nn.Linear(mlp_dim, self.output_dim)
         return

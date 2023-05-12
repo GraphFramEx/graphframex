@@ -55,7 +55,7 @@ common_params_powergrid: &common_params_powergrid
   lr: 0.001
   weight_decay: 0.0
   dropout: 0.0
-  readout: "max"
+  readout: "cat_max_sum"
   batch_size: 128
   gamma: 0.5
   milestones: [70, 90, 120, 170]
@@ -66,6 +66,9 @@ uk_mc:
   <<: *common_params_powergrid
 
 ieee24_mc:
+  <<: *common_params_powergrid
+
+ieee24_bin:
   <<: *common_params_powergrid
 
 ieee39_mc:
