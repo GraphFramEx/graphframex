@@ -1,5 +1,26 @@
 # GNN Explainability Framework
 
+**Graph Classification Tasks**
+
+| Non-generative Explainer | Paper                                                                               |
+| :----------------------- | :---------------------------------------------------------------------------------- |
+| Occlusion                | Visualizing and understanding convolutional networks                                |
+| SA                       | Explainability Techniques for Graph Convolutional Networks.                         |
+| Grad-CAM                 | Explainability Methods for Graph Convolutional Neural Networks.                     |
+| Integrated Gradients     | Axiomatic Attribution for Deep Networks                                             |
+| GNNExplainer             | GNNExplainer: Generating Explanations for Graph Neural Networks                     |
+| SubgraphX                | On Explainability of Graph Neural Networks via Subgraph Exploration                 |
+| PGM-Explainer            | PGM-Explainer: Probabilistic Graphical Model Explanations for Graph Neural Networks |
+
+| Generative Explainer | Paper                                                                             |
+| :------------------- | :-------------------------------------------------------------------------------- |
+| PGExplainer          | Parameterized Explainer for Graph Neural Network                                  |
+| RCExplainer          | Reinforced Causal Explainer for Graph Neural Networks                             |
+| GSAT                 | Interpretable and Generalizable Graph Learning via Stochastic Attention Mechanism |
+| GraphCFE             | CLEAR: Generative Counterfactual Explanations on Graphs                           |
+| DiffExplainer        | D4Explainer (not published)                                                       |
+| GflowExplainer       | DAG Matters! GFlowNets Enhanced Explainer For Graph Neural Networks `             |
+
 **Node Classification Tasks**
 
 | Explainer            | Paper                                                                               |
@@ -41,46 +62,79 @@ pip install torch-geometric==2.0.3
 pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
 ```
 
-## Datasets
-
-1. The processed raw data for datasets `ba_house`, `ba_community`, `ba_grid`, `tree_cycle`, `tree_grid`, `ba_bottle` is available in the `data/syn` folder.
-2. The processed raw data for datasets `cora`, `citeseer`, `pubmed`, `cornell`, `texas`, `wisconsin`, `chameleon`, `squirrel`, `actor` will be automatically downloaded when training models.
-
 ## Python code map
 
 ```
 .
+├── __init__.py
+├── baseline.py
 ├── dataset
-│   ├── __init__.py
-│   ├── data_utils.py
-│   ├── gen_real.py
-│   ├── gen_syn.py
-│   └── syn_utils
-│       ├── featgen.py
-│       ├── gengraph.py
-│       ├── gengroundtruth.py
-│       └── synthetic_structsim.py
+│   ├── __init__.py
+│   ├── graphsst2.py
+│   ├── mnist.py
+│   ├── mnist_utils
+│   │   ├── __init__.py
+│   │   └── extract_slic.py
+│   ├── mol_dataset.py
+│   ├── mutag_large.py
+│   ├── mutag_utils
+│   │   └── gengroundtruth.py
+│   ├── nc_real_dataset.py
+│   ├── pow_dataset.py
+│   ├── powcont_dataset.py
+│   ├── powcontrnd_dataset.py
+│   ├── syn_dataset.py
+│   └── syn_utils
+│       ├── featgen.py
+│       ├── gengraph.py
+│       ├── gengroundtruth.py
+│       └── synthetic_structsim.py
 ├── evaluate
-│   ├── __init__.py
-│   ├── accuracy.py
-│   ├── fidelity.py
-│   └── mask_utils.py
-|── explain.py
+│   ├── __init__.py
+│   ├── accuracy.py
+│   ├── fidelity.py
+│   └── mask_utils.py
+├── explain.py
 ├── explainer
-│   ├── __init__.py
-│   ├── gnnexplainer.py
-│   ├── node_explainer.py
-│   ├── pgmexplainer.py
-│   ├── pgexplainer.py
-│   ├── shapley.py
-│   └── subgraphx.py
-|── gendata.py
+│   ├── cfgnnexplainer.py
+│   ├── diffexplainer.py
+│   ├── explainer_utils
+│   │   ├── diffexplainer
+│   │   │   ├── __init__.py
+│   │   │   ├── graph_utils.py
+│   │   │   └── pgnn.py
+│   │   ├── gflowexplainer
+│   │   │   ├── __init__.py
+│   │   │   ├── agent.py
+│   │   │   ├── mdp.py
+│   │   │   └── sampler.py
+│   │   ├── gsat
+│   │   │   ├── __init__.py
+│   │   │   ├── get_model.py
+│   │   │   └── utils.py
+│   │   └── rcexplainer
+│   │       ├── __init__.py
+│   │       ├── rc_train.py
+│   │       └── reorganizer.py
+│   ├── gflowexplainer.py
+│   ├── gnnexplainer.py
+│   ├── gradcam.py
+│   ├── graph_explainer.py
+│   ├── graphcfe.py
+│   ├── gsat.py
+│   ├── node_explainer.py
+│   ├── pgexplainer.py
+│   ├── pgmexplainer.py
+│   ├── rcexplainer.py
+│   ├── shapley.py
+│   └── subgraphx.py
+├── gendata.py
 ├── gnn
-│   ├── __init__.py
-│   ├── model.py
+│   ├── __init__.py
+│   ├── gnn_perturb.py
+│   └── model.py
 ├── main.py
-├── new_method.py
-├── test_method.py
+├── plot_mutag.py
 ├── train_gnn.py
 └── utils
     ├── __init__.py
@@ -89,20 +143,30 @@ pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
     ├── io_utils.py
     ├── math_utils.py
     ├── parser_utils.py
+    ├── path.py
     └── plot_utils.py
-
 ```
 
-## Node Classification
+## Run code
 
 ```bash
 python3 code/main.py --dataset_name [dataset-name] --model_name [gnn-model] --explainer_name [explainer-name]
 ```
 
+### Graph Classification
+
+- dataset-name:
+  - synthetic: ba_2motifs, ba_multishapes
+  - real-world: mutag, bbbp, mnist, graphsst2, ieee24_mc, ieee39_mc, ieee118_mc, uk_mc
+- gnn-model: gcn, gat, gin, transformer
+- explainer-name: random, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer, pgexplainer, rcexplainer, gsat, graphcfe, gflowexplainer, diffexplainer
+
+### Node Classification
+
 - dataset-name:
   - synthetic: ba_house, ba_grid, tree_cycle, tree_grid, ba_bottle
   - real-world: cora, pubmed, citeseer, facebook, chameleon, squirrel, texas, wisconsin, cornell, actor
-- gnn-model: gcn, gat, gin
+- gnn-model: gcn, gat, gin, transformer
 - explainer-name: random, pagerank, distance, sa, ig, gradcam, occlusion, basic_gnnexplainer, gnnexplainer, subgraphx, pgmexplainer, pgexplainer
 
 Note that gradcam is only available for synthetic datasets and subgraphx only for GCN model.
@@ -132,31 +196,43 @@ The default visualizations are provided in `notebook/GNN-Explainer-Viz.ipynb`.
 
 Tuning the mask sparsity/threshold/top-k values.
 
-#### Included experiments
+## Dataset desciption
 
-| Name             | `EXPERIMENT_NAME` | Description                                                                                                                            |
-| ---------------- | :---------------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Barabasi-House   |    `ba_house`     | Random BA graph with House attachments.                                                                                                |
-| Barabasi-Grid    |     `ba_grid`     | Random BA graph with grid attachments.                                                                                                 |
-| Tree-Cycle       |   `tree_cycle`    | Random Tree with cycle attachments.                                                                                                    |
-| Tree-Grid        |    `tree_grid`    | Random Tree with grid attachments.                                                                                                     |
-| Barabasi-Bottle  |    `ba_bottle`    | Random BA graph with bottle attachments.                                                                                               |
-| MUTAG            |      `mutag`      | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
-| Cora             |      `cora`       | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| Pubmed           |     `pubmed`      | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
-| Citeseer         |    `citeseer`     | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| FacebookPagePage |    `facebook`     | Facebook Page-Page network dataset                                                                                                     |
-| Chameleon        |    `chameleon`    | Wikipedia dataset                                                                                                                      |
-| Squirrel         |    `squirrel`     | Wikipedia dataset                                                                                                                      |
-| Texas            |      `texas`      | WebKB dataset                                                                                                                          |
-| Wisconsin        |    `wisconsin`    | WebKB dataset                                                                                                                          |
-| Cornell          |     `cornell`     | WebKB dataset                                                                                                                          |
-| Actor            |      `actor`      | Film-director-actor-writer network (Actor)                                                                                             |
+### Graph classification
 
-### Using the explainer on other models
+| Dataset        |       Name       | Description                                           |
+| -------------- | :--------------: | ----------------------------------------------------- |
+| BA-2motifs     |   `ba_2motifs`   | Random BA graph with 2 motifs.                        |
+| BA-multishapes | `ba_multishapes` | Random BA graph with multiple shapes.                 |
+| MUTAG          |     `mutag`      | Mutagenecity Predicting the mutagenicity of molecules |
+| BBBP           |      `bbbp`      | Blood-brain barrier penetration                       |
+| MNIST          |     `mnist`      | MNIST                                                 |
+| GraphSST-2     |   `graphsst2`    | GraphSST-2                                            |
+| IEEE-24        |   `ieee24_mc`    | IEEE-24 (Powergrid dataset)                           |
+| IEEE-39        |   `ieee39_mc`    | IEEE-39 (Powergrid dataset)                           |
+| IEEE-118       |   `ieee118_mc`   | IEEE-118 (Powergrid dataset)                          |
+| UK             |     `uk_mc`      | UK (Powergrid dataset)                                |
 
-A graph convolutional model is provided. This repo is still being actively developed to support other
-GNN models in the future.
+### Node classification
+
+| Dataset          |     Name     | Description                                                                                                                            |
+| ---------------- | :----------: | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Barabasi-House   |  `ba_house`  | Random BA graph with House attachments.                                                                                                |
+| Barabasi-Grid    |  `ba_grid`   | Random BA graph with grid attachments.                                                                                                 |
+| Tree-Cycle       | `tree_cycle` | Random Tree with cycle attachments.                                                                                                    |
+| Tree-Grid        | `tree_grid`  | Random Tree with grid attachments.                                                                                                     |
+| Barabasi-Bottle  | `ba_bottle`  | Random BA graph with bottle attachments.                                                                                               |
+| MUTAG            |   `mutag`    | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+| Cora             |    `cora`    | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
+| Pubmed           |   `pubmed`   | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
+| Citeseer         |  `citeseer`  | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
+| FacebookPagePage |  `facebook`  | Facebook Page-Page network dataset                                                                                                     |
+| Chameleon        | `chameleon`  | Wikipedia dataset                                                                                                                      |
+| Squirrel         |  `squirrel`  | Wikipedia dataset                                                                                                                      |
+| Texas            |   `texas`    | WebKB dataset                                                                                                                          |
+| Wisconsin        | `wisconsin`  | WebKB dataset                                                                                                                          |
+| Cornell          |  `cornell`   | WebKB dataset                                                                                                                          |
+| Actor            |   `actor`    | Film-director-actor-writer network (Actor)                                                                                             |
 
 ## Citation
 
