@@ -43,7 +43,15 @@
 - CPU or NVIDIA GPU, Linux, Python 3.7
 - PyTorch >= 1.5.0, other packages
 
-1. Pytorch Geometric. [Official Download](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
+1. Load every additional packages:
+
+```
+pip install -r requirements.txt
+```
+
+2. Manual installation
+
+Pytorch Geometric. [Official Download](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
 
 ```
 # We use TORCH version 1.6.0
@@ -56,7 +64,7 @@ pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-${TORCH
 pip install torch-geometric==2.0.3
 ```
 
-2. Other packages
+Other packages:
 
 ```
 pip install tqdm matplotlib argparse json jupyterlab notebook pgmpy captum
@@ -215,24 +223,23 @@ Tuning the mask sparsity/threshold/top-k values.
 
 ### Node classification
 
-| Dataset          |     Name     | Description                                                                                                                            |
-| ---------------- | :----------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Barabasi-House   |  `ba_house`  | Random BA graph with House attachments.                                                                                                |
-| Barabasi-Grid    |  `ba_grid`   | Random BA graph with grid attachments.                                                                                                 |
-| Tree-Cycle       | `tree_cycle` | Random Tree with cycle attachments.                                                                                                    |
-| Tree-Grid        | `tree_grid`  | Random Tree with grid attachments.                                                                                                     |
-| Barabasi-Bottle  | `ba_bottle`  | Random BA graph with bottle attachments.                                                                                               |
-| MUTAG            |   `mutag`    | Mutagenecity Predicting the mutagenicity of molecules ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
-| Cora             |    `cora`    | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| Pubmed           |   `pubmed`   | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                        |
-| Citeseer         |  `citeseer`  | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).                                      |
-| FacebookPagePage |  `facebook`  | Facebook Page-Page network dataset                                                                                                     |
-| Chameleon        | `chameleon`  | Wikipedia dataset                                                                                                                      |
-| Squirrel         |  `squirrel`  | Wikipedia dataset                                                                                                                      |
-| Texas            |   `texas`    | WebKB dataset                                                                                                                          |
-| Wisconsin        | `wisconsin`  | WebKB dataset                                                                                                                          |
-| Cornell          |  `cornell`   | WebKB dataset                                                                                                                          |
-| Actor            |   `actor`    | Film-director-actor-writer network (Actor)                                                                                             |
+| Dataset          |     Name     | Description                                                                                       |
+| ---------------- | :----------: | ------------------------------------------------------------------------------------------------- |
+| Barabasi-House   |  `ba_house`  | Random BA graph with House attachments.                                                           |
+| Barabasi-Grid    |  `ba_grid`   | Random BA graph with grid attachments.                                                            |
+| Tree-Cycle       | `tree_cycle` | Random Tree with cycle attachments.                                                               |
+| Tree-Grid        | `tree_grid`  | Random Tree with grid attachments.                                                                |
+| Barabasi-Bottle  | `ba_bottle`  | Random BA graph with bottle attachments.                                                          |
+| Cora             |    `cora`    | Citation network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+| Pubmed           |   `pubmed`   | PubMed network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)).   |
+| Citeseer         |  `citeseer`  | Citeseer network ([source](https://ls11-www.cs.tu-dortmund.de/staff/morris/graphkerneldatasets)). |
+| FacebookPagePage |  `facebook`  | Facebook Page-Page network dataset                                                                |
+| Chameleon        | `chameleon`  | Wikipedia dataset                                                                                 |
+| Squirrel         |  `squirrel`  | Wikipedia dataset                                                                                 |
+| Texas            |   `texas`    | WebKB dataset                                                                                     |
+| Wisconsin        | `wisconsin`  | WebKB dataset                                                                                     |
+| Cornell          |  `cornell`   | WebKB dataset                                                                                     |
+| Actor            |   `actor`    | Film-director-actor-writer network (Actor)                                                        |
 
 ## Citation
 
