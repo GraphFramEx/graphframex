@@ -143,6 +143,7 @@ results/
 code/explainer/gnnlrp.py
 code/explainer/graphsvx.py
 code/explainer/zorro.py
+code/explainer/node_explainer_plus.py
 code/dataset/mutag_utils.py
 code/dataset/gen_mutag.py
 code/evaluate/fidelity_gc.py

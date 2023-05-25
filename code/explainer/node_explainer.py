@@ -20,13 +20,9 @@ from utils.gen_utils import (
 )
 import numpy_indexed as npi
 from explainer.gnnexplainer import GNNExplainer, TargetedGNNExplainer
-from explainer.gnnlrp import GNN_LRP
-from explainer.graphsvx import LIME, SHAP, GraphLIME, GraphSVX
 from explainer.pgexplainer import PGExplainer
 from explainer.pgmexplainer import Node_Explainer
 from explainer.subgraphx import SubgraphX
-from explainer.zorro import Zorro
-from explainer.cfgnnexplainer import CFExplainer
 
 
 def balance_mask_undirected(edge_mask, edge_index):
@@ -317,26 +313,6 @@ def explain_subgraphx_node(model, data, node_idx, target, device, **kwargs):
     return edge_mask.astype("float"), None
 
 
-def explain_zorro_node(model, data, node_idx, target, device, **kwargs):
-    zorro = Zorro(model, device, num_hops=kwargs["num_layers"])
-    print("explain node", zorro.explain_node(node_idx, data.x, data.edge_index))
-    explanation = zorro.explain_node(
-        node_idx, data.x, data.edge_index, tau=0.85, recursion_depth=3
-    )
-    print("explanation", explanation)
-    # selected_nodes, selected_features, executed_selection = zorro.explain_node(node_idx, x, edge_index, tau=0.85, recursion_depth=4)
-    # selected_nodes = torch.Tensor(selected_nodes.squeeze())
-    # selected_features = torch.Tensor(selected_features.squeeze())
-    # print("node_attrs", selected_nodes)
-    # print("node_feature_mask", selected_features)
-    # print("executed_selection", executed_selection)
-    # node_attr = np.array(selected_nodes)
-    # edge_mask = node_attr_to_edge(edge_index, node_attr)
-    # edge_mask = edge_mask.cpu().detach().numpy()
-    # node_feature_mask = node_feature_mask.cpu().detach().numpy()
-    return  # edge_mask.astype("float"), node_feature_mask.astype("float")
-
-
 def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
     pgexplainer = PGExplainer(
         model,
@@ -365,101 +341,3 @@ def explain_pgexplainer_node(model, data, node_idx, target, device, **kwargs):
     )
     edge_mask = edge_mask.cpu().detach().numpy()
     return edge_mask.astype("float"), None
-
-
-def explain_cfgnnexplainer_node(model, data, node_idx, target, device, **kwargs):
-    n_momentum, num_epochs, beta, optimizer, lr = 0.9, 500, 0.5, "SGD", 0.01
-    features, labels = data.x, data.y
-    sub_adj, sub_feat, sub_labels, node_dict = get_neighbourhood(
-        int(node_idx), data.edge_index, kwargs["num_layers"] + 1, features, labels
-    )
-    new_idx = node_dict[int(node_idx)]
-    # Check that original model gives same prediction on full graph and subgraph
-    with torch.no_grad():
-        # output = model(data=data)[node_idx]
-        adj = from_edge_index_to_adj(
-            data.edge_index, data.edge_attr, data.num_nodes
-        )
-        output = model(**{"x": features, "adj": normalize_adj(adj)})
-        sub_output = model(**{"x": sub_feat, "adj": normalize_adj(sub_adj)})
-        # Check that original model gives same prediction on full graph and subgraph
-        print("Output original model, full adj: {}".format(output[node_idx]))
-        print("Output original model, sub adj: {}".format(sub_output[new_idx]))
-
-    # Need to instantitate new cf model every time because size of P changes based on size of sub_adj
-    explainer = CFExplainer(
-        model=model,
-        cf_model_name = kwargs["model_name"],
-        adj=sub_adj,
-        feat=sub_feat,
-        edge_feat=data.edge_attr,
-        n_hid=kwargs["hidden_dim"],
-        dropout=kwargs["dropout"],
-        readout=kwargs["readout"],
-        edge_dim=kwargs["edge_dim"],
-        num_layers=kwargs["num_layers"],
-        labels=sub_labels,
-        y_pred_orig=target,
-        num_classes=kwargs["num_classes"],
-        beta=beta,
-        device=device,
-    )
-    cf_example = explainer.explain_node(
-        node_idx=node_idx,
-        cf_optimizer=optimizer,
-        new_idx=new_idx,
-        lr=lr,
-        n_momentum=n_momentum,
-        num_epochs=num_epochs,
-    )
-    if cf_example == []:
-        return None, None
-    else:
-        perturb_edges = cf_example[0][2]
-        node_dict_inv = {int(v): int(k) for k, v in node_dict.items()}
-        perturb_edges_ori = np.vectorize(node_dict_inv.get)(perturb_edges)
-        edge_mask = filter_existing_edges(perturb_edges_ori, data.edge_index)
-        return edge_mask, None
-
-
-def explain_gnnlrp_node(model, data, node_idx, target, device, **kwargs):
-    gnnlrp = GNN_LRP(model, explain_graph=False)
-    walks, edge_mask = gnnlrp(data.x, data.edge_index)
-    edge_mask = edge_mask.cpu().detach().numpy()
-    return edge_mask.astype("float"), None
-
-
-def explain_graphsvx_node(model, data, node_idx, target, device, **kwargs):
-    graphsvx = GraphSVX(data, model, device)
-    node_feat_mask = graphsvx.explain(node_indexes=[node_idx], multiclass=False)
-    coefs = node_feat_mask[0].T[graphsvx.F :]
-    print(coefs)
-    print(coefs.shape)
-    print("node_feat_mask", node_feat_mask[0])
-    print("node_feat_mask shape", node_feat_mask[0].shape)
-    print(graphsvx.base_values)
-    print(graphsvx.base_values.shape)
-    return None, node_feat_mask.astype("float")
-
-
-def explain_graphlime_node(model, data, node_idx, target, device, **kwargs):
-    graphlime = GraphLIME(data, model, device, hop=2, rho=0.1, cached=True)
-    node_feat_mask = graphlime.explain(
-        node_idx, hops=None, num_samples=None, info=False, multiclass=False
-    )
-    return None, node_feat_mask.astype("float")
-
-
-def explain_lime_node(model, data, node_idx, target, device, **kwargs):
-    graphlime = LIME(data, model, device)
-    node_feat_mask = graphlime.explain(
-        node_idx, hops=None, num_samples=10, info=False, multiclass=False
-    )
-    return None, node_feat_mask.astype("float")
-
-
-def explain_shap_node(model, data, node_idx, target, device, **kwargs):
-    ":return: shapley values for features that influence node v's pred"
-    shap = SHAP(data, model, device)
-    node_feat_mask = shap.explain()
-    return None, node_feat_mask.astype("float")
