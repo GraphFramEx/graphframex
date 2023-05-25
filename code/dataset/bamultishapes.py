@@ -104,15 +104,15 @@ class BAMultiShapesDataset(InMemoryDataset):
     def processed_file_names(self) -> str:
         return "data.pt"
 
-    def download(self):
-        # download_url(self.url, self.raw_dir)
-        if not osp.exists(osp.join(self.raw_dir, file)):
-            print(
-                "raw data of `{}` doesn't exist, please download from our github.".format(
-                    file
-                )
-            )
-            raise FileNotFoundError
+    # def download(self):
+    # download_url(self.url, self.raw_dir)
+    # if not osp.exists(osp.join(self.raw_dir, file)):
+    # print(
+    # "raw data of `{}` doesn't exist, please download from our github.".format(
+    # file
+    # )
+    # )
+    # raise FileNotFoundError
 
     def process(self):
         with open(self.raw_paths[0], "rb") as f:
@@ -131,11 +131,15 @@ class BAMultiShapesDataset(InMemoryDataset):
 
             data = Data(
                 x=x,
-                edge_index=edge_index,
+                edge_index=torch.cat(
+                    [torch.stack([edge_index[1], edge_index[0]], dim=0), edge_index],
+                    dim=1,
+                ),
                 y=y,
                 edge_label=torch.cat([edge_label, edge_label], dim=0),
                 idx=index,
             )
+            data.edge_attr = torch.ones((data.edge_index.size(1), 1)).float()
             index += 1
 
             if self.pre_filter is not None and not self.pre_filter(data):
@@ -254,14 +258,14 @@ def generate(num_samples):
 
     for _ in range(int(num_samples / 2)):
         g = generate_class1(nb_random_edges=1, nb_node_ba=nb_node_ba)
-        adjs.append(nx.adjacency_matrix(g).A)
+        adjs.append(np.triu(nx.adjacency_matrix(g).A, k=0))
         labels.append(0)
         feats.append(list(np.ones((len(g.nodes()), 10)) / 10))
         edge_labels.append(nx.get_edge_attributes(g, "edge_label"))
 
     for _ in range(int(num_samples / 2)):
         g = generate_class0(nb_random_edges=1, nb_node_ba=nb_node_ba)
-        adjs.append(nx.adjacency_matrix(g).A)
+        adjs.append(np.triu(nx.adjacency_matrix(g).A, k=0))
         labels.append(1)
         feats.append(list(np.ones((len(g.nodes()), 10)) / 10))
         edge_labels.append(nx.get_edge_attributes(g, "edge_label"))
@@ -269,7 +273,7 @@ def generate(num_samples):
 
 
 def save(data, root):
-    path = os.path.join(root, "bamultishapes/raw")
+    path = os.path.join(root, "ba_multishapes/raw")
     os.makedirs(path, exist_ok=True)
     f = open(os.path.join(path, "BAMultiShapes.pkl"), "wb")
     pkl.dump(data, f)
@@ -309,7 +313,7 @@ def padding_features(features, max_num_nodes):
 if __name__ == "__main__":
     root_path_data = "/cluster/work/zhang/kamara/graphframex/data"
     if os.path.exists(
-        os.path.join(root_path_data, "bamultishapes/raw/BAMultiShapes.pkl")
+        os.path.join(root_path_data, "ba_multishapes/raw/BAMultiShapes.pkl")
     ):
         print("Data already generated")
         dataset = BAMultiShapesDataset(root=root_path_data, name="BAMultiShapes")

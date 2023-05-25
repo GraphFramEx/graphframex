@@ -5,6 +5,7 @@ from torch_geometric.data import DataLoader
 from dataset import (
     MoleculeDataset,
     SynGraphDataset,
+    BAMultiShapesDataset,
     NCRealGraphDataset,
     MNIST75sp,
     Mutag,
@@ -29,12 +30,14 @@ def get_dataset(dataset_root, **kwargs):
     print(f"Loading {dataset_name} dataset...")
     if dataset_name.lower() in list(MoleculeDataset.names.keys()):
         return MoleculeDataset(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower()=="mutag_large":
+    elif dataset_name.lower() == "mutag_large":
         return Mutag(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower()=="mnist":
+    elif dataset_name.lower() == "mnist":
         return MNIST75sp(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower()=="graphsst2":
+    elif dataset_name.lower() == "graphsst2":
         return SentiGraphDataset(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower() == "ba_multishapes":
+        return BAMultiShapesDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
         dataset = NCRealGraphDataset(
             root=dataset_root, name=dataset_name, dataset_params=kwargs
@@ -42,7 +45,13 @@ def get_dataset(dataset_root, **kwargs):
         dataset.process()
         return dataset
     elif dataset_name.lower() in list(SynGraphDataset.names.keys()):
-        dataset = SynGraphDataset(root=dataset_root, name=dataset_name, transform=None, pre_transform=None, **kwargs)
+        dataset = SynGraphDataset(
+            root=dataset_root,
+            name=dataset_name,
+            transform=None,
+            pre_transform=None,
+            **kwargs,
+        )
         # dataset.process()
         return dataset
     elif dataset_name.lower().startswith(tuple(["uk", "ieee24", "ieee39", "ieee118"])):
@@ -52,26 +61,47 @@ def get_dataset(dataset_root, **kwargs):
             datatype = "binary_dns"
         elif dataset_name.lower().endswith("bin_cf"):
             datatype = "binary_cf"
-        elif dataset_name.lower().endswith("bin"): # binary
+        elif dataset_name.lower().endswith("bin"):  # binary
             datatype = "binary"
         else:
             raise ValueError(f"{dataset_name} is not defined.")
         if dataset_name.lower() in ["uk_mc", "uk_bin", "uk_bin_dns", "uk_bin_cf"]:
             return UK(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee24_mc", "ieee24_bin", "ieee24_bin_dns", "ieee24_bin_cf"]:
+        elif dataset_name.lower() in [
+            "ieee24_mc",
+            "ieee24_bin",
+            "ieee24_bin_dns",
+            "ieee24_bin_cf",
+        ]:
             return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee39_mc", "ieee39_bin", "ieee39_bin_dns", "ieee39_bin_cf"]:
+        elif dataset_name.lower() in [
+            "ieee39_mc",
+            "ieee39_bin",
+            "ieee39_bin_dns",
+            "ieee39_bin_cf",
+        ]:
             return IEEE39(root=dataset_root, name=dataset_name, datatype=datatype)
-        elif dataset_name.lower() in ["ieee118_mc", "ieee118_bin", "ieee118_bin_dns", "ieee118_bin_cf"]:
+        elif dataset_name.lower() in [
+            "ieee118_mc",
+            "ieee118_bin",
+            "ieee118_bin_dns",
+            "ieee118_bin_cf",
+        ]:
             return IEEE118(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ukcontrnd_mc", "ukcontrnd_bin"]:
             return UKContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in ["ieee24contrnd_mc", "ieee24contrnd_bin"]:
-            return IEEE24ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+            return IEEE24ContRndNc(
+                root=dataset_root, name=dataset_name, datatype=datatype
+            )
         elif dataset_name.lower() in ["ieee39contrnd_mc", "ieee39contrnd_bin"]:
-            return IEEE39ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+            return IEEE39ContRndNc(
+                root=dataset_root, name=dataset_name, datatype=datatype
+            )
         elif dataset_name.lower() in ["ieee118contrnd_mc", "ieee118contrnd_bin"]:
-            return IEEE118ContRndNc(root=dataset_root, name=dataset_name, datatype=datatype)
+            return IEEE118ContRndNc(
+                root=dataset_root, name=dataset_name, datatype=datatype
+            )
         else:
             raise ValueError(f"{dataset_name} is not defined.")
     else:
@@ -106,29 +136,31 @@ def get_dataloader(
         num_train = int(data_split_ratio[0] * len(dataset))
         num_eval = int(data_split_ratio[1] * len(dataset))
         num_test = len(dataset) - num_train - num_eval
-        
+
         from functools import partial
 
         lengths = [num_train, num_eval, num_test]
-        indices = randperm(sum(lengths), generator=default_generator.manual_seed(seed)).tolist()
+        indices = randperm(
+            sum(lengths), generator=default_generator.manual_seed(seed)
+        ).tolist()
         train_indices = indices[:num_train]
         dev_indices = indices[num_train : num_train + num_eval]
         test_indices = indices[num_train + num_eval :]
 
         # train, eval, test = random_split(
-            # dataset,
-            # lengths=[num_train, num_eval, num_test],
-            # generator=default_generator.manual_seed(seed),
-        #)
+        # dataset,
+        # lengths=[num_train, num_eval, num_test],
+        # generator=default_generator.manual_seed(seed),
+        # )
 
     train = Subset(dataset, train_indices)
     eval = Subset(dataset, dev_indices)
     test = Subset(dataset, test_indices)
-    
+
     train_dataset = dataset[train_indices]
     eval_dataset = dataset[dev_indices]
     test_dataset = dataset[test_indices]
-    
+
     # train.data, train.slices = train.collate([data for data in train])
     # eval.data, eval.slices = eval.collate([data for data in eval])
     # test.data, test.slices = test.collate([data for data in test])
@@ -137,9 +169,8 @@ def get_dataloader(
     dataloader["train"] = DataLoader(train, batch_size=batch_size, shuffle=True)
     dataloader["eval"] = DataLoader(eval, batch_size=batch_size, shuffle=False)
     dataloader["test"] = DataLoader(test, batch_size=batch_size, shuffle=False)
-    
-    return dataloader, train_dataset, eval_dataset, test_dataset
 
+    return dataloader, train_dataset, eval_dataset, test_dataset
 
 
 if __name__ == "__main__":

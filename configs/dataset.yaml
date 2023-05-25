@@ -11,6 +11,19 @@ ba_2motifs:
   batch_size: 200
   unseen: "True"
 
+ba_multishapes:
+  groundtruth: "True"
+  graph_classification: "True"
+  num_layers: 3
+  hidden_dim: 20
+  num_epochs: 300
+  lr: 0.001
+  weight_decay: 0.0000
+  dropout: 0.0
+  readout: "max"
+  batch_size: 200
+  unseen: "True"
+
 common_params: &common_params
   graph_classification: "True"
   num_layers: 3

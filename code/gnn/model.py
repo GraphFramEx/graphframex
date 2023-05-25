@@ -226,8 +226,6 @@ class GNN_basic(GNNBase):
         _, _, _, _, batch = self._argsparse(*args, **kwargs)
         # node embedding for GNN
         emb = self.get_emb(*args, **kwargs)
-        print("batch", batch)
-        print("unique batch", max(torch.unique(batch)) + 1)
         x = self.readout_layer(emb, batch)
         self.logits = self.mlps(x)
         self.probs = F.softmax(self.logits, dim=1)

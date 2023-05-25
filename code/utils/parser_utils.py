@@ -48,13 +48,13 @@ def get_graph_size_args(args):
 
 
 def get_data_args(dataset, args):
-    assert dataset.data.y.ndim == 1 # make sure it is a one class problem
-    args.num_classes = max(np.unique(dataset.data.y.cpu().numpy()))+1
+    assert dataset.data.y.ndim == 1  # make sure it is a one class problem
+    args.num_classes = max(np.unique(dataset.data.y.cpu().numpy())) + 1
     args.num_node_features = dataset.data.x.size(1)
-    
+
     if dataset.data.edge_attr.ndim == 1:
         dataset.data.edge_attr = torch.unsqueeze(dataset.data.edge_attr, 1)
-    
+
     args.edge_dim = dataset.data.edge_attr.size(1)
     args.datatype = "binary" if args.num_classes == 2 else "multiclass"
     return args
@@ -137,7 +137,12 @@ def arg_parse():
     parser_dataset_params.add_argument(
         "--num_basis", help="number of nodes in the base graph", type=int
     )
-    parser_dataset_params.add_argument("--datatype", help="the type of classification (binary or multiclass) for the powergrid datasets (uk, ieee24, ieee39, ieee118)", type=str, default="binary")
+    parser_dataset_params.add_argument(
+        "--datatype",
+        help="the type of classification (binary or multiclass) for the powergrid datasets (uk, ieee24, ieee39, ieee118)",
+        type=str,
+        default="binary",
+    )
     parser_dataset_params.add_argument("--num_classes", help="output_dim", type=int)
     parser_dataset_params.add_argument(
         "--num_node_features", help="input_dim", type=int
@@ -256,7 +261,7 @@ def arg_parse():
         "--transf_params",
         help="list of transformation degrees",
         type=str,
-        default='[5,10]',
+        default="[5,10]",
     )
     parser_explainer_params.add_argument(
         "--directed",
@@ -317,4 +322,3 @@ def create_args_group(parser, args):
         group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
         arg_groups[group.title] = group_dict
     return arg_groups
-

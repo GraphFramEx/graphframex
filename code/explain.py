@@ -37,7 +37,12 @@ from evaluate.accuracy import (
     get_explanation_syn,
     get_scores,
 )
-from evaluate.mask_utils import mask_to_shape, clean, control_sparsity, get_mask_properties
+from evaluate.mask_utils import (
+    mask_to_shape,
+    clean,
+    control_sparsity,
+    get_mask_properties,
+)
 from explainer.node_explainer import *
 from explainer.graph_explainer import *
 from pathlib import Path
@@ -107,7 +112,9 @@ class Explain(object):
                 if self.graph_classification
                 else self.dataset.data
             )
-            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (self.dataset_name != "ba_2motifs"):
+            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (
+                not self.graph_classification
+            ):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
                 )
@@ -116,21 +123,45 @@ class Explain(object):
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
                 top_balanced_acc = None
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large", "mnist"])):
-                top_f1_score, top_recall, top_precision, top_balanced_acc, top_roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
+            elif self.dataset_name == "ba_multishapes":
+                (
+                    top_f1_score,
+                    top_recall,
+                    top_precision,
+                    top_balanced_acc,
+                    top_roc_auc_score,
+                ) = (0, 0, 0, 0, 0)
                 edge_mask = edge_mask.cpu().numpy()
-                if graph.edge_mask is not None:
-                    true_explanation = graph.edge_mask.cpu().numpy()
+
+                if graph.get("edge_label", None) is None:
+                    print(
+                        f"No true explanation available for this graph {graph.idx} with label {graph.y}."
+                    )
+                else:
+                    edge_label = graph.edge_label.cpu().detach().numpy()
+                    masked_label = edge_label[edge_mask > 0]
+                    y = graph.y.item()
+                    n_labels = 4
+                    d = dict()
+                    for i in range(1, n_labels):
+                        d[i] = list(masked_label).count(i)
+                    label_sum = np.where(np.array(list(d.values())) > 0, 1, 0).sum()
+
+                if (y == 1 and label_sum == 2) or (y == 0 and label_sum in [1, 3]):
+                    true_explanation = np.where(edge_label > 0, 1, 0)
+                    pred_explanation = edge_mask
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
                         pred_explanation = np.zeros(len(edge_mask))
                         mask = edge_mask.copy()
                         if eval(self.directed):
-                            unimportant_indices = (-mask).argsort()[n+1:]
+                            unimportant_indices = (-mask).argsort()[n + 1 :]
                             mask[unimportant_indices] = 0
                         else:
                             mask = mask_to_shape(mask, graph.edge_index, n)
-                        top_roc_auc_score = sklearn.metrics.roc_auc_score(true_explanation, mask)
+                        top_roc_auc_score = sklearn.metrics.roc_auc_score(
+                            true_explanation, mask
+                        )
                         pred_explanation[mask > 0] = 1
                         top_precision = sklearn.metrics.precision_score(
                             true_explanation, pred_explanation, pos_label=1
@@ -141,20 +172,81 @@ class Explain(object):
                         top_f1_score = sklearn.metrics.f1_score(
                             true_explanation, pred_explanation, pos_label=1
                         )
-                        top_balanced_acc = sklearn.metrics.balanced_accuracy_score(true_explanation, pred_explanation)
+                        top_balanced_acc = sklearn.metrics.balanced_accuracy_score(
+                            true_explanation, pred_explanation
+                        )
+                    elif y == 0 and label_sum == 0:
+                        top_roc_auc_score = np.nan
+                        top_precision = np.nan
+                        top_recall = np.nan
+                        top_f1_score = np.nan
+                        top_balanced_acc = np.nan
+            elif self.dataset_name.startswith(
+                tuple(
+                    [
+                        "uk",
+                        "ieee24",
+                        "ieee39",
+                        "ieee118",
+                        "ba_2motifs",
+                        "mutag_large",
+                        "mnist",
+                    ]
+                )
+            ):
+                (
+                    top_f1_score,
+                    top_recall,
+                    top_precision,
+                    top_balanced_acc,
+                    top_roc_auc_score,
+                ) = (np.nan, np.nan, np.nan, np.nan, np.nan)
+                edge_mask = edge_mask.cpu().numpy()
+                if graph.edge_mask is not None:
+                    true_explanation = graph.edge_mask.cpu().numpy()
+                    n = len(np.where(true_explanation == 1)[0])
+                    if n > 0:
+                        pred_explanation = np.zeros(len(edge_mask))
+                        mask = edge_mask.copy()
+                        if eval(self.directed):
+                            unimportant_indices = (-mask).argsort()[n + 1 :]
+                            mask[unimportant_indices] = 0
+                        else:
+                            mask = mask_to_shape(mask, graph.edge_index, n)
+                        top_roc_auc_score = sklearn.metrics.roc_auc_score(
+                            true_explanation, mask
+                        )
+                        pred_explanation[mask > 0] = 1
+                        top_precision = sklearn.metrics.precision_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_recall = sklearn.metrics.recall_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_f1_score = sklearn.metrics.f1_score(
+                            true_explanation, pred_explanation, pos_label=1
+                        )
+                        top_balanced_acc = sklearn.metrics.balanced_accuracy_score(
+                            true_explanation, pred_explanation
+                        )
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
-            entry = {"top_roc_auc_score":top_roc_auc_score,"top_recall": top_recall, "top_precision": top_precision, "top_f1_score": top_f1_score, "top_balanced_acc": top_balanced_acc}
+            entry = {
+                "top_roc_auc_score": top_roc_auc_score,
+                "top_recall": top_recall,
+                "top_precision": top_precision,
+                "top_f1_score": top_f1_score,
+                "top_balanced_acc": top_balanced_acc,
+            }
             scores.append(entry)
         scores = list_to_dict(scores)
         with warnings.catch_warnings():
-            warnings.filterwarnings('error')
+            warnings.filterwarnings("error")
             try:
                 accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
             except RuntimeWarning:
                 accuracy_scores = {}
         return accuracy_scores
-            
 
     def _eval_acc(self, edge_masks):
         scores = []
@@ -166,7 +258,9 @@ class Explain(object):
                 if self.graph_classification
                 else self.dataset.data
             )
-            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (self.dataset_name != "ba_2motifs"):
+            if (self.dataset_name.startswith(tuple(["ba", "tree"]))) & (
+                not self.graph_classification
+            ):
                 G_true, role, true_edge_mask = get_ground_truth_syn(
                     self.explained_y[i], self.data, self.dataset_name
                 )
@@ -175,16 +269,79 @@ class Explain(object):
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
                 num_explained_y_with_acc += 1
-            elif self.dataset_name.startswith(tuple(["uk", "ieee24", "ieee39", "ieee118", "ba_2motifs", "mutag_large", "mnist"])):
-                f1_score, recall, precision, balanced_acc, roc_auc_score = np.nan, np.nan, np.nan, np.nan, np.nan
+
+            elif self.dataset_name == "ba_multishapes":
+                f1_score, recall, precision, balanced_acc, roc_auc_score = 0, 0, 0, 0, 0
                 edge_mask = edge_mask.cpu().numpy()
-                if graph.get('edge_mask', None) is None:
-                    print(f'No true explanation available for this graph {graph.idx} with label {graph.y}.')
+
+                if graph.get("edge_label", None) is None:
+                    print(
+                        f"No true explanation available for this graph {graph.idx} with label {graph.y}."
+                    )
+                else:
+                    edge_label = graph.edge_label.cpu().detach().numpy()
+                    masked_label = edge_label[edge_mask > 0]
+                    y = graph.y.item()
+                    n_labels = 4
+                    d = dict()
+                    for i in range(1, n_labels):
+                        d[i] = list(masked_label).count(i)
+                    label_sum = np.where(np.array(list(d.values())) > 0, 1, 0).sum()
+
+                if (y == 1 and label_sum == 2) or (y == 0 and label_sum in [0, 1, 3]):
+                    true_explanation = np.where(edge_label > 0, 1, 0)
+                    pred_explanation = edge_mask
+                    roc_auc_score = sklearn.metrics.roc_auc_score(
+                        true_explanation, edge_mask
+                    )
+                    pred_explanation = np.zeros(len(edge_mask))
+                    pred_explanation[edge_mask > 0] = 1
+                    precision = sklearn.metrics.precision_score(
+                        true_explanation, pred_explanation, pos_label=1
+                    )
+                    recall = sklearn.metrics.recall_score(
+                        true_explanation, pred_explanation, pos_label=1
+                    )
+                    f1_score = sklearn.metrics.f1_score(
+                        true_explanation, pred_explanation, pos_label=1
+                    )
+                    balanced_acc = sklearn.metrics.balanced_accuracy_score(
+                        true_explanation, pred_explanation
+                    )
+                    num_explained_y_with_acc += 1
+
+            elif self.dataset_name.startswith(
+                tuple(
+                    [
+                        "uk",
+                        "ieee24",
+                        "ieee39",
+                        "ieee118",
+                        "ba_2motifs",
+                        "mutag_large",
+                        "mnist",
+                    ]
+                )
+            ):
+                f1_score, recall, precision, balanced_acc, roc_auc_score = (
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                    np.nan,
+                )
+                edge_mask = edge_mask.cpu().numpy()
+                if graph.get("edge_mask", None) is None:
+                    print(
+                        f"No true explanation available for this graph {graph.idx} with label {graph.y}."
+                    )
                 else:
                     true_explanation = graph.edge_mask.cpu().numpy()
                     n = len(np.where(true_explanation == 1)[0])
                     if n > 0:
-                        roc_auc_score = sklearn.metrics.roc_auc_score(true_explanation, edge_mask)
+                        roc_auc_score = sklearn.metrics.roc_auc_score(
+                            true_explanation, edge_mask
+                        )
                         pred_explanation = np.zeros(len(edge_mask))
                         pred_explanation[edge_mask > 0] = 1
                         precision = sklearn.metrics.precision_score(
@@ -196,15 +353,23 @@ class Explain(object):
                         f1_score = sklearn.metrics.f1_score(
                             true_explanation, pred_explanation, pos_label=1
                         )
-                        balanced_acc = sklearn.metrics.balanced_accuracy_score(true_explanation, pred_explanation)
+                        balanced_acc = sklearn.metrics.balanced_accuracy_score(
+                            true_explanation, pred_explanation
+                        )
                         num_explained_y_with_acc += 1
             else:
                 raise ValueError("Unknown dataset name: {}".format(self.dataset_name))
-            entry = {"roc_auc_score":roc_auc_score, "recall": recall, "precision": precision, "f1_score": f1_score, "balanced_acc": balanced_acc}
+            entry = {
+                "roc_auc_score": roc_auc_score,
+                "recall": recall,
+                "precision": precision,
+                "f1_score": f1_score,
+                "balanced_acc": balanced_acc,
+            }
             scores.append(entry)
         scores = list_to_dict(scores)
         with warnings.catch_warnings():
-            warnings.filterwarnings('error')
+            warnings.filterwarnings("error")
             try:
                 accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
             except RuntimeWarning:
@@ -264,7 +429,11 @@ class Explain(object):
             masked_data, maskout_data = data.clone(), data.clone()
             masked_data.x, maskout_data.x = x_masked, x_maskout
 
-            if edge_masks[i] is not None and hasattr(edge_masks[i], '__len__') and len(edge_masks[i]) > 0:
+            if (
+                edge_masks[i] is not None
+                and hasattr(edge_masks[i], "__len__")
+                and len(edge_masks[i]) > 0
+            ):
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
                 if self.mask_nature == "hard":
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
@@ -280,7 +449,9 @@ class Explain(object):
                         self.device
                     )
                 elif self.mask_nature == "hard_full":
-                    new_edge_mask = torch.where(edge_mask > 0, 1, 0).to(self.device).float()
+                    new_edge_mask = (
+                        torch.where(edge_mask > 0, 1, 0).to(self.device).float()
+                    )
                     masked_data.edge_weight = new_edge_mask
                     maskout_data.edge_weight = 1 - new_edge_mask
                 elif self.mask_nature == "soft":
@@ -291,11 +462,13 @@ class Explain(object):
                     raise ValueError("Unknown mask nature: {}".format(self.mask_nature))
 
             masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
-            maskout_prob_idx = self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
+            maskout_prob_idx = (
+                self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
+            )
 
             true_label = data.y.cpu().item()
             pred_label = np.argmax(ori_prob_idx)
-            
+
             # assert true_label == pred_label, "The label predicted by the GCN does not match the true label."\
             related_preds.append(
                 {
@@ -326,7 +499,11 @@ class Explain(object):
             else:
                 x_masked, x_maskout = self.data.x, self.data.x
             print(len(edge_masks[i]))
-            if edge_masks[i] is not None and hasattr(edge_masks[i], '__len__') and len(edge_masks[i]) > 0:
+            if (
+                edge_masks[i] is not None
+                and hasattr(edge_masks[i], "__len__")
+                and len(edge_masks[i]) > 0
+            ):
                 if self.mask_nature == "hard":
                     masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
                     maskout_probs = self.model.get_prob(x_maskout, self.data.edge_index)
@@ -419,7 +596,7 @@ class Explain(object):
             explained_y_idx,
             targets[explained_y_idx],
             self.device,
-            **self.explainer_params
+            **self.explainer_params,
         )
         end_time = time.time()
         duration_seconds = end_time - start_time
@@ -432,7 +609,9 @@ class Explain(object):
     def compute_mask(self):
         self.explain_function = eval("explain_" + self.explainer_name + self.task)
         print("Computing masks using " + self.explainer_name + " explainer.")
-        if (self.save_dir is not None) and (Path(os.path.join(self.save_dir, self.save_name)).is_file()):
+        if (self.save_dir is not None) and (
+            Path(os.path.join(self.save_dir, self.save_name)).is_file()
+        ):
             (
                 explained_y,
                 edge_masks,
@@ -452,7 +631,11 @@ class Explain(object):
                 edge_mask, node_feat_mask, duration_seconds = eval(
                     "self._compute" + self.task
                 )(explained_y_idx)
-                if edge_mask is not None and hasattr(edge_mask, '__len__') and len(edge_mask) > 0:
+                if (
+                    edge_mask is not None
+                    and hasattr(edge_mask, "__len__")
+                    and len(edge_mask) > 0
+                ):
                     edge_masks.append(edge_mask)
                     node_feat_masks.append(node_feat_mask)
                     computation_time.append(duration_seconds)
@@ -476,7 +659,7 @@ class Explain(object):
     def _transform(self, masks, param):
         """Transform masks according to the given strategy (topk, threshold, sparsity) and level."""
         new_masks = []
-        if (param is None) | (self.mask_transformation=="None"):
+        if (param is None) | (self.mask_transformation == "None"):
             return masks
         for i in range(len(self.explained_y)):
             mask = masks[i].copy()
@@ -488,7 +671,7 @@ class Explain(object):
             )
             if self.mask_transformation == "topk":
                 if eval(self.directed):
-                    unimportant_indices = (-mask).argsort()[param+1:]
+                    unimportant_indices = (-mask).argsort()[param + 1 :]
                     mask[unimportant_indices] = 0
                 else:
                     mask = mask_to_shape(mask, edge_index, param)
@@ -539,7 +722,9 @@ class Explain(object):
                 raise ValueError("pred_type must be correct, wrong or mix.")
             print("Number of explanable entities: ", len(list_idx))
             explained_y = np.random.choice(
-                list_idx, size=min(self.num_explained_y, len(list_idx), self.data.num_nodes), replace=False
+                list_idx,
+                size=min(self.num_explained_y, len(list_idx), self.data.num_nodes),
+                replace=False,
             )
         print("Number of explained entities: ", len(explained_y))
         return explained_y
@@ -572,7 +757,7 @@ def get_mask_dir_path(args, device, unseen=False):
         args.explained_target,
         args.pred_type,
         str(device),
-        args.seed
+        args.seed,
     )
     return mask_save_name
 
@@ -581,14 +766,16 @@ def explain_main(dataset, model, device, args, unseen=False):
     args.dataset = dataset
     if unseen:
         args.pred_type = "mix"
-        #args.mask_save_dir="None"
+        # args.mask_save_dir="None"
         args.num_explained_y = len(dataset)
     mask_save_name = get_mask_dir_path(args, device, unseen)
-    
+
     if (args.explained_target is None) | (unseen):
         list_test_idx = range(0, len(dataset.data.y))
     else:
-        list_test_idx = np.where(dataset.data.y.cpu().numpy() == args.explained_target)[0]
+        list_test_idx = np.where(dataset.data.y.cpu().numpy() == args.explained_target)[
+            0
+        ]
     print("Number of explanable entities: ", len(list_test_idx))
     explainer = Explain(
         model=model,
@@ -597,7 +784,7 @@ def explain_main(dataset, model, device, args, unseen=False):
         list_test_idx=list_test_idx,
         explainer_params=vars(args),
         save_dir=None
-        if args.mask_save_dir=="None"
+        if args.mask_save_dir == "None"
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
         save_name=mask_save_name,
     )
@@ -634,7 +821,9 @@ def explain_main(dataset, model, device, args, unseen=False):
         # Compute mask properties
         edge_masks_properties = get_mask_properties(edge_masks)
         # Evaluate scores of the masks
-        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(edge_masks, node_feat_masks)
+        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(
+            edge_masks, node_feat_masks
+        )
         eval_scores = {**top_accuracy_scores, **accuracy_scores, **fidelity_scores}
         scores = {
             key: value
@@ -669,17 +858,19 @@ def explain_main(dataset, model, device, args, unseen=False):
                 args.explained_target,
                 args.pred_type,
                 str(device),
-                args.seed
+                args.seed,
             ),
         )
     )
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
 
     parser, args = arg_parse()
     args = get_graph_size_args(args)
 
-    (args.groundtruth,
+    (
+        args.groundtruth,
         args.graph_classification,
         args.num_layers,
         args.hidden_dim,
@@ -689,7 +880,7 @@ if __name__=='__main__':
         args.dropout,
         args.readout,
         args.batch_size,
-        args.unseen
+        args.unseen,
     ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64, "False")
     args_group = create_args_group(parser, args)
 
@@ -707,7 +898,7 @@ if __name__=='__main__':
     dataset.data.y = dataset.data.y.squeeze().long()
     args = get_data_args(dataset, args)
     dataset_params["num_classes"] = args.num_classes
-    dataset_params["num_node_features"] =args.num_node_features
+    dataset_params["num_node_features"] = args.num_node_features
 
     data_y = dataset.data.y.cpu().numpy()
     if args.num_classes == 2:
@@ -715,7 +906,7 @@ if __name__=='__main__':
     else:
         y_cf_all = []
         for y in data_y:
-            y_cf_all.append(y+1 if y < args.num_classes - 1 else 0)
+            y_cf_all.append(y + 1 if y < args.num_classes - 1 else 0)
     args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
 
     if len(dataset) > 1:
@@ -726,7 +917,6 @@ if __name__=='__main__':
     args.edge_dim = dataset.data.edge_attr.size(1)
     model_params["edge_dim"] = args.edge_dim
 
-    
     if eval(args.graph_classification):
         args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
         dataloader_params = {
@@ -768,7 +958,7 @@ if __name__=='__main__':
             optimizer_params=args_group["optimizer_params"],
         )
     _, _, _, _, _ = trainer.test()
-    
+
     mask_save_name = get_mask_dir_path(args, device, eval(args.unseen))
     args.dataset = dataset
     list_test_idx = range(0, len(dataset.data.y))
@@ -780,7 +970,7 @@ if __name__=='__main__':
         list_test_idx=list_test_idx,
         explainer_params=vars(args),
         save_dir=None
-        if args.mask_save_dir=="None"
+        if args.mask_save_dir == "None"
         else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
         save_name=mask_save_name,
     )
@@ -793,8 +983,18 @@ if __name__=='__main__':
     ) = explainer.compute_mask()
     edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
 
-
-    dict_mask = dict(zip(explained_y,edge_masks))
+    dict_mask = dict(zip(explained_y, edge_masks))
     ordered_dict_mask = collections.OrderedDict(sorted(dict_mask.items()))
     d = {int(key): value.tolist() for key, value in ordered_dict_mask.items()}
-    json.dump(d, open(os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name, mask_save_name.replace(".pkl", ".json")), "w"))
+    json.dump(
+        d,
+        open(
+            os.path.join(
+                args.mask_save_dir,
+                args.dataset_name,
+                args.explainer_name,
+                mask_save_name.replace(".pkl", ".json"),
+            ),
+            "w",
+        ),
+    )
