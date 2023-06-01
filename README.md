@@ -1,5 +1,14 @@
 # GNN Explainability Framework
 
+The goal of GraphFramEx is to systematically evaluate methods that generate explanations
+for predictions of graph neural networks (GNNs).
+GraphFramEx proposes a unique metric, the characterization score,
+which combines the fidelity measures, and classifies explanations
+based on their quality of being sufficient or necessary.
+We scope ourselves to node and graph classification tasks and
+compare the most representative techniques in the field of
+generative and non-generative input-level explainability for GNNs.
+
 **Graph Classification Tasks**
 
 | Non-generative Explainer | Paper                                                                               |

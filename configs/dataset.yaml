@@ -42,6 +42,7 @@ common_params: &common_params
 mutag_large:
   <<: *common_params
   groundtruth: "True"
+  explained_target: 0
 
 mnist:
   <<: *common_params
@@ -54,10 +55,12 @@ graphsst2:
 mutag:
   <<: *common_params
   groundtruth: "False"
+  explained_target: 1
 
 bbbp:
   <<: *common_params
   groundtruth: "False"
+  explained_target: 1
 
 common_params_powergrid: &common_params_powergrid
   groundtruth: "True"
