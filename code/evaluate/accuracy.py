@@ -18,7 +18,7 @@ def get_explanation_syn(data, edge_mask, num_top_edges, top_acc):
     """
     if top_acc:
         # indices = (-edge_mask).argsort()[:kwargs['num_top_edges']]
-        edge_mask = mask_to_shape(edge_mask, data.edge_index, num_top_edges)
+        edge_mask = mask_to_shape(edge_mask.numpy(), data.edge_index, num_top_edges)
         indices = np.where(edge_mask > 0)[0]
     else:
         edge_mask = edge_mask.cpu().detach().numpy()
@@ -83,4 +83,3 @@ def get_best_scores(G1, G2_list):
         F1.append(f1_score)
     i_best = np.argmax(F1)
     return R[i_best], P[i_best], F1[i_best]
-

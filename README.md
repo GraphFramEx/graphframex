@@ -63,7 +63,6 @@ pip install -r requirements.txt
 Pytorch Geometric. [Official Download](https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html).
 
 ```
-# We use TORCH version 1.6.0
 CUDA=cu111
 TORCH=1.9.1
 pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-${TORCH}+${CUDA}.html

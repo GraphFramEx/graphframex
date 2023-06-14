@@ -50,8 +50,14 @@ def normalize_all_masks(masks):
 def clean(masks):
     """Clean masks by removing NaN, inf and too small values and normalizing"""
     for i in range(len(masks)):
-        if masks[i] is not None and hasattr(masks[i], '__len__') and len(masks[i]) > 0:
-            masks[i] = np.nan_to_num(masks[i], copy=True, nan=0.0, posinf=10, neginf=-10)
+        if (
+            (masks[i] is not None)
+            and (hasattr(masks[i], "__len__"))
+            and (len(masks[i]) > 0)
+        ):
+            masks[i] = np.nan_to_num(
+                masks[i], copy=True, nan=0.0, posinf=10, neginf=-10
+            )
             masks[i] = np.clip(masks[i], -10, 10)
             masks[i] = normalize_mask(masks[i])
             masks[i] = np.where(masks[i] < 0.01, 0, masks[i])

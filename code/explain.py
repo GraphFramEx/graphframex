@@ -122,7 +122,7 @@ class Explain(object):
                     graph, edge_mask, num_top_edges=self.num_top_edges, top_acc=True
                 )
                 top_recall, top_precision, top_f1_score = get_scores(G_expl, G_true)
-                top_balanced_acc = None
+                top_balanced_acc, top_roc_auc_score = np.nan, np.nan
             elif self.dataset_name == "ba_multishapes":
                 (
                     top_f1_score,
@@ -268,6 +268,7 @@ class Explain(object):
                     graph, edge_mask, num_top_edges=self.num_top_edges, top_acc=False
                 )
                 recall, precision, f1_score = get_scores(G_expl, G_true)
+                balanced_acc, roc_auc_score = np.nan, np.nan
                 num_explained_y_with_acc += 1
 
             elif self.dataset_name == "ba_multishapes":
@@ -417,12 +418,12 @@ class Explain(object):
             ori_prob_idx = self.model.get_prob(data).cpu().detach().numpy()[0]
             if node_feat_masks[0] is not None:
                 node_feat_mask = torch.Tensor(node_feat_masks[i]).to(self.device)
-                if node_feat_mask.dim() == 2:
-                    x_masked = node_feat_mask
-                    x_maskout = 1 - node_feat_mask
-                else:
-                    x_masked = data.x * node_feat_mask
-                    x_maskout = data.x * (1 - node_feat_mask)
+                if node_feat_masks.ndim == 0:
+                    node_feat_mask = torch.unsqueeze(
+                        torch.Tensor(node_feat_mask), dim=0
+                    ).to(self.device)
+                x_masked = data.x * node_feat_mask
+                x_maskout = data.x * (1 - node_feat_mask)
             else:
                 x_masked, x_maskout = data.x, data.x
 
@@ -430,9 +431,9 @@ class Explain(object):
             masked_data.x, maskout_data.x = x_masked, x_maskout
 
             if (
-                edge_masks[i] is not None
-                and hasattr(edge_masks[i], "__len__")
-                and len(edge_masks[i]) > 0
+                (edge_masks[i] is not None)
+                and (hasattr(edge_masks[i], "__len__"))
+                and (len(edge_masks[i]) > 0)
             ):
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
                 if self.mask_nature == "hard":
@@ -489,20 +490,21 @@ class Explain(object):
         ori_probs = self.model.get_prob(data=self.data)
         for i in range(len(self.explained_y)):
             if node_feat_masks[0] is not None:
-                node_feat_mask = torch.Tensor(node_feat_masks[i]).to(self.device)
-                if node_feat_mask.dim() == 2:
-                    x_masked = node_feat_mask
-                    x_maskout = 1 - node_feat_mask
+                if node_feat_masks[i].ndim == 0:
+                    # if type of node feat mask is 'feature'
+                    node_feat_mask = node_feat_masks[i].reshape(-1)
                 else:
-                    x_masked = self.data.x * node_feat_mask
-                    x_maskout = self.data.x * (1 - node_feat_mask)
+                    # if type of node feat mask is 'feature'
+                    node_feat_mask = node_feat_masks[i]
+                node_feat_mask = torch.Tensor(node_feat_mask).to(self.device)
+                x_masked = self.data.x * node_feat_mask
+                x_maskout = self.data.x * (1 - node_feat_mask)
             else:
                 x_masked, x_maskout = self.data.x, self.data.x
-            print(len(edge_masks[i]))
             if (
-                edge_masks[i] is not None
-                and hasattr(edge_masks[i], "__len__")
-                and len(edge_masks[i]) > 0
+                (edge_masks[i] is not None)
+                and (hasattr(edge_masks[i], "__len__"))
+                and (len(edge_masks[i]) > 0)
             ):
                 if self.mask_nature == "hard":
                     masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
@@ -632,9 +634,9 @@ class Explain(object):
                     "self._compute" + self.task
                 )(explained_y_idx)
                 if (
-                    edge_mask is not None
-                    and hasattr(edge_mask, "__len__")
-                    and len(edge_mask) > 0
+                    (edge_mask is not None)
+                    and (hasattr(edge_mask, "__len__"))
+                    and (len(edge_mask) > 0)
                 ):
                     edge_masks.append(edge_mask)
                     node_feat_masks.append(node_feat_mask)
@@ -652,6 +654,7 @@ class Explain(object):
             if edge_masks[0] is not None:
                 edge_masks = clean(edge_masks)
         if node_feat_masks:
+            node_feat_masks = np.array(node_feat_masks)
             if node_feat_masks[0] is not None:
                 node_feat_masks = clean(node_feat_masks)
         return edge_masks, node_feat_masks

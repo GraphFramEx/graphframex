@@ -702,6 +702,7 @@ class TargetedGNNExplainer(GNNExplainer):
             new_mask[subset] = node_feat_mask
             node_feat_mask = new_mask
         node_feat_mask = node_feat_mask.squeeze()
+        print("node mask feat size", node_feat_mask)
 
         if self.allow_edge_mask:
             edge_mask = self.edge_mask.new_zeros(num_edges)
