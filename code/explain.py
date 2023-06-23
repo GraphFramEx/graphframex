@@ -17,6 +17,13 @@ from evaluate.fidelity import (
     fidelity_prob,
     fidelity_prob_inv,
 )
+from evaluate.accountability import (
+    accountability,
+    accountability_gnn,
+    accountability_ext,
+    accountability_gnn_ext,
+    extend_mask,
+)
 import collections
 import random
 from gnn.model import get_gnnNets
@@ -396,6 +403,20 @@ class Explain(object):
         fidelity_scores["num_explained_y_fid"] = self.num_explained_y
         return fidelity_scores
 
+    def _eval_act(self, related_preds):
+        if self.focus == "phenomenon":
+            accountability_scores = {
+                "accountability": accountability(related_preds),
+                "accountability_ext": accountability_ext(related_preds),
+            }
+        else:
+            accountability_scores = {
+                "accountability_gnn": accountability_gnn(related_preds),
+                "accountability_gnn_ext": accountability_gnn_ext(related_preds),
+            }
+        accountability_scores["num_explained_y_act"] = self.num_explained_y
+        return accountability_scores
+
     def eval(self, edge_masks, node_feat_masks):
         related_preds = eval("self.related_pred" + self.task)(
             edge_masks, node_feat_masks
@@ -406,7 +427,13 @@ class Explain(object):
         else:
             accuracy_scores, top_accuracy_scores = {}, {}
         fidelity_scores = self._eval_fid(related_preds)
-        return top_accuracy_scores, accuracy_scores, fidelity_scores
+        accountability_scores = self._eval_act(related_preds)
+        return (
+            top_accuracy_scores,
+            accuracy_scores,
+            fidelity_scores,
+            accountability_scores,
+        )
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
         related_preds = []
@@ -462,7 +489,15 @@ class Explain(object):
                 else:
                     raise ValueError("Unknown mask nature: {}".format(self.mask_nature))
 
+            # Extend the mask to the whole graph for accountability
+            masked_ext_data = data.clone()
+            new_edge_mask = extend_mask(edge_mask, gamma=0.1)
+            masked_ext_data.edge_weight = new_edge_mask
+
             masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
+            masked_ext_prob_idx = (
+                self.model.get_prob(masked_ext_data).cpu().detach().numpy()[0]
+            )
             maskout_prob_idx = (
                 self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
             )
@@ -476,6 +511,7 @@ class Explain(object):
                     "explained_y_idx": explained_y_idx,
                     "masked": masked_prob_idx,
                     "maskout": maskout_prob_idx,
+                    "masked_extended": masked_ext_prob_idx,
                     "origin": ori_prob_idx,
                     "true_label": true_label,
                     "pred_label": pred_label,
@@ -824,10 +860,18 @@ def explain_main(dataset, model, device, args, unseen=False):
         # Compute mask properties
         edge_masks_properties = get_mask_properties(edge_masks)
         # Evaluate scores of the masks
-        top_accuracy_scores, accuracy_scores, fidelity_scores = explainer.eval(
-            edge_masks, node_feat_masks
-        )
-        eval_scores = {**top_accuracy_scores, **accuracy_scores, **fidelity_scores}
+        (
+            top_accuracy_scores,
+            accuracy_scores,
+            fidelity_scores,
+            accountability_scores,
+        ) = explainer.eval(edge_masks, node_feat_masks)
+        eval_scores = {
+            **top_accuracy_scores,
+            **accuracy_scores,
+            **fidelity_scores,
+            **accountability_scores,
+        }
         scores = {
             key: value
             for key, value in sorted(
@@ -841,6 +885,7 @@ def explain_main(dataset, model, device, args, unseen=False):
             results = pd.DataFrame({k: [v] for k, v in scores.items()})
         else:
             results = results.append(scores, ignore_index=True)
+    print("Results: ", results[["accountability_gnn", "accountability_gnn_ext"]])
     ### Save results ###
     save_path = os.path.join(
         args.result_save_dir, args.dataset_name, args.explainer_name

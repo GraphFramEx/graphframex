@@ -53,7 +53,7 @@ def fidelity_prob(related_preds):
     labels = related_preds["true_label"]
     ori_probs = np.choose(labels, related_preds["origin"].T)
     unimportant_probs = np.choose(labels, related_preds["maskout"].T)
-    drop_probability = ori_probs - unimportant_probs
+    drop_probability = np.abs(ori_probs - unimportant_probs)
     return drop_probability.mean().item()
 
 
@@ -64,7 +64,7 @@ def fidelity_prob_inv(related_preds):
     labels = related_preds["true_label"]
     ori_probs = np.choose(labels, related_preds["origin"].T)
     important_probs = np.choose(labels, related_preds["masked"].T)
-    drop_probability = ori_probs - important_probs
+    drop_probability = np.abs(ori_probs - important_probs)
     return drop_probability.mean().item()
 
 

@@ -37,7 +37,6 @@ common_params: &common_params
   gamma: 0.5
   milestones: [70, 90, 120, 170]
   num_early_stop: 50
-  unseen: "True"
 
 mutag_large:
   <<: *common_params
