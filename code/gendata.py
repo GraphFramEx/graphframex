@@ -6,6 +6,7 @@ from dataset import (
     MoleculeDataset,
     SynGraphDataset,
     BAMultiShapesDataset,
+    Benzene,
     NCRealGraphDataset,
     MNIST75sp,
     Mutag,
@@ -30,7 +31,7 @@ def get_dataset(dataset_root, **kwargs):
     print(f"Loading {dataset_name} dataset...")
     if dataset_name.lower() in list(MoleculeDataset.names.keys()):
         return MoleculeDataset(root=dataset_root, name=dataset_name)
-    elif dataset_name.lower() == "mutag_large":
+    elif dataset_name.lower() == "mutag":
         return Mutag(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "mnist":
         return MNIST75sp(root=dataset_root, name=dataset_name)
@@ -38,6 +39,8 @@ def get_dataset(dataset_root, **kwargs):
         return SentiGraphDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "ba_multishapes":
         return BAMultiShapesDataset(root=dataset_root, name=dataset_name)
+    if dataset_name.lower() == "benzene":
+        return Benzene(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
         dataset = NCRealGraphDataset(
             root=dataset_root, name=dataset_name, dataset_params=kwargs
@@ -96,10 +99,6 @@ def get_dataset(dataset_root, **kwargs):
             )
         elif dataset_name.lower() in ["ieee39contrnd_mc", "ieee39contrnd_bin"]:
             return IEEE39ContRndNc(
-                root=dataset_root, name=dataset_name, datatype=datatype
-            )
-        elif dataset_name.lower() in ["ieee118contrnd_mc", "ieee118contrnd_bin"]:
-            return IEEE118ContRndNc(
                 root=dataset_root, name=dataset_name, datatype=datatype
             )
         else:

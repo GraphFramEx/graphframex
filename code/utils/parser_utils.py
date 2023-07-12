@@ -220,6 +220,11 @@ def arg_parse():
         default="False",
     )
     parser_explainer_params.add_argument(
+        "--mu",
+        type=float,
+        default=0.2,
+    )
+    parser_explainer_params.add_argument(
         "--focus",
         help="target is groudtruth label or GNN initial prediction",
         type=str,
@@ -261,13 +266,20 @@ def arg_parse():
         "--transf_params",
         help="list of transformation degrees",
         type=str,
-        default="[10,20,100]",
+        default="[10]",
     )
     parser_explainer_params.add_argument(
         "--directed",
         help="if directed, choose the topk directed edges; otherwise topk undirected (no double counting)",
         type=str,
         default="True",
+    )
+
+    parser_explainer_params.add_argument(
+        "--num_rounds",
+        help="num of perturbed edges in the explanation",
+        type=int,
+        default=0,
     )
 
     # hyperparameters for GNNExplainer

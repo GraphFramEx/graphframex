@@ -6,9 +6,10 @@ import numpy as np
 import torch
 
 
-def extend_mask(mask, gamma=10 ^ (-2)):
+def extend_mask(mask, mu=0.1):
     """Extend the explanation by adding the remaining entities."""
-    return np.where(mask == 0, gamma, mask)
+    # return np.where(mask == 0, mu, mask)
+    return mask + mu
 
 
 # Accountability metric  studies  the  prediction  change  by
@@ -20,7 +21,7 @@ def accountability(related_preds):
     ori_probs = np.choose(labels, related_preds["origin"].T)
     important_probs = np.choose(labels, related_preds["masked"].T)
     drop_probability = important_probs - ori_probs
-    return drop_probability.mean().item()
+    return drop_probability
 
 
 def accountability_gnn(related_preds):
@@ -28,7 +29,7 @@ def accountability_gnn(related_preds):
     ori_probs = np.choose(labels, related_preds["origin"].T)
     important_probs = np.choose(labels, related_preds["masked"].T)
     drop_probability = important_probs - ori_probs
-    return drop_probability.mean().item()
+    return drop_probability
 
 
 def accountability_ext(related_preds):
@@ -36,7 +37,7 @@ def accountability_ext(related_preds):
     ori_probs = np.choose(labels, related_preds["origin"].T)
     important_probs = np.choose(labels, related_preds["masked_extended"].T)
     drop_probability = important_probs - ori_probs
-    return drop_probability.mean().item()
+    return drop_probability
 
 
 def accountability_gnn_ext(related_preds):
@@ -44,4 +45,4 @@ def accountability_gnn_ext(related_preds):
     ori_probs = np.choose(labels, related_preds["origin"].T)
     important_probs = np.choose(labels, related_preds["masked_extended"].T)
     drop_probability = important_probs - ori_probs
-    return drop_probability.mean().item()
+    return drop_probability

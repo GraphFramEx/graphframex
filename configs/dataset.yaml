@@ -9,7 +9,7 @@ ba_2motifs:
   dropout: 0.0
   readout: "max"
   batch_size: 200
-  unseen: "True"
+  unseen: "False"
 
 ba_multishapes:
   groundtruth: "True"
@@ -22,7 +22,7 @@ ba_multishapes:
   dropout: 0.0
   readout: "max"
   batch_size: 200
-  unseen: "True"
+  unseen: "False"
 
 common_params: &common_params
   graph_classification: "True"
@@ -37,11 +37,17 @@ common_params: &common_params
   gamma: 0.5
   milestones: [70, 90, 120, 170]
   num_early_stop: 50
+  unseen: "False"
 
-mutag_large:
+mutag:
   <<: *common_params
   groundtruth: "True"
   explained_target: 0
+
+benzene:
+  <<: *common_params
+  groundtruth: "True"
+  explained_target: 1
 
 mnist:
   <<: *common_params
@@ -51,7 +57,7 @@ graphsst2:
   <<: *common_params
   groundtruth: "False"
 
-mutag:
+mutag_s:
   <<: *common_params
   groundtruth: "False"
   explained_target: 1

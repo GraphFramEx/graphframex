@@ -17,28 +17,8 @@ from evaluate.fidelity import (
     fidelity_prob,
     fidelity_prob_inv,
 )
-from evaluate.accountability import (
-    accountability,
-    accountability_gnn,
-    accountability_ext,
-    accountability_gnn_ext,
-    extend_mask,
-)
-import collections
-import random
-from gnn.model import get_gnnNets
-from train_gnn import TrainModel
-from gendata import get_dataset
-from utils.parser_utils import (
-    arg_parse,
-    create_args_group,
-    fix_random_seed,
-    get_data_args,
-    get_graph_size_args,
-)
 from utils.io_utils import check_dir
 from utils.gen_utils import list_to_dict
-from dataset.mutag_utils.gengroundtruth import get_ground_truth_mol
 from dataset.syn_utils.gengroundtruth import get_ground_truth_syn
 from evaluate.accuracy import (
     get_explanation_syn,
@@ -98,9 +78,7 @@ class Explain(object):
             self.num_top_edges = explainer_params["num_top_edges"]
 
     def get_ground_truth(self, **kwargs):
-        if self.dataset_name == "mutag":
-            G_true_list = get_ground_truth_mol(self.dataset_name)
-        elif self.dataset_name.startswith(["ba", "tree"]):
+        if self.dataset_name.startswith(["ba", "tree"]):
             G_true, role, true_edge_mask = get_ground_truth_syn(
                 kwargs["explained_idx"], self.data, self.dataset_name
             )
@@ -196,7 +174,8 @@ class Explain(object):
                         "ieee39",
                         "ieee118",
                         "ba_2motifs",
-                        "mutag_large",
+                        "mutag",
+                        "benzene",
                         "mnist",
                     ]
                 )
@@ -246,13 +225,7 @@ class Explain(object):
                 "top_balanced_acc": top_balanced_acc,
             }
             scores.append(entry)
-        scores = list_to_dict(scores)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("error")
-            try:
-                accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
-            except RuntimeWarning:
-                accuracy_scores = {}
+        accuracy_scores = pd.DataFrame.from_dict(list_to_dict(scores))
         return accuracy_scores
 
     def _eval_acc(self, edge_masks):
@@ -326,7 +299,8 @@ class Explain(object):
                         "ieee39",
                         "ieee118",
                         "ba_2motifs",
-                        "mutag_large",
+                        "mutag",
+                        "benzene",
                         "mnist",
                     ]
                 )
@@ -375,13 +349,7 @@ class Explain(object):
                 "balanced_acc": balanced_acc,
             }
             scores.append(entry)
-        scores = list_to_dict(scores)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("error")
-            try:
-                accuracy_scores = {k: np.nanmean(v) for k, v in scores.items()}
-            except RuntimeWarning:
-                accuracy_scores = {}
+        accuracy_scores = pd.DataFrame.from_dict(list_to_dict(scores))
         accuracy_scores["num_explained_y_with_acc"] = num_explained_y_with_acc
         return accuracy_scores
 
@@ -393,29 +361,19 @@ class Explain(object):
                 "fidelity_prob+": fidelity_prob(related_preds),
                 "fidelity_prob-": fidelity_prob_inv(related_preds),
             }
-        else:
+        elif self.focus == "model":
             fidelity_scores = {
                 "fidelity_gnn_acc+": fidelity_gnn_acc(related_preds),
                 "fidelity_gnn_acc-": fidelity_gnn_acc_inv(related_preds),
                 "fidelity_gnn_prob+": fidelity_gnn_prob(related_preds),
                 "fidelity_gnn_prob-": fidelity_gnn_prob_inv(related_preds),
             }
+        else:
+            raise ValueError("Unknown focus: {}".format(self.focus))
+
+        fidelity_scores = pd.DataFrame.from_dict(fidelity_scores)
         fidelity_scores["num_explained_y_fid"] = self.num_explained_y
         return fidelity_scores
-
-    def _eval_act(self, related_preds):
-        if self.focus == "phenomenon":
-            accountability_scores = {
-                "accountability": accountability(related_preds),
-                "accountability_ext": accountability_ext(related_preds),
-            }
-        else:
-            accountability_scores = {
-                "accountability_gnn": accountability_gnn(related_preds),
-                "accountability_gnn_ext": accountability_gnn_ext(related_preds),
-            }
-        accountability_scores["num_explained_y_act"] = self.num_explained_y
-        return accountability_scores
 
     def eval(self, edge_masks, node_feat_masks):
         related_preds = eval("self.related_pred" + self.task)(
@@ -427,12 +385,10 @@ class Explain(object):
         else:
             accuracy_scores, top_accuracy_scores = {}, {}
         fidelity_scores = self._eval_fid(related_preds)
-        accountability_scores = self._eval_act(related_preds)
         return (
             top_accuracy_scores,
             accuracy_scores,
             fidelity_scores,
-            accountability_scores,
         )
 
     def related_pred_graph(self, edge_masks, node_feat_masks):
@@ -444,18 +400,23 @@ class Explain(object):
             data.batch = torch.zeros(data.x.shape[0], dtype=int, device=data.x.device)
             ori_prob_idx = self.model.get_prob(data).cpu().detach().numpy()[0]
             if node_feat_masks[0] is not None:
-                node_feat_mask = torch.Tensor(node_feat_masks[i]).to(self.device)
-                if node_feat_masks.ndim == 0:
-                    node_feat_mask = torch.unsqueeze(
-                        torch.Tensor(node_feat_mask), dim=0
-                    ).to(self.device)
+                if node_feat_masks[i].ndim == 0:
+                    # if type of node feat mask is 'feature'
+                    node_feat_mask = node_feat_masks[i].reshape(-1)
+                else:
+                    # if type of node feat mask is 'feature'
+                    node_feat_mask = node_feat_masks[i]
+                node_feat_mask = torch.Tensor(node_feat_mask).to(self.device)
                 x_masked = data.x * node_feat_mask
                 x_maskout = data.x * (1 - node_feat_mask)
             else:
                 x_masked, x_maskout = data.x, data.x
 
-            masked_data, maskout_data = data.clone(), data.clone()
-            masked_data.x, maskout_data.x = x_masked, x_maskout
+            masked_data, maskout_data = (
+                data.clone(),
+                data.clone(),
+            )
+            masked_data.x, maskout_data.x = (x_masked, x_maskout)
 
             if (
                 (edge_masks[i] is not None)
@@ -463,6 +424,9 @@ class Explain(object):
                 and (len(edge_masks[i]) > 0)
             ):
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
+                hard_edge_mask = (
+                    torch.where(edge_mask > 0, 1, 0).to(self.device).float()
+                )
                 if self.mask_nature == "hard":
                     masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
                         self.device
@@ -477,27 +441,15 @@ class Explain(object):
                         self.device
                     )
                 elif self.mask_nature == "hard_full":
-                    new_edge_mask = (
-                        torch.where(edge_mask > 0, 1, 0).to(self.device).float()
-                    )
-                    masked_data.edge_weight = new_edge_mask
-                    maskout_data.edge_weight = 1 - new_edge_mask
+                    masked_data.edge_weight = hard_edge_mask
+                    maskout_data.edge_weight = 1 - hard_edge_mask
                 elif self.mask_nature == "soft":
-                    new_edge_mask = edge_mask
-                    masked_data.edge_weight = new_edge_mask
-                    maskout_data.edge_weight = 1 - new_edge_mask
+                    masked_data.edge_weight = edge_mask
+                    maskout_data.edge_weight = 1 - edge_mask
                 else:
                     raise ValueError("Unknown mask nature: {}".format(self.mask_nature))
 
-            # Extend the mask to the whole graph for accountability
-            masked_ext_data = data.clone()
-            new_edge_mask = extend_mask(edge_mask, gamma=0.1)
-            masked_ext_data.edge_weight = new_edge_mask
-
             masked_prob_idx = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
-            masked_ext_prob_idx = (
-                self.model.get_prob(masked_ext_data).cpu().detach().numpy()[0]
-            )
             maskout_prob_idx = (
                 self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
             )
@@ -511,7 +463,6 @@ class Explain(object):
                     "explained_y_idx": explained_y_idx,
                     "masked": masked_prob_idx,
                     "maskout": maskout_prob_idx,
-                    "masked_extended": masked_ext_prob_idx,
                     "origin": ori_prob_idx,
                     "true_label": true_label,
                     "pred_label": pred_label,
@@ -523,6 +474,7 @@ class Explain(object):
 
     def related_pred_node(self, edge_masks, node_feat_masks):
         related_preds = []
+        data = self.data
         ori_probs = self.model.get_prob(data=self.data)
         for i in range(len(self.explained_y)):
             if node_feat_masks[0] is not None:
@@ -537,45 +489,49 @@ class Explain(object):
                 x_maskout = self.data.x * (1 - node_feat_mask)
             else:
                 x_masked, x_maskout = self.data.x, self.data.x
+
+            masked_data, maskout_data = (
+                data.clone(),
+                data.clone(),
+            )
+            masked_data.x, maskout_data.x.x = (
+                x_masked,
+                x_maskout,
+            )
+
             if (
                 (edge_masks[i] is not None)
                 and (hasattr(edge_masks[i], "__len__"))
                 and (len(edge_masks[i]) > 0)
             ):
-                if self.mask_nature == "hard":
-                    masked_probs = self.model.get_prob(x_masked, self.data.edge_index)
-                    maskout_probs = self.model.get_prob(x_maskout, self.data.edge_index)
-                else:
-                    masked_probs = self.model.get_prob(
-                        x_masked, self.data.edge_index, self.data.edge_attr
-                    )
-                    maskout_probs = self.model.get_prob(
-                        x_maskout, self.data.edge_index, self.data.edge_attr
-                    )
-
-            else:
                 edge_mask = torch.Tensor(edge_masks[i]).to(self.device)
+                hard_edge_mask = (
+                    torch.where(edge_mask > 0, 1, 0).to(self.device).float()
+                )
                 if self.mask_nature == "hard":
-                    masked_edge_index = self.data.edge_index[:, edge_mask > 0].to(
+                    masked_data.edge_index = data.edge_index[:, edge_mask > 0].to(
                         self.device
                     )
-                    maskout_edge_index = self.data.edge_index[:, edge_mask <= 0].to(
+                    masked_data.edge_attr = data.edge_attr[edge_mask > 0].to(
                         self.device
                     )
-                    masked_probs = self.model.get_prob(x_masked, masked_edge_index)
-                    maskout_probs = self.model.get_prob(x_maskout, maskout_edge_index)
+                    maskout_data.edge_index = data.edge_index[:, edge_mask <= 0].to(
+                        self.device
+                    )
+                    maskout_data.edge_attr = data.edge_attr[edge_mask <= 0].to(
+                        self.device
+                    )
+                elif self.mask_nature == "hard_full":
+                    masked_data.edge_weight = hard_edge_mask
+                    maskout_data.edge_weight = 1 - hard_edge_mask
+                elif self.mask_nature == "soft":
+                    masked_data.edge_weight = edge_mask
+                    maskout_data.edge_weight = 1 - edge_mask
                 else:
-                    masked_probs = self.model.get_prob(
-                        x_masked,
-                        self.data.edge_index,
-                        self.data.edge_attr * edge_mask[:, None],
-                    )
-                    maskout_probs = self.model.get_prob(
-                        x_maskout,
-                        self.data.edge_index,
-                        self.data.edge_attr * (1 - edge_mask)[:, None],
-                    )
-                edge_mask = edge_mask.cpu().detach().numpy()
+                    raise ValueError("Unknown mask nature: {}".format(self.mask_nature))
+
+            masked_probs = self.model.get_prob(masked_data).cpu().detach().numpy()[0]
+            maskout_probs = self.model.get_prob(maskout_data).cpu().detach().numpy()[0]
 
             explained_y_idx = self.explained_y[i]
             ori_prob_idx = ori_probs[explained_y_idx].cpu().detach().numpy()
@@ -724,7 +680,7 @@ class Explain(object):
 
     def _get_explained_y(self):
         if self.graph_classification:
-            """dataloader = DataLoader(
+            dataloader = DataLoader(
                 self.dataset,
                 batch_size=len(self.dataset),
                 shuffle=True,
@@ -734,14 +690,14 @@ class Explain(object):
             pred_labels = logits.argmax(-1).cpu().numpy()[self.list_test_idx]
             true_labels = self.dataset.data.y.cpu().numpy()[self.list_test_idx]
             if self.pred_type == "correct":
-                list_idx = np.where(pred_labels == true_labels)[0]
+                list_idx = self.list_test_idx[np.where(pred_labels == true_labels)[0]]
             elif self.pred_type == "wrong":
-                list_idx = np.where(pred_labels != true_labels)[0]
+                list_idx = self.list_test_idx[np.where(pred_labels != true_labels)[0]]
             elif self.pred_type == "mix":
                 list_idx = self.list_test_idx
             else:
-                raise ValueError("pred_type must be correct, wrong or mix.")"""
-            list_idx = self.list_test_idx
+                raise ValueError("pred_type must be correct, wrong or mix.")
+            # list_idx = self.list_test_idx
             explained_y = np.random.choice(
                 list_idx,
                 size=min(len(list_idx), self.num_explained_y, len(self.dataset)),
@@ -801,6 +757,16 @@ def get_mask_dir_path(args, device, unseen=False):
     return mask_save_name
 
 
+def avg_scores(scores):
+    with warnings.catch_warnings():
+        warnings.filterwarnings("error")
+        try:
+            avg_scores = {k: np.nanmean(v) for k, v in scores.items()}
+        except RuntimeWarning:
+            avg_scores = {}
+    return avg_scores
+
+
 def explain_main(dataset, model, device, args, unseen=False):
     args.dataset = dataset
     if unseen:
@@ -844,6 +810,7 @@ def explain_main(dataset, model, device, args, unseen=False):
         "explainer": args.explainer_name,
         "focus": args.focus,
         "mask_nature": args.mask_nature,
+        "explained_target": args.explained_target,
         "pred_type": args.pred_type,
         "time": float(format(np.mean(computation_time), ".4f")),
         "device": str(device),
@@ -864,28 +831,19 @@ def explain_main(dataset, model, device, args, unseen=False):
             top_accuracy_scores,
             accuracy_scores,
             fidelity_scores,
-            accountability_scores,
         ) = explainer.eval(edge_masks, node_feat_masks)
         eval_scores = {
             **top_accuracy_scores,
             **accuracy_scores,
             **fidelity_scores,
-            **accountability_scores,
         }
-        scores = {
-            key: value
-            for key, value in sorted(
-                infos.items()
-                | edge_masks_properties.items()
-                | eval_scores.items()
-                | params_transf.items()
-            )
-        }
+        scores = pd.DataFrame.from_dict(eval_scores)
+        for column_name, values in {**infos, **params_transf}.items():
+            scores[column_name] = values
         if i == 0:
-            results = pd.DataFrame({k: [v] for k, v in scores.items()})
+            results = scores
         else:
             results = results.append(scores, ignore_index=True)
-    print("Results: ", results[["accountability_gnn", "accountability_gnn_ext"]])
     ### Save results ###
     save_path = os.path.join(
         args.result_save_dir, args.dataset_name, args.explainer_name
@@ -909,140 +867,4 @@ def explain_main(dataset, model, device, args, unseen=False):
                 args.seed,
             ),
         )
-    )
-
-
-if __name__ == "__main__":
-
-    parser, args = arg_parse()
-    args = get_graph_size_args(args)
-
-    (
-        args.groundtruth,
-        args.graph_classification,
-        args.num_layers,
-        args.hidden_dim,
-        args.num_epochs,
-        args.lr,
-        args.weight_decay,
-        args.dropout,
-        args.readout,
-        args.batch_size,
-        args.unseen,
-    ) = ("False", "True", 3, 16, 200, 0.001, 5e-4, 0.0, "max", 64, "False")
-    args_group = create_args_group(parser, args)
-
-    fix_random_seed(args.seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    dataset_params = args_group["dataset_params"]
-    model_params = args_group["model_params"]
-
-    dataset = get_dataset(
-        dataset_root=args.data_save_dir,
-        **dataset_params,
-    )
-    dataset.data.x = dataset.data.x.float()
-    dataset.data.y = dataset.data.y.squeeze().long()
-    args = get_data_args(dataset, args)
-    dataset_params["num_classes"] = args.num_classes
-    dataset_params["num_node_features"] = args.num_node_features
-
-    data_y = dataset.data.y.cpu().numpy()
-    if args.num_classes == 2:
-        y_cf_all = 1 - data_y
-    else:
-        y_cf_all = []
-        for y in data_y:
-            y_cf_all.append(y + 1 if y < args.num_classes - 1 else 0)
-    args.y_cf_all = torch.FloatTensor(y_cf_all).to(device)
-
-    if len(dataset) > 1:
-        dataset_params["max_num_nodes"] = max([d.num_nodes for d in dataset])
-    else:
-        dataset_params["max_num_nodes"] = dataset.data.num_nodes
-    args.max_num_nodes = dataset_params["max_num_nodes"]
-    args.edge_dim = dataset.data.edge_attr.size(1)
-    model_params["edge_dim"] = args.edge_dim
-
-    if eval(args.graph_classification):
-        args.data_split_ratio = [args.train_ratio, args.val_ratio, args.test_ratio]
-        dataloader_params = {
-            "batch_size": args.batch_size,
-            "random_split_flag": eval(args.random_split_flag),
-            "data_split_ratio": args.data_split_ratio,
-            "seed": args.seed,
-        }
-    model = get_gnnNets(
-        dataset_params["num_node_features"], dataset_params["num_classes"], model_params
-    )
-    model_save_name = f"{args.model_name}_{args.num_layers}l_{str(device)}"
-    if args.dataset_name.startswith(tuple(["uk", "ieee"])):
-        model_save_name = f"{args.datatype}_" + model_save_name
-    if eval(args.graph_classification):
-        trainer = TrainModel(
-            model=model,
-            dataset=dataset,
-            device=device,
-            graph_classification=eval(args.graph_classification),
-            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=model_save_name,
-            dataloader_params=dataloader_params,
-        )
-    else:
-        trainer = TrainModel(
-            model=model,
-            dataset=dataset,
-            device=device,
-            graph_classification=eval(args.graph_classification),
-            save_dir=os.path.join(args.model_save_dir, args.dataset_name),
-            save_name=model_save_name,
-        )
-    if Path(os.path.join(trainer.save_dir, f"{trainer.save_name}_best.pth")).is_file():
-        trainer.load_model()
-    else:
-        trainer.train(
-            train_params=args_group["train_params"],
-            optimizer_params=args_group["optimizer_params"],
-        )
-    _, _, _, _, _ = trainer.test()
-
-    mask_save_name = get_mask_dir_path(args, device, eval(args.unseen))
-    args.dataset = dataset
-    list_test_idx = range(0, len(dataset.data.y))
-    print("Number of explanable entities: ", len(list_test_idx))
-    explainer = Explain(
-        model=model,
-        dataset=dataset,
-        device=device,
-        list_test_idx=list_test_idx,
-        explainer_params=vars(args),
-        save_dir=None
-        if args.mask_save_dir == "None"
-        else os.path.join(args.mask_save_dir, args.dataset_name, args.explainer_name),
-        save_name=mask_save_name,
-    )
-
-    (
-        explained_y,
-        edge_masks,
-        node_feat_masks,
-        computation_time,
-    ) = explainer.compute_mask()
-    edge_masks, node_feat_masks = explainer.clean_mask(edge_masks, node_feat_masks)
-
-    dict_mask = dict(zip(explained_y, edge_masks))
-    ordered_dict_mask = collections.OrderedDict(sorted(dict_mask.items()))
-    d = {int(key): value.tolist() for key, value in ordered_dict_mask.items()}
-    json.dump(
-        d,
-        open(
-            os.path.join(
-                args.mask_save_dir,
-                args.dataset_name,
-                args.explainer_name,
-                mask_save_name.replace(".pkl", ".json"),
-            ),
-            "w",
-        ),
     )

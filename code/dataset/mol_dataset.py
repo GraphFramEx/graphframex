@@ -121,11 +121,11 @@ class MoleculeDataset(InMemoryDataset):
     """
 
     url = "https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/{}"
-    mutag_url = "https://github.com/divelab/DIG_storage/raw/main/xgraph/datasets/{}"
+    mutag_s_url = "https://github.com/divelab/DIG_storage/raw/main/xgraph/datasets/{}"
 
     # Format: name: [display_name, url_name, filename, smiles_idx, y_idx]
     names = {
-        "mutag": ["MUTAG", "MUTAG.zip", None, None],
+        "mutag_s": ["MUTAG", "MUTAG.zip", None, None],
         "esol": ["ESOL", "delaney-processed.csv", "delaney-processed.csv", -1, -2],
         "freesolv": ["FreeSolv", "SAMPL.csv", "SAMPL.csv", 1, 2],
         "lipo": ["Lipophilicity", "Lipophilicity.csv", "Lipophilicity.csv", 2, 1],
@@ -185,7 +185,7 @@ class MoleculeDataset(InMemoryDataset):
 
     def download(self):
         if self.name.lower() == "MUTAG".lower():
-            url = self.mutag_url.format(self.names[self.name][1])
+            url = self.mutag_s_url.format(self.names[self.name][1])
         else:
             url = self.url.format(self.names[self.name][1])
         path = download_url(url, self.raw_dir)
@@ -241,10 +241,12 @@ class MoleculeDataset(InMemoryDataset):
                     x=torch.from_numpy(one_hot_feature).float(),
                     edge_index=dense_to_sparse(torch.from_numpy(adj))[0],
                     y=label,
-                    idx = i-1,
+                    idx=i - 1,
                 )
                 if data_example.edge_attr is None:
-                    data_example.edge_attr = torch.ones((data_example.edge_index.size(1), 1)).float()
+                    data_example.edge_attr = torch.ones(
+                        (data_example.edge_index.size(1), 1)
+                    ).float()
                 max_num_nodes = max(max_num_nodes, data_example.num_nodes)
                 data_list.append(data_example)
         else:
@@ -312,7 +314,12 @@ class MoleculeDataset(InMemoryDataset):
                     perm = (edge_index[0] * x.size(0) + edge_index[1]).argsort()
                     edge_index, edge_attr = edge_index[:, perm], edge_attr[perm]
                 data = Data(
-                    x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, smiles=smiles, idx = k
+                    x=x,
+                    edge_index=edge_index,
+                    edge_attr=edge_attr,
+                    y=y,
+                    smiles=smiles,
+                    idx=k,
                 )
                 adj = from_edge_index_to_adj(data.edge_index, None, data.num_nodes)
                 adj_list.append(adj)
@@ -326,13 +333,12 @@ class MoleculeDataset(InMemoryDataset):
                 max_num_nodes = max(max_num_nodes, data.num_nodes)
                 data_list.append(data)
                 k += 1
-            
+
         data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         torch.save(self.collate(data_list), self.processed_paths[0])
 
     def __repr__(self):
         return "{}({})".format(self.names[self.name][0], len(self))
-
 
 
 if __name__ == "__main__":
