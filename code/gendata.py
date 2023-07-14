@@ -39,7 +39,7 @@ def get_dataset(dataset_root, **kwargs):
         return SentiGraphDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "ba_multishapes":
         return BAMultiShapesDataset(root=dataset_root, name=dataset_name)
-    if dataset_name.lower() == "benzene":
+    elif dataset_name.lower() == "benzene":
         return Benzene(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() in list(NCRealGraphDataset.names.keys()):
         dataset = NCRealGraphDataset(

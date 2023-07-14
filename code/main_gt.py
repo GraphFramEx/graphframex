@@ -21,10 +21,9 @@ from dataset.syn_utils.gengroundtruth import get_ground_truth_syn
 
 def explain_groundtruth(dataset, model, device, args):
     try:
-        args.focus == "phenomenon"
         args.groundtruth == "True"
     except:
-        print("Focus should be phenomenon and groundtruth should be True")
+        print("Focus should be groundtruth should be True")
     args.dataset = dataset
     if args.explained_target is None:
         list_test_idx = range(0, len(dataset.data.y))
@@ -66,7 +65,6 @@ def explain_groundtruth(dataset, model, device, args):
         "explained_target": args.explained_target,
         "pred_type": args.pred_type,
         "device": str(device),
-        "mu": args.mu,
     }
 
     (
@@ -88,7 +86,7 @@ def explain_groundtruth(dataset, model, device, args):
     results.to_csv(
         os.path.join(
             save_path,
-            "results_{}_{}_{}_{}_{}_target{}_{}_{}_{}_{}.csv".format(
+            "results_{}_{}_{}_{}_{}_target{}_{}_{}_{}.csv".format(
                 args.dataset_name,
                 args.model_name,
                 args.focus,
@@ -98,7 +96,6 @@ def explain_groundtruth(dataset, model, device, args):
                 args.pred_type,
                 str(device),
                 args.seed,
-                args.mu,
             ),
         )
     )
