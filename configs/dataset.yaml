@@ -53,6 +53,10 @@ mnist:
   <<: *common_params
   groundtruth: "True"
 
+mnist_bin:
+  <<: *common_params
+  groundtruth: "True"
+
 graphsst2:
   <<: *common_params
   groundtruth: "False"

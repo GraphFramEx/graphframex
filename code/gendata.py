@@ -9,6 +9,7 @@ from dataset import (
     Benzene,
     NCRealGraphDataset,
     MNIST75sp,
+    MNIST75sp_Binary,
     Mutag,
     SentiGraphDataset,
     IEEE24,
@@ -35,6 +36,8 @@ def get_dataset(dataset_root, **kwargs):
         return Mutag(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "mnist":
         return MNIST75sp(root=dataset_root, name=dataset_name)
+    elif dataset_name.lower() == "mnist_bin":
+        return MNIST75sp_Binary(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "graphsst2":
         return SentiGraphDataset(root=dataset_root, name=dataset_name)
     elif dataset_name.lower() == "ba_multishapes":

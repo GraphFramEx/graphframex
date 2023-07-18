@@ -1,4 +1,5 @@
 from .mnist import MNIST75sp
+from .mnist_bin import MNIST75sp_Binary
 from .graphsst2 import SentiGraphDataset
 from .mutag import Mutag
 from .mol_dataset import MoleculeDataset
@@ -18,6 +19,7 @@ __all__ = [
     "Benzene",
     "Mutag",
     "MNIST75sp",
+    "MNIST75sp_Binary",
     "SentiGraphDataset",
     "IEEE24",
     "IEEE39",
