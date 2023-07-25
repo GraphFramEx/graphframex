@@ -20,7 +20,7 @@ from . import synthetic_structsim
 # Experiment utilities
 #
 ####################################
-def perturb(graph_list, p):
+def perturb(graph_list, p, is_weighted=False):
     """Perturb the list of (sparse) graphs by adding/removing edges.
     Args:
         p: proportion of added edges based on current number of edges.
@@ -38,9 +38,13 @@ def perturb(graph_list, p):
                 v = np.random.randint(0, G.number_of_nodes())
                 if (not G.has_edge(u, v)) and (u != v):
                     break
-            G.add_edge(u, v)
+            if is_weighted:
+                G.add_edge(u, v, weight=0)
+            else:
+                G.add_edge(u, v)
         perturbed_graph_list.append(G)
     return perturbed_graph_list
+
 
 
 def join_graph(G1, G2, n_pert_edges):
@@ -94,7 +98,7 @@ def preprocess_input_graph(G, labels, normalize_adj=False):
 # Generating synthetic graphs
 #
 ###################################
-def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
+def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5, is_weighted=False):
     """Synthetic Graph #1:
 
     Start with Barabasi-Albert graph and attach house-shaped subgraphs.
@@ -115,11 +119,15 @@ def gen_ba_house(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
     list_shapes = [["house"]] * nb_shapes
 
     # plt.figure(figsize=(8, 6), dpi=300)
-
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0, m=5
-    )
-    G = perturb([G], 0.01)[0]
+    if is_weighted:
+        G, role_id, _ = synthetic_structsim.build_weighted_graph(
+            width_basis, basis_type, list_shapes, start=0, m=5
+        )
+    else: 
+        G, role_id, _ = synthetic_structsim.build_graph(
+            width_basis, basis_type, list_shapes, start=0, m=5
+        )
+    G = perturb([G], 0.01, is_weighted=is_weighted)[0]
 
     if feature_generator is None:
         feature_generator = featgen.ConstFeatureGen(1)
@@ -177,7 +185,7 @@ def gen_ba_community(nb_shapes=100, width_basis=350, feature_generator=None):
     return G, label, name
 
 
-def gen_ba_grid(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
+def gen_ba_grid(nb_shapes=80, width_basis=300, feature_generator=None, m=5, is_weighted=False):
     """Synthetic Graph #3:
 
     Start with Barabasi-Albert graph and attach grid-shaped subgraphs.
@@ -198,10 +206,15 @@ def gen_ba_grid(nb_shapes=80, width_basis=300, feature_generator=None, m=5):
 
     #     plt.figure(figsize=(8, 6), dpi=300)
 
-    G, role_id, _ = synthetic_structsim.build_graph(
-        width_basis, basis_type, list_shapes, start=0, m=5
-    )
-    G = perturb([G], 0.01)[0]
+    if is_weighted:
+        G, role_id, _ = synthetic_structsim.build_weighted_graph(
+            width_basis, basis_type, list_shapes, start=0, m=5
+        )
+    else:
+        G, role_id, _ = synthetic_structsim.build_graph(
+            width_basis, basis_type, list_shapes, start=0, m=5
+        )
+    G = perturb([G], 0.01, is_weighted=is_weighted)[0]
 
     if feature_generator is None:
         feature_generator = featgen.ConstFeatureGen(1)

@@ -50,7 +50,7 @@ def explain_groundtruth(dataset, model, device, args):
                 explained_y_idx, explainer.data, explainer.dataset_name
             )
         elif explainer.dataset_name.startswith(
-            tuple(["mutag", "ba_2motifs", "benzene"])
+            tuple(["mutag", "ba_2motifs", "ba_house_grid", "benzene"])
         ):
             gt_edge_mask = explainer.dataset[explained_y_idx].edge_mask.float().cpu()
         gt_edge_masks.append(gt_edge_mask)

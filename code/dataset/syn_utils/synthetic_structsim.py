@@ -203,6 +203,7 @@ def ba(start, width, role_start=0, m=5):
     mapping = {nid: start + i for i, nid in enumerate(nids)}
     graph = nx.relabel_nodes(graph, mapping)
     roles = [role_start for i in range(width)]
+    nx.set_edge_attributes(graph, values = 0, name = 'weight')
     return graph, roles
 
 
@@ -231,7 +232,9 @@ def house(start, role_start=0):
     )
     # graph.add_edges_from([(start, start + 2), (start + 1, start + 3)])
     graph.add_edges_from([(start + 4, start), (start + 4, start + 1)])
+
     roles = [role_start, role_start, role_start + 1, role_start + 1, role_start + 2]
+    nx.set_edge_attributes(graph, values = 1, name = 'weight')
     return graph, roles
 
 
@@ -240,6 +243,7 @@ def grid(start, dim=2, role_start=0):
     grid_G = nx.grid_graph([dim, dim])
     grid_G = nx.convert_node_labels_to_integers(grid_G, first_label=start)
     roles = [role_start for i in grid_G.nodes()]
+    nx.set_edge_attributes(grid_G, values = 1, name = 'weight')
     return grid_G, roles
 
 
@@ -263,6 +267,7 @@ def star(start, nb_branches, role_start=0):
         graph.add_edges_from([(start, start + k)])
     roles = [role_start + 1] * (nb_branches + 1)
     roles[0] = role_start
+    nx.set_edge_attributes(graph, values = 1, name = 'weight')
     return graph, roles
 
 
@@ -287,6 +292,7 @@ def path(start, width, role_start=0):
     roles = [role_start] * width
     roles[0] = role_start + 1
     roles[-1] = role_start + 1
+    # nx.set_edge_attributes(graph, values = 0, name = 'weight')
     return graph, roles
 
 
@@ -324,7 +330,6 @@ def build_graph(
         basis, role_id = eval(basis_type)(start, width_basis, m=m)
     else:
         basis, role_id = eval(basis_type)(start, width_basis)
-
     n_basis, n_shapes = nx.number_of_nodes(basis), len(list_shapes)
     start += n_basis  # indicator of the id of the next node
 
@@ -336,6 +341,7 @@ def build_graph(
         plugins = [int(k * spacing) for k in range(n_shapes)]
     seen_shapes = {"basis": [0, n_basis]}
 
+    # Add the shapes to the basis
     for shape_id, shape in enumerate(list_shapes):
         shape_type = shape[0]
         args = [start]
@@ -349,6 +355,7 @@ def build_graph(
         except:
             col_start = np.max(role_id) + 1
             seen_shapes[shape_type] = [col_start, n_s]
+
         # Attach the shape to the basis
         basis.add_nodes_from(graph_s.nodes())
         basis.add_edges_from(graph_s.edges())
@@ -367,7 +374,141 @@ def build_graph(
         # add random edges between nodes:
         for p in range(add_random_edges):
             src, dest = np.random.choice(nx.number_of_nodes(basis), 2, replace=False)
-            print(src, dest)
             basis.add_edges_from([(src, dest)])
 
     return basis, role_id, plugins
+
+
+def build_undirected_graph(
+    width_basis,
+    basis_type,
+    list_shapes,
+    start=0,
+    rdm_basis_plugins=False,
+    add_random_edges=0,
+    m=5,
+):
+    if basis_type == "ba":
+        basis, role_id = eval(basis_type)(start, width_basis, m=m)
+    else:
+        basis, role_id = eval(basis_type)(start, width_basis)
+    # print(nx.get_edge_attributes(basis,'weight'))
+    n_basis, n_shapes = nx.number_of_nodes(basis), len(list_shapes)
+    start += n_basis  # indicator of the id of the next node
+
+    # Sample (with replacement) where to attach the new motifs
+    if rdm_basis_plugins is True:
+        plugins = np.random.choice(n_basis, n_shapes, replace=False)
+    else:
+        spacing = math.floor(n_basis / n_shapes)
+        plugins = [int(k * spacing) for k in range(n_shapes)]
+    seen_shapes = {"basis": [0, n_basis]}
+
+    # Undirect basis graph
+    basis = basis.to_undirected()
+
+    # Add the shapes to the basis
+    for shape_id, shape in enumerate(list_shapes):
+        shape_type = shape[0]
+        args = [start]
+        if len(shape) > 1:
+            args += shape[1:]
+        args += [0]
+        graph_s, roles_graph_s = eval(shape_type)(*args)
+        n_s = nx.number_of_nodes(graph_s)
+        try:
+            col_start = seen_shapes[shape_type][0]
+        except:
+            col_start = np.max(role_id) + 1
+            seen_shapes[shape_type] = [col_start, n_s]
+
+        # Undirect the shape graph
+        graph_s = graph_s.to_undirected()
+
+        # Attach the shape to the basis
+        basis.add_nodes_from(graph_s.nodes())
+        basis.add_edges_from(graph_s.edges(), weight=1)
+        basis.add_edges_from([(start, plugins[shape_id])], weight=0)
+        basis.add_edges_from([(plugins[shape_id], start)], weight=0)
+        if shape_type == "cycle":
+            if np.random.random() > 0.5:
+                a = np.random.randint(1, 4)
+                b = np.random.randint(1, 4)
+                basis.add_edges_from([(a + start, b + plugins[shape_id])], weight=0)
+        temp_labels = [r + col_start for r in roles_graph_s]
+        # temp_labels[0] += 100 * seen_shapes[shape_type][0]
+        role_id += temp_labels
+        start += n_s
+
+    if add_random_edges > 0:
+        # add random edges between nodes:
+        for p in range(add_random_edges):
+            src, dest = np.random.choice(nx.number_of_nodes(basis), 2, replace=False)
+            basis.add_edges_from([(src, dest)], weight=0)
+            basis.add_edges_from([(dest, src)], weight=0)
+
+    return basis, role_id, plugins
+
+
+def build_weighted_graph(
+    width_basis,
+    basis_type,
+    list_shapes,
+    start=0,
+    rdm_basis_plugins=False,
+    add_random_edges=0,
+    m=5,
+):
+    if basis_type == "ba":
+        basis, role_id = eval(basis_type)(start, width_basis, m=m)
+    else:
+        basis, role_id = eval(basis_type)(start, width_basis)
+    # print(nx.get_edge_attributes(basis,'weight'))
+    n_basis, n_shapes = nx.number_of_nodes(basis), len(list_shapes)
+    start += n_basis  # indicator of the id of the next node
+
+    # Sample (with replacement) where to attach the new motifs
+    if rdm_basis_plugins is True:
+        plugins = np.random.choice(n_basis, n_shapes, replace=False)
+    else:
+        spacing = math.floor(n_basis / n_shapes)
+        plugins = [int(k * spacing) for k in range(n_shapes)]
+    seen_shapes = {"basis": [0, n_basis]}
+
+    # Add the shapes to the basis
+    for shape_id, shape in enumerate(list_shapes):
+        shape_type = shape[0]
+        args = [start]
+        if len(shape) > 1:
+            args += shape[1:]
+        args += [0]
+        graph_s, roles_graph_s = eval(shape_type)(*args)
+        n_s = nx.number_of_nodes(graph_s)
+        try:
+            col_start = seen_shapes[shape_type][0]
+        except:
+            col_start = np.max(role_id) + 1
+            seen_shapes[shape_type] = [col_start, n_s]
+
+        # Attach the shape to the basis
+        basis.add_nodes_from(graph_s.nodes())
+        basis.add_edges_from(graph_s.edges(), weight=1)
+        basis.add_edges_from([(start, plugins[shape_id])], weight=0)
+        if shape_type == "cycle":
+            if np.random.random() > 0.5:
+                a = np.random.randint(1, 4)
+                b = np.random.randint(1, 4)
+                basis.add_edges_from([(a + start, b + plugins[shape_id])], weight=0)
+        temp_labels = [r + col_start for r in roles_graph_s]
+        # temp_labels[0] += 100 * seen_shapes[shape_type][0]
+        role_id += temp_labels
+        start += n_s
+
+    if add_random_edges > 0:
+        # add random edges between nodes:
+        for p in range(add_random_edges):
+            src, dest = np.random.choice(nx.number_of_nodes(basis), 2, replace=False)
+            basis.add_edges_from([(src, dest)], weight=0)
+    return basis, role_id, plugins
+
+

@@ -174,6 +174,7 @@ class Explain(object):
                         "ieee39",
                         "ieee118",
                         "ba_2motifs",
+                        "ba_house_grid",
                         "mutag",
                         "benzene",
                         "mnist",
@@ -299,6 +300,7 @@ class Explain(object):
                         "ieee39",
                         "ieee118",
                         "ba_2motifs",
+                        "ba_house_grid",
                         "mutag",
                         "benzene",
                         "mnist",
@@ -690,11 +692,15 @@ class Explain(object):
             pred_labels = logits.argmax(-1).cpu().numpy()[self.list_test_idx]
             true_labels = self.dataset.data.y.cpu().numpy()[self.list_test_idx]
             if self.pred_type == "correct":
-                list_idx = self.list_test_idx[np.where(pred_labels == true_labels)[0]]
+                list_idx = np.array(self.list_test_idx)[
+                    np.where(pred_labels == true_labels)[0].astype(int)
+                ]
             elif self.pred_type == "wrong":
-                list_idx = self.list_test_idx[np.where(pred_labels != true_labels)[0]]
+                list_idx = np.array(self.list_test_idx)[
+                    np.where(pred_labels != true_labels)[0].astype(int)
+                ]
             elif self.pred_type == "mix":
-                list_idx = self.list_test_idx
+                list_idx = np.array(self.list_test_idx)
             else:
                 raise ValueError("pred_type must be correct, wrong or mix.")
             # list_idx = self.list_test_idx
@@ -712,7 +718,7 @@ class Explain(object):
             elif self.pred_type == "wrong":
                 list_idx = np.where(pred_labels != true_labels)[0]
             elif self.pred_type == "mix":
-                list_idx = self.list_test_idx
+                list_idx = np.array(self.list_test_idx)
             else:
                 raise ValueError("pred_type must be correct, wrong or mix.")
             print("Number of explanable entities: ", len(list_idx))

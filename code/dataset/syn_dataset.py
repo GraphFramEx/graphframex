@@ -44,6 +44,7 @@ class SynGraphDataset(InMemoryDataset):
         "tree_grid": ["Tree_Grid", "Tree_Grid.pkl", "Tree_Grid"],
         "tree_cycle": ["Tree_Cycle", "Tree_Cycles.pkl", "Tree_Cycles"],
         "ba_2motifs": ["BA_2Motifs", "BA_2Motifs.pkl", "BA_2Motifs"],
+        "ba_house_grid": ["BA_House_Grid", "BA_House_Grid.pkl", "BA_House_Grid"],
     }
 
     def __init__(
@@ -93,6 +94,33 @@ class SynGraphDataset(InMemoryDataset):
                 data_list = [self.get(idx) for idx in range(len(self))]
                 data_list = [self.pre_transform(data) for data in data_list]
                 self.data, self.slices = self.collate(data_list)
+
+        elif self.name.lower() == "BA_House_Grid".lower():
+            # Binary graph classification task
+            motifs = ["house", "grid"]
+            labels = [0, 1]
+            data_list = []
+            adj_list = []
+            max_num_nodes = 0
+            for graph_idx in range(self.dataset_params["num_graphs"]):
+                name = np.random.choice(motifs)
+                generate_function = "gen_ba_" + name
+                G, _, _ = eval(generate_function)(
+                    nb_shapes=np.random.randint(2, self.dataset_params["num_shapes"]),
+                    width_basis=self.dataset_params["width_basis"],
+                    feature_generator=featgen.ConstFeatureGen(
+                        np.ones(self.dataset_params["num_node_features"], dtype=float)
+                    ),
+                    is_weighted=True,
+                )
+                data = self.from_G_to_data(G, graph_idx, labels, name)
+                max_num_nodes = max(max_num_nodes, data.num_nodes)
+                adj = from_edge_index_to_adj(
+                    data.edge_index, data.edge_attr, data.num_nodes
+                )
+                adj_list.append(adj)
+                data_list.append(data)
+            data_list = padded_datalist(data_list, adj_list, max_num_nodes)
 
         else:
             generate_function = "gen_" + self.name
@@ -197,6 +225,23 @@ class SynGraphDataset(InMemoryDataset):
             data_list.append(data)
         data_list = padded_datalist(data_list, adj_list, max_num_nodes)
         return data_list
+
+    def from_G_to_data(self, G, graph_idx, labels=[0, 1], name="house"):
+        # attr_list = [str(attr) for attr in list(nx.get_edge_attributes(G, 'weight').values())]
+        attr_list = nx.get_edge_attributes(G, "weight").values()
+        data = from_networkx(G, group_edge_attrs=all)
+        data.x = data.feat.float()
+        # adj = torch.LongTensor(nx.to_numpy_matrix(G))
+        if name == "house":
+            data.y = torch.tensor(0).float().reshape(-1, 1)
+        elif name == "grid":
+            data.y = torch.tensor(1).float().reshape(-1, 1)
+        else:
+            raise ValueError("name should be house or grid")
+        data.edge_mask = torch.squeeze(data.edge_attr).float()
+        data.edge_attr = torch.ones(data.edge_index.size(1), 1)
+        data.idx = graph_idx
+        return data
 
     def __repr__(self):
         return "{}({})".format(self.names[self.name][0], len(self))

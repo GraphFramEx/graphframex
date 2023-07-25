@@ -10,6 +10,22 @@ ba_2motifs:
   readout: "max"
   batch_size: 200
   unseen: "False"
+  
+ba_house_grid:
+  num_graphs: 2000
+  num_shapes: 5
+  width_basis: 80
+  groundtruth: "True"
+  graph_classification: "True"
+  num_layers: 3
+  hidden_dim: 20
+  num_epochs: 300
+  lr: 0.001
+  weight_decay: 0.0000
+  dropout: 0.0
+  readout: "max"
+  batch_size: 200
+  unseen: "False"
 
 ba_multishapes:
   groundtruth: "True"

@@ -34,17 +34,20 @@ def sample_large_graph(data):
         print(f"Sample size: {data.num_nodes} nodes and {data.num_edges} edges")
     return data
 
+
 def padded_datalist(data_list, adj_list, max_num_nodes):
     for i, data in enumerate(data_list):
         data.adj_padded = padding_graphs(adj_list[i], max_num_nodes)
         data.x_padded = padding_features(data.x, max_num_nodes)
     return data_list
 
+
 def padding_graphs(adj, max_num_nodes):
     num_nodes = adj.shape[0]
     adj_padded = np.eye((max_num_nodes))
     adj_padded[:num_nodes, :num_nodes] = adj.cpu()
     return torch.tensor(adj_padded, dtype=torch.long)
+
 
 def padding_features(features, max_num_nodes):
     feat_dim = features.shape[1]
@@ -335,18 +338,19 @@ def create_vec_from_symm_matrix(matrix, P_vec_size):
     vector = matrix[idx[0], idx[1]]
     return vector
 
+
 def get_cmn_edges(new_edge_index, new_edge_weight, edge_index):
     cmn_init_edge_idx, cmn_edges = [], []
     cmn_edge_weight = np.zeros(edge_index.shape[1])
     list_tuples = zip(*new_edge_index.cpu().numpy())
     for d, (u, v) in enumerate(list_tuples):
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==(u,v),axis=1))[0]
+        pos_new_edge = np.where(np.all(np.array(edge_index.T) == (u, v), axis=1))[0]
         if len(pos_new_edge) > 0:
             idx_init = pos_new_edge[0]
             cmn_init_edge_idx.append(idx_init)
             cmn_edges.append([u, v])
-            cmn_edge_weight[idx_init] = new_edge_weight[d] 
-            #idx_init is the index of the edge in the initial edges that exists in the new edges.
+            cmn_edge_weight[idx_init] = new_edge_weight[d]
+            # idx_init is the index of the edge in the initial edges that exists in the new edges.
     return cmn_init_edge_idx, cmn_edges, cmn_edge_weight
 
 
@@ -366,14 +370,14 @@ def filter_existing_edges(perturb_edges, edge_index):
         u, v = list(edge_index[:, i])
         if (u, v) in list_tuples:
             edge_mask[i] = 1
-    return edge_mask    
+    return edge_mask
 
 
 def get_existing_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
     keep_edge_idx = []
     for i in range(len(new_edge_index.T)):
         elmt = np.array(new_edge_index.T[i])
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==elmt,axis=1))[0]
+        pos_new_edge = np.where(np.all(np.array(edge_index.T) == elmt, axis=1))[0]
         if pos_new_edge.size > 0:
             keep_edge_idx.append(pos_new_edge[0])
     kept_edges = edge_index.T[keep_edge_idx]
@@ -381,8 +385,8 @@ def get_existing_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
     kept_edge_attr = edge_attr[keep_edge_idx]
     kept_edge_weight = new_edge_weight[keep_edge_idx]
     if kept_edges.ndim == 1:
-        kept_edges = kept_edges.reshape(0,2)
-    return(keep_edge_idx, kept_edges, kept_edge_attr, kept_edge_weight)
+        kept_edges = kept_edges.reshape(0, 2)
+    return (keep_edge_idx, kept_edges, kept_edge_attr, kept_edge_weight)
 
 
 def get_new_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
@@ -390,18 +394,30 @@ def get_new_edges(new_edge_index, new_edge_weight, edge_index, edge_attr):
     new_added_edge_idx = []
     for i in range(len(new_edge_index.T)):
         elmt = np.array(new_edge_index.T[i])
-        pos_new_edge = np.where(np.all(np.array(edge_index.T)==elmt,axis=1))[0]
+        pos_new_edge = np.where(np.all(np.array(edge_index.T) == elmt, axis=1))[0]
         if pos_new_edge.size == 0:
             new_added_edges.append(elmt)
             new_added_edge_idx.append(i)
     new_added_edges = np.array(new_added_edges)
-    mean_feat = np.mean(np.array(edge_attr),0)
-    var_feat = np.var(np.array(edge_attr),0)
-    new_added_edge_attr= np.array([np.random.normal(loc=mean_feat[i], scale=var_feat[i], size=(len(new_added_edges))) for i in range(edge_attr.shape[1])]).T
+    mean_feat = np.mean(np.array(edge_attr), 0)
+    var_feat = np.var(np.array(edge_attr), 0)
+    new_added_edge_attr = np.array(
+        [
+            np.random.normal(
+                loc=mean_feat[i], scale=var_feat[i], size=(len(new_added_edges))
+            )
+            for i in range(edge_attr.shape[1])
+        ]
+    ).T
     new_added_edge_weight = new_edge_weight[new_added_edge_idx]
     if new_added_edges.ndim == 1:
-        new_added_edges = new_added_edges.reshape(0,2)
-    return(new_added_edge_idx, new_added_edges, new_added_edge_attr, new_added_edge_weight)
+        new_added_edges = new_added_edges.reshape(0, 2)
+    return (
+        new_added_edge_idx,
+        new_added_edges,
+        new_added_edge_attr,
+        new_added_edge_weight,
+    )
 
 
 def get_cf_edge_mask(new_edge_index, edge_index):
@@ -411,11 +427,16 @@ def get_cf_edge_mask(new_edge_index, edge_index):
     existing_edges = edge_index.T.cpu().numpy()
     for i in range(len(new_edges)):
         elmt = np.array(new_edges[i])
-        pos_new_edge = np.where(np.all(existing_edges==elmt,axis=1))[0]
+        pos_new_edge = np.where(np.all(existing_edges == elmt, axis=1))[0]
         if pos_new_edge.size > 0:
             cmn_edge_idx.append(pos_new_edge[0])
     # The explanation is the edges that are not counterfactual edges
     edge_mask[cmn_edge_idx] = 0
-    return(edge_mask)
+    return edge_mask
 
 
+def node_attr_to_edge(edge_index, node_mask):
+    edge_mask = np.zeros(edge_index.shape[1])
+    edge_mask += node_mask[edge_index[0].cpu().numpy()]
+    edge_mask += node_mask[edge_index[1].cpu().numpy()]
+    return edge_mask

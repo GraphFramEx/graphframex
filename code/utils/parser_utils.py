@@ -129,6 +129,12 @@ def arg_parse():
         "--seed", help="random seed", type=int, default=0
     )
     parser_dataset_params.add_argument(
+        "--num_graphs",
+        help="number of graphs in synthetic GC datasets (ba_house_grid)",
+        type=int,
+        default=2000,
+    )
+    parser_dataset_params.add_argument(
         "--width_basis", help="width of base graph", type=int
     )
     parser_dataset_params.add_argument(

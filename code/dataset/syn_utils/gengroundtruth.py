@@ -3,7 +3,7 @@ import os
 import networkx as nx
 import numpy as np
 from dataset.syn_utils.synthetic_structsim import bottle, cycle, grid, house
-from explainer.node_explainer import node_attr_to_edge
+from utils.gen_utils import node_attr_to_edge
 
 
 def get_ground_truth_syn(node, data, dataset_name):
