@@ -2,7 +2,7 @@
 #
 import os
 
-CKPT_ROOT = "/cluster/work/zhang/kamara/graphframex2023/"
+CKPT_ROOT = "/cluster/work/zhang/kamara/graphframex/"
 DATA_DIR = CKPT_ROOT + "data/"
 MODEL_DIR = CKPT_ROOT + "model/"
 LOG_DIR = CKPT_ROOT + "logs/"

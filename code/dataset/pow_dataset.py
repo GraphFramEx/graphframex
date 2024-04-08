@@ -19,7 +19,7 @@ def index_edgeorder(edge_order):
 class UK(InMemoryDataset):
     # Base folder to download the files
     names = {"uk": ["uk", "uk", None, None]}
-    raw_path = "uk+expmask/"
+    raw_path = "uk/" #"uk+expmask/"
     url = "https://figshare.com/s/1af1dcbb4d7fc27b94e1"
 
     def __init__(
@@ -238,7 +238,8 @@ class UK(InMemoryDataset):
 class IEEE24(InMemoryDataset):
     # Base folder to download the files
     names = {"ieee24": ["ieee24", "ieee24", None, None]}
-    raw_path = "ieee24+expmask/"
+    print('hi')
+    raw_path = "ieee24" # "ieee24+expmask/"
 
     def __init__(
         self, root, name, datatype="Binary", transform=None, pre_transform=None
@@ -286,7 +287,7 @@ class IEEE24(InMemoryDataset):
             mask[indices] = False
             return tensor[mask]
 
-        raw_path = "ieee24+expmask/"
+        raw_path = "ieee24" #"ieee24+expmask/"
 
         # load branch list also called edge order or edge index
         path = os.path.join(self.raw_dir, "blist.mat")
@@ -316,6 +317,7 @@ class IEEE24(InMemoryDataset):
         of_bi = of_bi["output_features"]
         of_mc = of_mc["category"]
         exp_mask = exp["explainations"]
+        print('exp_mask', exp_mask)
 
         data_list = []
         adj_list = []
@@ -460,7 +462,7 @@ class IEEE24(InMemoryDataset):
 class IEEE39(InMemoryDataset):
     # Base folder to download the files
     names = {"ieee39": ["ieee39", "ieee39", None, None]}
-    raw_path = "ieee39+expmask/"
+    raw_path = "ieee39" # "ieee39+expmask/"
 
     def __init__(
         self, root, name, datatype="Binary", transform=None, pre_transform=None
@@ -508,7 +510,7 @@ class IEEE39(InMemoryDataset):
             mask[indices] = False
             return tensor[mask]
 
-        raw_path = "ieee39+expmask/"
+        raw_path = "ieee39" # "ieee39+expmask/"
 
         # load branch list also called edge order or edge index
         path = os.path.join(self.raw_dir, "blist.mat")
@@ -684,7 +686,7 @@ class IEEE39(InMemoryDataset):
 class IEEE118(InMemoryDataset):
     # Base folder to download the files
     names = {"ieee118": ["ieee118", "ieee118", None, None]}
-    raw_path = "ieee118+expmask/"
+    raw_path = "ieee118" # "ieee118+expmask/"
 
     def __init__(
         self, root, name, datatype="Binary", transform=None, pre_transform=None
@@ -732,7 +734,7 @@ class IEEE118(InMemoryDataset):
             mask[indices] = False
             return tensor[mask]
 
-        raw_path = "ieee118+expmask/"
+        raw_path = "ieee118" # "ieee118+expmask/"
 
         # load branch list also called edge order or edge index
         path = os.path.join(self.raw_dir, "blist.mat")

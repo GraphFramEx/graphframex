@@ -21,7 +21,7 @@ class UKCont(InMemoryDataset):
     names = {
         "uk": ["uk", "uk", None, None]
     }
-    raw_path = 'uk+expmask/'
+    raw_path = 'uk/'
     def __init__(self, root, name, datatype='multiclass', transform=None, pre_transform=None):
 
         self.datatype = datatype
@@ -140,7 +140,7 @@ class IEEE24Cont(InMemoryDataset):
     names = {
         "ieee24": ["ieee24", "ieee24", None, None]
     }
-    raw_path = 'ieee24+expmask/'
+    raw_path = 'ieee24/'
     def __init__(self, root, name, datatype='Multiclass', transform=None, pre_transform=None):
 
         self.datatype = datatype
@@ -259,7 +259,7 @@ class IEEE39Cont(InMemoryDataset):
     names = {
         "ieee39": ["ieee39", "ieee39", None, None]
     }
-    raw_path = 'ieee39+expmask/'
+    raw_path = 'ieee39/'
     def __init__(self, root, name, datatype='multiclass', transform=None, pre_transform=None):
 
         self.datatype = datatype

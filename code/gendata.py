@@ -79,6 +79,8 @@ def get_dataset(dataset_root, **kwargs):
             "ieee24_bin_dns",
             "ieee24_bin_cf",
         ]:
+            print(f"Loading {dataset_name} dataset...")
+            print('root:', dataset_root, 'name:', dataset_name, 'datatype:', datatype)
             return IEEE24(root=dataset_root, name=dataset_name, datatype=datatype)
         elif dataset_name.lower() in [
             "ieee39_mc",
